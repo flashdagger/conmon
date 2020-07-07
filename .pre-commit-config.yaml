@@ -1,0 +1,14 @@
+repos:
+  - repo: local
+    hooks:
+      - id: black
+        name: black
+        language: script
+        entry: ./pyvenv.py --run black
+        types: [python]
+      - id: pyflakes
+        name: pyflakes
+        language: script
+        entry: ./pyvenv.py --run pyflakes
+        types: [python]
+        exclude: ^\.cmake-format.py$
