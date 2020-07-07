@@ -3,13 +3,13 @@
 
 from setuptools import setup
 
-project = "git2ptc"
+project = "conmon"
 
 setup(
     name=project,
-    version="0.11.1",
-    description="Transfer git commits as PTC checkpoints.",
-    long_description="Transfer git commits as PTC checkpoints.",
+    version="0.1.0",
+    description="Run conan as monitored process.",
+    long_description="Run conan as monitored process.",
     author="flashdagger",
     author_email="flashdagger@googlemail.com",
     license="MIT",
@@ -22,14 +22,14 @@ setup(
     include_package_data=True,
     # project dependencies for installation
     python_requires=">=3.6",
-    install_requires=["pytegrity==0.45.*", "tqdm==4.45.*"],
+    install_requires=["psutils>=5.7.*"],
     setup_requires=["pytest-runner"],
     tests_require=["pytest"],
     test_suite="tests",
     zip_safe=False,
     keywords="",
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: MIT License",
         "Intended Audience :: Developers",
         "Natural Language :: English",
