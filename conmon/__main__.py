@@ -26,6 +26,7 @@ import colorama  # type: ignore
 import colorlog  # type: ignore
 import psutil  # type: ignore
 
+from . import __version__
 from .buildmon import BuildMonitor, LOG as PLOG
 from .compilers import LOG as BLOG, parse_warnings
 
@@ -436,7 +437,11 @@ def parse_warnings_conan(
     return parse_warnings("\n".join(log), compiler=compiler_type)
 
 
-def main(args) -> int:
+def main() -> int:
+    """ main entry point for console script """
+
+    args = parse_args(sys.argv[1:])
+
     colorama_args = dict(autoreset=True, convert=None, strip=None, wrap=True)
     # prevent messing up colorama settings
     if os.getenv("CI"):
@@ -469,6 +474,9 @@ def parse_args(args: List[str]):
     description = "execute a conan command with parsed output"
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
+        "--version", action="version", version="%(prog)s {}".format(__version__)
+    )
+    parser.add_argument(
         "cmd",
         metavar="<command>",
         help="conan command and options",
@@ -479,5 +487,4 @@ def parse_args(args: List[str]):
 
 
 if __name__ == "__main__":
-    ARGS = parse_args(sys.argv[1:])
-    sys.exit(main(ARGS))
+    sys.exit(main())
