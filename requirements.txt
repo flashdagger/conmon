@@ -59,5 +59,6 @@ typed-ast==1.4.1          # via astroid, black, mypy
 typing-extensions==3.7.4.2  # via mypy
 urllib3==1.25.9           # via conan, requests
 wcwidth==0.2.5            # via pytest
+wheel==0.34.2             # via -r requirements.in
 wrapt==1.12.1             # via astroid
 zipp==3.1.0               # via importlib-metadata
