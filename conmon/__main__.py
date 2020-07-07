@@ -471,10 +471,10 @@ def parse_args(args: List[str]):
     """
     parsing commandline parameters
     """
-    description = "execute a conan command with parsed output"
-    parser = argparse.ArgumentParser(description=description)
+    description = "Run conan as monitored process with parsed JSON output"
+    parser = argparse.ArgumentParser(description=description, prog="conmon")
     parser.add_argument(
-        "--version", action="version", version="%(prog)s {}".format(__version__)
+        "--version", action="version", version=f"%(prog)s version {__version__}"
     )
     parser.add_argument(
         "cmd",

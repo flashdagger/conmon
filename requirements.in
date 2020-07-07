@@ -1,8 +1,9 @@
 
+# the project itself as editable
+-e file:.
+
 # project dependencies
 conan==1.26.*
-psutil==5.*
-colorlog==4.*
 
 # development dependencies
 black
