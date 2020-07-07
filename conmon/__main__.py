@@ -21,19 +21,13 @@ from typing import (
     Mapping,
     Optional,
 )
-from unittest import mock
 
 import colorama  # type: ignore
-
-# prevent messing up colorama settings
-with mock.patch("colorama.init", autospec=True):
-    import colorlog  # type: ignore
-
+import colorlog  # type: ignore
 import psutil  # type: ignore
 
-from buildmon import BuildMonitor, LOG as PLOG
-from compilers import LOG as BLOG, parse_warnings
-
+from .buildmon import BuildMonitor, LOG as PLOG
+from .compilers import LOG as BLOG, parse_warnings
 
 LOG = logging.getLogger("CONMON")
 REPORT_JSON = Path(os.getenv("CONMON_OUTPUT_PATH", "conan_report.json"))
@@ -333,7 +327,7 @@ def monitor(args: List[str]) -> int:
     os.environ["CONAN_NON_INTERACTIVE"] = "1"
 
     conan_version = check_conan()
-    full_command = [sys.executable, "-m", "conans.conan", *args]
+    full_command = ["conan", *args]
     process = psutil.Popen(
         full_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
     )
@@ -443,7 +437,14 @@ def parse_warnings_conan(
 
 
 def main(args) -> int:
-    handler = colorlog.StreamHandler()
+    colorama_args = dict(autoreset=True, convert=None, strip=None, wrap=True)
+    # prevent messing up colorama settings
+    if os.getenv("CI"):
+        colorama.deinit()
+        colorama_args.update(dict(strip=False, convert=False))
+    colorama.init(**colorama_args)
+
+    handler = logging.StreamHandler()
     handler.setFormatter(
         colorlog.ColoredFormatter("%(log_color)s[%(name)s:%(levelname)s] %(message)s")
     )
@@ -456,10 +457,7 @@ def main(args) -> int:
     PLOG.setLevel(logging.INFO)
 
     if os.getenv("CI"):
-        colorama.init(autoreset=True, strip=False, convert=False)
         LOG.info("Running in Gitlab CI")
-    else:
-        colorama.init(autoreset=True)
 
     return monitor(args.cmd)
 
