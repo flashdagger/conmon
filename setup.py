@@ -17,7 +17,10 @@ setup(
     platforms="any",
     packages=[project],
     entry_points={
-        "console_scripts": [f"{project.replace('_', '-')}={project}.__main__:main"]
+        "console_scripts": [
+            f"conmon=conmon.__main__:main",
+            "check-tus=conmon.check_tus:main",
+        ]
     },
     include_package_data=True,
     # project dependencies for installation
