@@ -414,7 +414,7 @@ def monitor(args: List[str]) -> int:
     report.parent.mkdir(parents=True, exist_ok=True)
     with report.open("w") as fh:
         json.dump(parser.log, fh, indent=4)
-    LOG.info("Report saved to CONMON_OUTPUT_PATH=%s", report)
+    LOG.info("Report saved to %s (env:CONMON_OUTPUT_PATH)", report)
 
     return returncode
 
