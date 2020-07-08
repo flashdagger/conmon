@@ -34,7 +34,7 @@ class WinShlex(shlex.shlex):
 
 class CompilerParser(argparse.ArgumentParser):
     IGNORE_FLAGS_LONG = {"-diagnostics", "-nologo", "-showIncludes"}
-    IGNORE_FLAGS_SHORT = {"-o", "-s"}
+    IGNORE_FLAGS_SHORT = {"-o", "-s", "-TP", "-TC", "-FS"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, allow_abbrev=False, **kwargs)
