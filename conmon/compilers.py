@@ -28,7 +28,7 @@ COMPILER_REGEX_MAP = {
     "gnu": re.compile(
         r"^(?P<context>(In\ file\ included\ from\ [^\n]+:\d+:\n)*)"
         r"(?P<file>(?:[A-za-z]:)?[^\n:]+):"
-        r"(?:(?P<line>\d+):)?"
+        r"(?:(?P<line>\d+):)"
         r"(?:(?P<column>\d+):)?\s"
         r"(?P<severity>[a-z\s]+):\s"
         r"(?P<info>.*?)"
@@ -99,6 +99,7 @@ def parse_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
             continue
         warnings.append(groupdict)
         key = groupdict["category"]
+        assert key
         stats[(severity, key)] += 1
         if severity in {"warning", "error", "fatal error"} and key not in keyset:
             LOG.log(log_level(severity), match.group().rstrip())
