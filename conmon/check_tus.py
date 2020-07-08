@@ -1,9 +1,12 @@
 import json
 import re
 import sys
+from collections import Counter
 from pathlib import Path
+from pprint import pprint
 
 from .__main__ import REPORT_JSON
+from .compilers import parse_warnings
 
 
 def parse_build(key, lines):
@@ -26,34 +29,30 @@ def check(report):
     files = set()
     files.update(parse_build(report["ref"], report["build"]))
 
-    tus = set()
-    for tu in report["translation_units"]:
-        tus.update(set(tu["sources"]))
+    t_units = set()
+    for t_unit in report["translation_units"]:
+        t_units.update(set(t_unit["sources"]))
 
     found = 0
     missing = 0
 
     for file in files:
         path = Path(file)
-        for tu in set(tus):
-            tu_path = Path(tu)
+        for t_unit in set(t_units):
+            tu_path = Path(t_unit)
             if path.name == tu_path.name:
                 found += 1
-                tus.remove(tu)
+                t_units.remove(t_unit)
                 break
         else:
             print("missing", file)
             missing += 1
 
     print("total", len(files), "found", found, "missing", missing)
-    print("residue", len(tus))
+    print("residue", len(t_units))
 
 
 def check_warnings(report):
-    from .compilers import parse_warnings
-    from pprint import pprint
-    from collections import Counter
-
     result = parse_warnings("\n".join(report["build"]), "gnu")
     stats = Counter((mapping.get("category") for mapping in result))
     pprint(stats)
@@ -65,8 +64,8 @@ def main():
     else:
         json_file = REPORT_JSON
 
-    with json_file.open() as fp:
-        report = json.load(fp)
+    with json_file.open() as fh:
+        report = json.load(fh)
 
     for key, value in report.get("requirements", {}).items():
         if "build" not in value:
