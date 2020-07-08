@@ -9,7 +9,7 @@ LOG = logging.getLogger("BUILD")
 COMPILER_REGEX_MAP = {
     "cmake": re.compile(
         r"^CMake\ (?P<severity>\w+)"
-        r"(\ at\ (?P<file>[^\n]+):(?P<line>\d+)\s\((?P<function>[-\w]+)\))?:\n?"
+        r"(?:\ (?:in|at)\ (?P<location>[^\n]+))?:\n"
         r"(?P<info>(\s+[^\n]+\n)+)"
         r"(?P<context>Call\ Stack[^\n]+\n(\s+[^\n]+\n)+)?",
         re.VERBOSE | re.MULTILINE,
@@ -57,7 +57,7 @@ def log_level(hint: Optional[str]) -> int:
 
 def to_int(mapping: Dict[str, Any], *keys: str) -> None:
     for key in keys:
-        value = mapping[key]
+        value = mapping.get(key)
         if not isinstance(value, str):
             continue
         mapping[key] = int(value)
@@ -78,7 +78,7 @@ def parse_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
         warnings.append(groupdict)
         if groupdict["severity"] == "error":
             LOG.error(match.group().rstrip())
-        elif groupdict["severity"] == "warning" and groupdict["file"]:
+        elif groupdict["severity"] == "warning" and groupdict["location"]:
             LOG.warning(match.group().rstrip())
 
     keyset = set()
