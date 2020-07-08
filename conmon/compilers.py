@@ -82,8 +82,13 @@ def parse_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
             LOG.warning(match.group().rstrip())
 
     keyset = set()
+    ident_set = set()
     for match in compiler_regex.finditer(output):
         groupdict = match.groupdict()
+        ident = hash(frozenset(groupdict.items()))
+        if ident in ident_set:
+            continue
+        ident_set.add(ident)
         to_int(groupdict, "line", "column")
         groupdict["from"] = "compiler"
         severity = groupdict["severity"]
