@@ -9,14 +9,14 @@ LOG = logging.getLogger("BUILD")
 COMPILER_REGEX_MAP = {
     "cmake": re.compile(
         r"^CMake\ (?P<severity>\w+)"
-        r"(?:\ (?:in|at)\ (?P<location>[^\n]+))?:\n"
+        r"(?:\ (?:in|at)\ (?P<location>(?:[A-za-z]:)?[^\n:]+))?:\n"
         r"(?P<info>(\s+[^\n]+\n)+)"
         r"(?P<context>Call\ Stack[^\n]+\n(\s+[^\n]+\n)+)?",
         re.VERBOSE | re.MULTILINE,
     ),
     "clang-cl": re.compile(
         r"^(?P<context>(In\ file\ included\ from\ [^\n]+:\d+:\n)*)"
-        r"(?P<file>[^\n]+)\((?P<line>\d+),(?P<column>\d+)\):\s"
+        r"(?P<file>[^\n(]+)\((?P<line>\d+),(?P<column>\d+)\):\s"
         r"(?P<severity>[a-z\s]+):\s"
         r"(?P<info>.*?)"
         r"(\s\[(?P<category>[^\]]+)\])?"
@@ -26,7 +26,9 @@ COMPILER_REGEX_MAP = {
     ),
     "gnu": re.compile(
         r"^(?P<context>(In\ file\ included\ from\ [^\n]+:\d+:\n)*)"
-        r"(?P<file>[^\n]+):(?P<line>\d+):(?:(?P<column>\d+):)?\s"
+        r"(?P<file>(?:[A-za-z]:)?[^\n:]+):"
+        r"(?:(?P<line>\d+):)?"
+        r"(?:(?P<column>\d+):)?\s"
         r"(?P<severity>[a-z\s]+):\s"
         r"(?P<info>.*?)"
         r"(\s\[(?P<category>[^\]]+)\])?"
