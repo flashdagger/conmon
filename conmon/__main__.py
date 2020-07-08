@@ -92,7 +92,8 @@ class ConanParser:
 
         if overwrite:
             if self.last_line_len:
-                print("\r" + self.last_line_len * " " + "\r", end="")
+                # clear the whole line
+                print(colorama.ansi.clear_line(2), end="\r")
             else:
                 print("")
             self.last_line_len = len(line)
