@@ -1,16 +1,6 @@
 /venv*
 /.*
-/*.xml
 /*.json
+/*.egg-info
 
-/prqa/configs/Initial_Config/output
-/prqa/configs/Initial_Config/cip/*.cip
-/prqa/configs/Initial_Config/config/project.acf
-qa-framework-app.xml
-.empty
 *.pyc
-*.hash
-*.stamp
-*.status
-prlforceinclude/
-/results/
