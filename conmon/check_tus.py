@@ -15,13 +15,16 @@ def parse_build(key, lines):
         return files
     print("-->", key)
     for line in lines:
-        match = re.match(r".*?([\w/\\-]+\.c[cxp]*)([^\w(]|$)", line)
+        match = re.match(r".*?([.\w/\\-]+(\.[a-z]{1,3})+)([^\w(]|$)", line)
         if not match:
             continue
         file = Path(match.group(1))
-        if file.parent.name.endswith(".dir"):
-            file = file.parent.parent / file.name
-        files.add(file.name)
+        suffix = file.suffixes[0]
+        name, *_ = file.name.split(".", maxsplit=1)
+        if suffix == ".obj":
+            suffix = ".c"
+        if suffix in {".c", ".cpp", ".cxx"}:
+            files.add(name + suffix)
     return files
 
 
