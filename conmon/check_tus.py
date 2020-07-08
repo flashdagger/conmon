@@ -3,6 +3,8 @@ import re
 import sys
 from pathlib import Path
 
+from .__main__ import REPORT_JSON
+
 
 def parse_build(key, lines):
     files = set()
@@ -58,8 +60,12 @@ def check_warnings(report):
 
 
 def main():
-    json_file = sys.argv[1]
-    with open(json_file) as fp:
+    if sys.argv[1:]:
+        json_file = Path(sys.argv[1])
+    else:
+        json_file = REPORT_JSON
+
+    with json_file.open() as fp:
         report = json.load(fp)
 
     for key, value in report.get("requirements", {}).items():
