@@ -8,6 +8,7 @@ import os
 import platform
 import re
 import sys
+import tempfile
 from collections import defaultdict
 from configparser import ConfigParser
 from io import StringIO
@@ -328,6 +329,11 @@ def monitor(args: List[str]) -> int:
     # tell conan not to prompt for user input
     os.environ["CONAN_NON_INTERACTIVE"] = "1"
 
+    if not os.getenv("CONAN_TRACE_FILE"):
+        tmp_file = tempfile.NamedTemporaryFile("w", delete=False)
+        os.environ["CONAN_TRACE_FILE"] = tmp_file.name
+        tmp_file.close()
+
     conan_version = check_conan()
     full_command = ["conan", *args]
     process = psutil.Popen(
@@ -403,8 +409,19 @@ def monitor(args: List[str]) -> int:
 
     returncode = process.wait()
 
+    tracelog = []
+    if os.getenv("CONAN_TRACE_FILE"):
+        with open(os.environ["CONAN_TRACE_FILE"]) as fh:
+            for line in fh.readlines():
+                tracelog.append(json.loads(line))
+
     parser.log.update(
-        dict(stderr=errors.splitlines(), command=full_command, returncode=returncode,)
+        dict(
+            stderr=errors.splitlines(),
+            tracelog=tracelog,
+            command=full_command,
+            returncode=returncode,
+        )
     )
 
     report = REPORT_JSON
