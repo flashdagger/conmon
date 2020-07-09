@@ -11,6 +11,7 @@ import sys
 import tempfile
 from collections import defaultdict
 from configparser import ConfigParser
+from contextlib import suppress
 from io import StringIO
 from pathlib import Path
 from subprocess import PIPE, check_output, CalledProcessError
@@ -413,7 +414,22 @@ def monitor(args: List[str]) -> int:
     if os.getenv("CONAN_TRACE_FILE"):
         with open(os.environ["CONAN_TRACE_FILE"]) as fh:
             for line in fh.readlines():
-                tracelog.append(json.loads(line))
+                action = json.loads(line)
+                ref_id = action.get("_id")
+                if not ref_id:
+                    tracelog.append(action)
+                    continue
+                name, *_ = ref_id.split("/", maxsplit=1)
+                pkg_id = ref_id.split(":", maxsplit=1)
+                req = parser.log["requirements"].setdefault(name, {})
+                if len(pkg_id) == 2:
+                    req["package_id"] = pkg_id[1]
+                req.setdefault("actions", []).append(action["_action"])
+
+        with suppress(FileNotFoundError):
+            if "tmp" in os.environ["CONAN_TRACE_FILE"]:
+                os.unlink(os.environ["CONAN_TRACE_FILE"])
+                os.unlink(os.environ["CONAN_TRACE_FILE"] + ".lock")
 
     parser.log.update(
         dict(
