@@ -310,7 +310,10 @@ def finalize(errs: str, parser: ConanParser):
 
 def check_conan() -> str:
     try:
-        out = check_output("conan --version".split(), universal_newlines=True)
+        out = check_output(
+            [sys.executable, *"-m conans.conan --version".split()],
+            universal_newlines=True,
+        )
     except CalledProcessError as exc:
         LOG.error("%s", exc.output)
         sys.exit(1)
@@ -336,7 +339,7 @@ def monitor(args: List[str]) -> int:
         tmp_file.close()
 
     conan_version = check_conan()
-    full_command = ["conan", *args]
+    full_command = [sys.executable, "-m" "conans.conan", *args]
     process = psutil.Popen(
         full_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
     )
