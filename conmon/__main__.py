@@ -418,6 +418,8 @@ def monitor(args: List[str]) -> int:
         with open(os.environ["CONAN_TRACE_FILE"]) as fh:
             for line in fh.readlines():
                 action = json.loads(line)
+                if action["_action"] in {"REST_API_CALL", "UNZIP"}:
+                    continue
                 ref_id = action.get("_id")
                 if not ref_id:
                     tracelog.append(action)
