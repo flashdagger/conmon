@@ -273,36 +273,32 @@ class ConanParser:
 def finalize(errs: str, parser: ConanParser):
     log_level = logging.ERROR
     lines: List[str] = []
-    ref = None
     for line in errs.splitlines():
         if not line:
             continue
-        ref_match = re.match(rf"{parser.REF_REGEX.pattern}:\s+(?P<msg>.*)", line)
-        severity_match = re.match(r"^(?P<severity>ERROR|WARN):\s+(?P<rest>.*)", line)
-        if severity_match:
+        match = re.match(
+            rf"(?:{parser.REF_REGEX.pattern}:\s+)?"
+            rf"(?P<severity>ERROR|WARN):\s+(?P<msg>.*)",
+            line,
+        )
+        if match:
             if lines:
                 LOG.log(log_level, "\n".join(lines))
                 lines.clear()
-            ref = None
-            log_level = logging.getLevelName(severity_match.group("severity"))
-            line = severity_match.group("rest")
-        elif ref_match:
-            if lines:
-                LOG.log(log_level, "\n".join(lines))
-                lines.clear()
-            ref = ref_match.group("name")
-            if "WARN: " in line:
-                line = line.replace("WARN: ", "")
-                log_level = logging.WARNING
-            elif "ERROR: " in line:
-                line = line.replace("ERROR: ", "")
-                log_level = logging.ERROR
+
+            ref = match.group("name")
+            log_level = logging.getLevelName(match.group("severity"))
+
+            if ref:
+                parser.log["requirements"].setdefault(ref, {}).setdefault(
+                    "log", []
+                ).append(": ".join((match.group("severity"), match.group("msg"))))
+                line = ": ".join((match.group("ref"), match.group("msg")))
+            else:
+                line = match.group("msg")
 
         lines.append(line)
-        if ref:
-            parser.log["requirements"].setdefault(ref, {}).setdefault("log", []).append(
-                line
-            )
+
     if lines:
         LOG.log(log_level, "\n".join(lines))
         lines.clear()
@@ -339,7 +335,7 @@ def monitor(args: List[str]) -> int:
         tmp_file.close()
 
     conan_version = check_conan()
-    full_command = [sys.executable, "-m" "conans.conan", *args]
+    full_command = [sys.executable, "-m", "conans.conan", *args]
     process = psutil.Popen(
         full_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
     )
