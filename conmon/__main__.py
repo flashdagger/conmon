@@ -269,39 +269,43 @@ class ConanParser:
         if self.state_end:
             self.current_state = None
 
+    def finalize(self, errs: str):
+        if self.current_state:
+            for callback in self.callbacks:
+                assert callable(callback)
+                callback(self.current_state, self.ref, False)
 
-def finalize(errs: str, parser: ConanParser):
-    log_level = logging.ERROR
-    lines: List[str] = []
-    for line in errs.splitlines():
-        if not line:
-            continue
-        match = re.match(
-            rf"(?:{parser.REF_REGEX.pattern}:\s+)?"
-            rf"(?P<severity>ERROR|WARN):\s+(?P<msg>.*)",
-            line,
-        )
-        if match:
-            if lines:
-                LOG.log(log_level, "\n".join(lines))
-                lines.clear()
+        log_level = logging.ERROR
+        lines: List[str] = []
+        for line in errs.splitlines():
+            if not line:
+                continue
+            match = re.match(
+                rf"(?:{self.REF_REGEX.pattern}:\s+)?"
+                rf"(?P<severity>ERROR|WARN):\s+(?P<msg>.*)",
+                line,
+            )
+            if match:
+                if lines:
+                    LOG.log(log_level, "\n".join(lines))
+                    lines.clear()
 
-            ref = match.group("name")
-            log_level = logging.getLevelName(match.group("severity"))
+                ref = match.group("name")
+                log_level = logging.getLevelName(match.group("severity"))
 
-            if ref:
-                parser.log["requirements"].setdefault(ref, {}).setdefault(
-                    "log", []
-                ).append(": ".join((match.group("severity"), match.group("msg"))))
-                line = ": ".join((match.group("ref"), match.group("msg")))
-            else:
-                line = match.group("msg")
+                if ref:
+                    self.log["requirements"].setdefault(ref, {}).setdefault(
+                        "log", []
+                    ).append(": ".join((match.group("severity"), match.group("msg"))))
+                    line = ": ".join((match.group("ref"), match.group("msg")))
+                else:
+                    line = match.group("msg")
 
-        lines.append(line)
+            lines.append(line)
 
-    if lines:
-        LOG.log(log_level, "\n".join(lines))
-        lines.clear()
+        if lines:
+            LOG.log(log_level, "\n".join(lines))
+            lines.clear()
 
 
 def check_conan() -> str:
@@ -322,34 +326,9 @@ def check_conan() -> str:
     return version.group()
 
 
-def monitor(args: List[str]) -> int:
-    # prevent MsBuild from allocating workers
-    # which are not children of the parent process
-    os.environ["MSBUILDDISABLENODEREUSE"] = "1"
-    # tell conan not to prompt for user input
-    os.environ["CONAN_NON_INTERACTIVE"] = "1"
-
-    if not os.getenv("CONAN_TRACE_FILE"):
-        tmp_file = tempfile.NamedTemporaryFile("w", delete=False)
-        os.environ["CONAN_TRACE_FILE"] = tmp_file.name
-        tmp_file.close()
-
-    conan_version = check_conan()
-    full_command = [sys.executable, "-m", "conans.conan", *args]
-    process = psutil.Popen(
-        full_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
-    )
-
+def register_callback(process: psutil.Process, parser: ConanParser):
     # run monitor in its own thread
     buildmon: Optional[BuildMonitor] = None
-    parser = ConanParser()
-    parser.log.update(
-        dict(
-            build_platform=platform.platform(),
-            python_version=".".join(map(str, sys.version_info)),
-            conan_version=conan_version,
-        )
-    )
 
     def callback(state: Optional[str], _ref: str, start_not_end: bool):
         nonlocal buildmon
@@ -397,15 +376,41 @@ def monitor(args: List[str]) -> int:
 
     parser.callbacks.append(callback)
 
+
+def monitor(args: List[str]) -> int:
+    # prevent MsBuild from allocating workers
+    # which are not children of the parent process
+    os.environ["MSBUILDDISABLENODEREUSE"] = "1"
+    # tell conan not to prompt for user input
+    os.environ["CONAN_NON_INTERACTIVE"] = "1"
+
+    if not os.getenv("CONAN_TRACE_FILE"):
+        tmp_file = tempfile.NamedTemporaryFile("w", delete=False)
+        os.environ["CONAN_TRACE_FILE"] = tmp_file.name
+        tmp_file.close()
+
+    conan_version = check_conan()
+    full_command = [sys.executable, "-m", "conans.conan", *args]
+    process = psutil.Popen(
+        full_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
+    )
+
+    parser = ConanParser()
+    parser.log.update(
+        dict(
+            build_platform=platform.platform(),
+            python_version=".".join(map(str, sys.version_info)),
+            conan_version=conan_version,
+        )
+    )
+    register_callback(process, parser)
+
     for line in iter(process.stdout.readline, ""):
         parser.process(DECOLORIZE_REGEX.sub("", line.rstrip()))
 
-    print()
-    if buildmon:
-        callback(parser.current_state, parser.ref, False)
-
     _, errors = process.communicate(input=None, timeout=None)
-    finalize(errors.rstrip(), parser)
+    print()
+    parser.finalize(errors.rstrip())
 
     returncode = process.wait()
 
