@@ -99,7 +99,6 @@ def parse_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
             continue
         warnings.append(groupdict)
         key = groupdict["category"]
-        assert key
         stats[(severity, key)] += 1
         if severity in {"warning", "error", "fatal error"} and key not in keyset:
             LOG.log(log_level(severity), match.group().rstrip())
