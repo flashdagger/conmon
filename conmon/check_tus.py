@@ -1,11 +1,11 @@
 import json
+import os
 import re
-import sys
 from collections import Counter
 from pathlib import Path
 from pprint import pprint
 
-from .__main__ import REPORT_JSON
+from conmon.__main__ import filehandler
 from .compilers import parse_warnings
 
 
@@ -62,13 +62,10 @@ def check_warnings(report):
 
 
 def main():
-    if sys.argv[1:]:
-        json_file = Path(sys.argv[1])
-    else:
-        json_file = REPORT_JSON
-
-    with json_file.open() as fh:
-        report = json.load(fh)
+    json_fh = filehandler("CONMON_REPORT_JSON", mode="r")
+    assert json_fh.name != os.devnull, "$env:CONMON_REPORT_JSON not set"
+    report = json.load(json_fh)
+    json_fh.close()
 
     for key, value in report.get("requirements", {}).items():
         if "build" not in value:

@@ -33,8 +33,18 @@ from .buildmon import BuildMonitor, LOG as PLOG
 from .compilers import LOG as BLOG, parse_warnings
 
 LOG = logging.getLogger("CONMON")
-REPORT_JSON = Path(os.getenv("CONMON_OUTPUT_PATH", "conan_report.json"))
 DECOLORIZE_REGEX = re.compile(r"[\u001b]\[\d{1,2}m", re.UNICODE)
+
+
+def filehandler(env, mode="w", hint="report"):
+    path = os.getenv(env, os.devnull)
+    if path != os.devnull:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        LOG.info("Saving %s to %s", hint, path)
+    else:
+        LOG.info("set $env:%s to generate %s", env, hint)
+
+    return open(path, mode)
 
 
 class StrictConfigParser(ConfigParser):
@@ -361,10 +371,11 @@ def register_callback(process: psutil.Process, parser: ConanParser):
                 else:
                     unit["system_includes"].append(include)
 
-        with open("all_procs.json", "w") as _fh:
-            json.dump(
-                list(buildmon.proc_cache.values()), _fh, indent=2,
-            )
+        proc_fh = filehandler("CONMON_PROC_JSON", hint="process debug json")
+        json.dump(
+            list(buildmon.proc_cache.values()), proc_fh, indent=2,
+        )
+        proc_fh.close()
 
         ref_log = parser.ref_log
         ref_log["flags"] = list(sorted(buildmon.flags))
@@ -405,16 +416,19 @@ def monitor(args: List[str]) -> int:
     )
     register_callback(process, parser)
 
+    raw_fh = filehandler("CONMON_CONAN_LOG", hint="raw conan output")
     for line in iter(process.stdout.readline, ""):
+        raw_fh.write(line)
         parser.process(DECOLORIZE_REGEX.sub("", line.rstrip()))
 
     _, errors = process.communicate(input=None, timeout=None)
-    print()
+    raw_fh.write(errors)
+    raw_fh.close()
+
     parser.finalize(errors.rstrip())
-
     returncode = process.wait()
-
     tracelog = []
+
     if os.getenv("CONAN_TRACE_FILE"):
         with open(os.environ["CONAN_TRACE_FILE"]) as fh:
             for line in fh.readlines():
@@ -446,14 +460,9 @@ def monitor(args: List[str]) -> int:
         )
     )
 
-    report = REPORT_JSON
-    if report.suffix != ".json":
-        report = report / "conan_report.json"
-
-    report.parent.mkdir(parents=True, exist_ok=True)
-    with report.open("w") as fh:
-        json.dump(parser.log, fh, indent=2)
-    LOG.info("Report saved to %s (env:CONMON_OUTPUT_PATH)", report)
+    json_fh = filehandler("CONMON_REPORT_JSON", hint="report json")
+    json.dump(parser.log, json_fh, indent=2)
+    json_fh.close()
 
     return returncode
 
