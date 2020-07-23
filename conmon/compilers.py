@@ -26,7 +26,8 @@ COMPILER_REGEX_MAP = {
         re.VERBOSE | re.MULTILINE,
     ),
     "gnu": re.compile(
-        r"^(?P<context>(In\ file\ included\ from\ [^\n]+:\d+:\n)*)"
+        r"^(?P<context>(In\ file\ included\ from\ [^\n]+:\d+:\n)*"
+        r"|((?:[A-za-z]:)?[^\n:]+:\ In\ function\ [^:]+:\n)?)"
         r"(?P<file>(?:[A-za-z]:)?[^\n:]+):"
         r"(?:(?P<line>\d+):)"
         r"(?:(?P<column>\d+):)?\s"
@@ -95,12 +96,19 @@ def parse_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
         to_int(groupdict, "line", "column")
         groupdict["from"] = "compiler"
         severity = groupdict["severity"]
-        if severity == "note":
+        if severity in {"note"}:
+            LOG.info(match.group().rstrip())
             continue
+
         warnings.append(groupdict)
+
         key = groupdict["category"]
-        stats[(severity, key)] += 1
-        if severity in {"warning", "error", "fatal error"} and key not in keyset:
+        if key:
+            stats[(severity, key)] += 1
+
+        if severity in {"warning", "error", "fatal error"} and (
+            key is None or key not in keyset
+        ):
             LOG.log(log_level(severity), match.group().rstrip())
             keyset.add(key)
 
