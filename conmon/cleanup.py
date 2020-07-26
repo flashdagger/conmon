@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import re
 import shlex
 import shutil
 import sys
@@ -18,12 +19,13 @@ LOG = logging.getLogger("CLEANUP")
 
 
 # pylint: disable=too-few-public-methods
-class GLOBALS:
+class GLOBAL:
     now = datetime.now()
     debug = False
     globmatch: Callable[[str, str], bool] = (
         fnmatch.fnmatch if sys.platform.startswith("win") else fnmatch.fnmatchcase
     )
+    min_size = 0
 
 
 def human_readable_size(size: int, precision: int = 1) -> str:
@@ -92,13 +94,16 @@ def cleanup_conan_cache(args) -> int:
 
         stat = conan_file.stat()
         ref = ref_from_path(path)
-        age = GLOBALS.now - datetime.fromtimestamp(stat.st_atime)
+        age = GLOBAL.now - datetime.fromtimestamp(stat.st_atime)
 
         # noinspection PyCallByClass
-        if age.days < args.days or not GLOBALS.globmatch(ref, args.filter):
+        if age.days < args.days or not GLOBAL.globmatch(ref, args.filter):
             continue
 
         fsize = folder_size(path)
+        if fsize < GLOBAL.min_size:
+            continue
+
         hr_size = human_readable_size(fsize)
         info = f"{hr_size}, {age.days} days"
         if args.dry_run:
@@ -131,10 +136,10 @@ def cleanup_conan_dlcache(args) -> int:
         if not path.is_file():
             continue
         stat = path.stat()
-        age = GLOBALS.now - datetime.fromtimestamp(stat.st_atime)
-        if age.days < args.days:
-            continue
+        age = GLOBAL.now - datetime.fromtimestamp(stat.st_atime)
         size = stat.st_size
+        if age.days < args.days or size < GLOBAL.min_size:
+            continue
         hr_size = human_readable_size(size)
         info = f"{hr_size}, {age.days} days"
         if args.dry_run:
@@ -167,7 +172,17 @@ def cleanup_conan_dlcache(args) -> int:
 
 def main() -> int:
     args = parse_args(sys.argv[1:])
-    GLOBALS.debug = args.debug
+    GLOBAL.debug = args.debug
+    if args.size:
+        match = re.match(
+            r"^([\d.]+)\s*([kmg]?)(?:b|bytes)?\s*$", (args.size or "").lower()
+        )
+        if match is None:
+            LOG.error("Invalid size %r", args.size)
+            return 1
+        num = float(match.group(1))
+        factor = {"k": 1, "m": 2, "g": 3}.get(match.group(2), 0)
+        GLOBAL.min_size = int(num * 1024 ** factor)
 
     colorama_args = dict(autoreset=True, convert=None, strip=None, wrap=True)
     # prevent messing up colorama settings
@@ -221,6 +236,9 @@ def parse_args(args: List[str]):
         type=int,
         help="minimum age of items to be deleted (determined by access time)",
         default=90,
+    )
+    parser.add_argument(
+        "--size", help="minimum size of items to be deleted (accepts kB MB GB)",
     )
     parser.add_argument(
         "--filter", help="glob expression that item names need to match", default="*",
