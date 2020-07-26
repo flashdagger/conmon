@@ -90,8 +90,6 @@ def cleanup_conan_cache(args) -> int:
         stat = conan_file.stat()
         ref = ref_from_path(path)
         age = GLOBALS.now - datetime.fromtimestamp(stat.st_atime)
-        if GLOBALS.debug:
-            LOG.debug("%s age: %s days", ref, age.days)
 
         if age.days < args.days or not regex.match(ref):
             continue
@@ -100,10 +98,10 @@ def cleanup_conan_cache(args) -> int:
         hr_size = human_readable_size(fsize)
         info = f"{hr_size}, {age.days} days"
         if args.dry_run:
-            LOG.info("Would delete %s (%s)", ref, info)
+            LOG.info("Would delete %r (%s)", ref, info)
             total_size += fsize
         else:
-            LOG.info("Deleting %s (%s days)", ref, info)
+            LOG.info("Deleting %r (%s days)", ref, info)
             if conan(f"remove --force {ref}") is None:
                 return_status = 1
             else:
@@ -112,7 +110,8 @@ def cleanup_conan_cache(args) -> int:
     if total_size == 0:
         LOG.info("Nothing to delete.")
     else:
-        LOG.info("Freed %s in conan cache.", human_readable_size(total_size))
+        action = "Could free" if args.dry_run else "Free"
+        LOG.info("%s %s in conan cache.", action, human_readable_size(total_size))
 
     return return_status
 
@@ -144,8 +143,9 @@ def cleanup_conan_dlcache(args):
                 total_size += size
                 (path.with_name("locks") / path.name).unlink(missing_ok=True)
 
+    action = "Could free" if args.dry_run else "Free"
     if total_size > 0:
-        LOG.info("Freed %s in download cache.", human_readable_size(total_size))
+        LOG.info("%s %s in download cache.", action, human_readable_size(total_size))
 
     if args.dry_run:
         return
