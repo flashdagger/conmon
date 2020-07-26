@@ -139,10 +139,20 @@ def cleanup_conan_dlcache(args):
             with suppress(OSError):
                 path.unlink()
                 total_size += size
-                (path / "locks" / path.name).unlink(missing_ok=True)
+                (path.with_name("locks") / path.name).unlink(missing_ok=True)
 
     if total_size > 0:
         LOG.info("Freed %s in download cache.", human_readable_size(total_size))
+
+    if args.dry_run:
+        return
+
+    for path in (cache / "locks").iterdir():
+        if not path.is_file():
+            continue
+        if not (cache / path.name).exists():
+            with suppress(OSError):
+                path.unlink(missing_ok=True)
 
 
 def cleanup_conan(args) -> int:
