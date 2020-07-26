@@ -16,6 +16,7 @@ import colorlog  # type: ignore
 
 LOG = logging.getLogger("CLEANUP")
 
+
 # pylint: disable=too-few-public-methods
 class GLOBALS:
     now = datetime.now()
@@ -93,6 +94,7 @@ def cleanup_conan_cache(args) -> int:
         ref = ref_from_path(path)
         age = GLOBALS.now - datetime.fromtimestamp(stat.st_atime)
 
+        # noinspection PyCallByClass
         if age.days < args.days or not GLOBALS.globmatch(ref, args.filter):
             continue
 
@@ -118,10 +120,10 @@ def cleanup_conan_cache(args) -> int:
     return return_status
 
 
-def cleanup_conan_dlcache(args):
+def cleanup_conan_dlcache(args) -> int:
     output = conan("config get storage.download_cache")
     if output is None:
-        return
+        return 1
 
     cache = Path(output)
     total_size = 0
@@ -143,26 +145,24 @@ def cleanup_conan_dlcache(args):
             with suppress(OSError):
                 path.unlink()
                 total_size += size
-                (path.with_name("locks") / path.name).unlink(missing_ok=True)
+                lockfile = path.with_name("locks") / path.name
+                lockfile.unlink(missing_ok=True)  # type: ignore
 
     action = "Could free" if args.dry_run else "Freed"
     if total_size > 0:
         LOG.info("%s %s in download cache.", action, human_readable_size(total_size))
 
     if args.dry_run:
-        return
+        return 0
 
     for path in (cache / "locks").iterdir():
         if not path.is_file():
             continue
         if not (cache / path.name).exists():
             with suppress(OSError):
-                path.unlink(missing_ok=True)
+                path.unlink(missing_ok=True)  # type: ignore
 
-
-def cleanup_conan(args) -> int:
-    cleanup_conan_dlcache(args)
-    return cleanup_conan_cache(args)
+    return 0
 
 
 def main() -> int:
@@ -188,7 +188,9 @@ def main() -> int:
         LOG.info("Running in Gitlab CI")
 
     if args.what == "conan":
-        return cleanup_conan(args)
+        return cleanup_conan_cache(args)
+    if args.what == "dlcache":
+        return cleanup_conan_dlcache(args)
 
     return 0
 
@@ -203,7 +205,10 @@ def parse_args(args: List[str]):
         description=description, formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--what", help="conan or env", choices=("conan", "env"), default="conan"
+        "--what",
+        help="choose workspace to perform cleanup",
+        choices=("conan", "dlcache", "env"),
+        default="conan",
     )
     parser.add_argument(
         "-n", "--dry-run", help="don't delete anything, only show", action="store_true",
@@ -215,7 +220,7 @@ def parse_args(args: List[str]):
         "--days",
         type=int,
         help="minimum age of items to be deleted (determined by access time)",
-        required=True,
+        default=90,
     )
     parser.add_argument(
         "--filter", help="glob expression that item names need to match", default="*",
