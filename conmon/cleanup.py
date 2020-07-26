@@ -204,7 +204,7 @@ def parse_args(args: List[str]):
         "--what", help="conan or env", choices=("conan", "env"), default="conan"
     )
     parser.add_argument(
-        "--dry-run", help="don't delete anything", action="store_true",
+        "-n", "--dry-run", help="don't delete anything, only show", action="store_true",
     )
     parser.add_argument(
         "--debug", help="output additional info", action="store_true",
@@ -213,7 +213,7 @@ def parse_args(args: List[str]):
         "--days",
         type=int,
         help="minimum age of items to be deleted (determined by access time)",
-        default=100,
+        required=True,
     )
     parser.add_argument(
         "--filter",
