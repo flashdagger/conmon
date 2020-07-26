@@ -6,21 +6,23 @@ import shutil
 import sys
 from contextlib import suppress
 from datetime import datetime
-from fnmatch import fnmatchcase
+import fnmatch
 from pathlib import Path
 from subprocess import CalledProcessError, PIPE, check_output
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 import colorama  # type: ignore
 import colorlog  # type: ignore
 
 LOG = logging.getLogger("CLEANUP")
 
-
 # pylint: disable=too-few-public-methods
 class GLOBALS:
     now = datetime.now()
     debug = False
+    globmatch: Callable[[str, str], bool] = (
+        fnmatch.fnmatch if sys.platform.startswith("win") else fnmatch.fnmatchcase
+    )
 
 
 def human_readable_size(size: int, precision: int = 1) -> str:
@@ -71,8 +73,9 @@ def cleanup_conan_cache(args) -> int:
     config_cache = conan("config get storage.path")
     if config_cache is None:
         return 1
-    elif config_cache == "None":
-        config_cache = conan("config home") + "/data"
+
+    if config_cache == "None":
+        config_cache = str(conan("config home")) + "/data"
 
     cache = Path(config_cache)
     total_size = 0
@@ -90,7 +93,7 @@ def cleanup_conan_cache(args) -> int:
         ref = ref_from_path(path)
         age = GLOBALS.now - datetime.fromtimestamp(stat.st_atime)
 
-        if age.days < args.days or not fnmatchcase(ref, args.filter):
+        if age.days < args.days or not GLOBALS.globmatch(ref, args.filter):
             continue
 
         fsize = folder_size(path)
