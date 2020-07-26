@@ -25,7 +25,7 @@ setup(
     include_package_data=True,
     # project dependencies for installation
     python_requires=">=3.6",
-    install_requires=["psutil>=5.7", "colorlog>=4.1"],
+    install_requires=["conan", "psutil>=5.7", "colorlog>=4.1"],
     setup_requires=["pytest-runner"],
     tests_require=["pytest"],
     test_suite="tests",
