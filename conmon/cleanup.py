@@ -71,6 +71,9 @@ def cleanup_conan_cache(args) -> int:
     config_cache = conan("config get storage.path")
     if config_cache is None:
         return 1
+    elif config_cache == "None":
+        config_cache = conan("config home") + "/data"
+
     cache = Path(config_cache)
     regex = re.compile(args.filter)
     total_size = 0
@@ -90,7 +93,7 @@ def cleanup_conan_cache(args) -> int:
         if GLOBALS.debug:
             LOG.debug("%s age: %s days", ref, age.days)
 
-        if age.days <= args.days or not regex.match(ref):
+        if age.days < args.days or not regex.match(ref):
             continue
 
         fsize = folder_size(path)
@@ -126,7 +129,7 @@ def cleanup_conan_dlcache(args):
             continue
         stat = path.stat()
         age = GLOBALS.now - datetime.fromtimestamp(stat.st_atime)
-        if age.days <= args.days:
+        if age.days < args.days:
             continue
         size = stat.st_size
         hr_size = human_readable_size(size)
@@ -210,7 +213,7 @@ def parse_args(args: List[str]):
         "--days",
         type=int,
         help="minimum age of items to be deleted (determined by access time)",
-        default=0,
+        default=100,
     )
     parser.add_argument(
         "--filter",
