@@ -1,12 +1,12 @@
 import argparse
 import logging
 import os
-import re
 import shlex
 import shutil
 import sys
 from contextlib import suppress
 from datetime import datetime
+from fnmatch import fnmatchcase
 from pathlib import Path
 from subprocess import CalledProcessError, PIPE, check_output
 from typing import List, Optional
@@ -75,7 +75,6 @@ def cleanup_conan_cache(args) -> int:
         config_cache = conan("config home") + "/data"
 
     cache = Path(config_cache)
-    regex = re.compile(args.filter)
     total_size = 0
     return_status = 0
 
@@ -91,7 +90,7 @@ def cleanup_conan_cache(args) -> int:
         ref = ref_from_path(path)
         age = GLOBALS.now - datetime.fromtimestamp(stat.st_atime)
 
-        if age.days < args.days or not regex.match(ref):
+        if age.days < args.days or not fnmatchcase(ref, args.filter):
             continue
 
         fsize = folder_size(path)
@@ -101,7 +100,7 @@ def cleanup_conan_cache(args) -> int:
             LOG.info("Would delete %r (%s)", ref, info)
             total_size += fsize
         else:
-            LOG.info("Deleting %r (%s days)", ref, info)
+            LOG.info("Deleting %r (%s)", ref, info)
             if conan(f"remove --force {ref}") is None:
                 return_status = 1
             else:
@@ -110,7 +109,7 @@ def cleanup_conan_cache(args) -> int:
     if total_size == 0:
         LOG.info("Nothing to delete.")
     else:
-        action = "Could free" if args.dry_run else "Free"
+        action = "Could free" if args.dry_run else "Freed"
         LOG.info("%s %s in conan cache.", action, human_readable_size(total_size))
 
     return return_status
@@ -143,7 +142,7 @@ def cleanup_conan_dlcache(args):
                 total_size += size
                 (path.with_name("locks") / path.name).unlink(missing_ok=True)
 
-    action = "Could free" if args.dry_run else "Free"
+    action = "Could free" if args.dry_run else "Freed"
     if total_size > 0:
         LOG.info("%s %s in download cache.", action, human_readable_size(total_size))
 
@@ -216,9 +215,7 @@ def parse_args(args: List[str]):
         required=True,
     )
     parser.add_argument(
-        "--filter",
-        help="regular expression that item names need to match",
-        default=".*",
+        "--filter", help="glob expression that item names need to match", default="*",
     )
 
     return parser.parse_args(args)
