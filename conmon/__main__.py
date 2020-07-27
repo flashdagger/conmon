@@ -244,6 +244,9 @@ class ConanParser:
     def process(self, line: str):
         rest = self.parse_reference(line)
 
+        if self.ref and self.ref in line and "is locked" in line:
+            LOG.warning(line)
+
         self.state_start = False
         self.state_end = False
         if self.current_state is None:
