@@ -202,8 +202,10 @@ def cleanup_conan_dlcache(args) -> int:
                 lockfile = path.with_name("locks") / path.name
                 lockfile.unlink(missing_ok=True)  # type: ignore
 
-    action = "Could free" if args.dry_run else "Freed"
-    if total_size > 0:
+    if total_size == 0:
+        LOG.info("Nothing to delete.")
+    else:
+        action = "Could free" if args.dry_run else "Freed"
         LOG.info("%s %s in download cache.", action, human_readable_size(total_size))
 
     if args.dry_run:
