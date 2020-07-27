@@ -180,6 +180,9 @@ def cleanup_conan_dlcache(args) -> int:
         return 1
 
     cache = Path(output)
+    if not cache.exists():
+        return 0
+
     total_size = 0
     for path in cache.iterdir():
         if not path.is_file():
