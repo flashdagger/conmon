@@ -290,7 +290,8 @@ def parse_args(args: List[str]):
     description = "Remove folders from conan cache or virtualenvwrapper workspaces"
     # noinspection PyTypeChecker
     parser = argparse.ArgumentParser(
-        description=description, formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description=description,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
         "--what",
@@ -299,10 +300,15 @@ def parse_args(args: List[str]):
         default="conan",
     )
     parser.add_argument(
-        "-n", "--dry-run", help="don't delete anything, only show", action="store_true",
+        "-n",
+        "--dry-run",
+        help="don't delete anything, only show",
+        action="store_true",
     )
     parser.add_argument(
-        "--debug", help="output additional info", action="store_true",
+        "--debug",
+        help="output additional info",
+        action="store_true",
     )
     parser.add_argument(
         "--days",
@@ -311,10 +317,13 @@ def parse_args(args: List[str]):
         default=90,
     )
     parser.add_argument(
-        "--size", help="minimum size of items to be deleted (accepts kB MB GB)",
+        "--size",
+        help="minimum size of items to be deleted (accepts kB MB GB)",
     )
     parser.add_argument(
-        "--filter", help="glob expression that item names need to match", default="*",
+        "--filter",
+        help="glob expression that item names need to match",
+        default="*",
     )
 
     return parser.parse_args(args)

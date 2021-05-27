@@ -17,7 +17,7 @@ LOG = logging.getLogger("BUILDMON")
 
 
 class WinShlex(shlex.shlex):
-    """ class for splitting VS cl.exe response file commands """
+    """class for splitting VS cl.exe response file commands"""
 
     def __init__(self, input_string: str):
         super().__init__(instream=input_string.replace('\\"', '"'), posix=True)

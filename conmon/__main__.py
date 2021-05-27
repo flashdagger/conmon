@@ -30,7 +30,7 @@ import psutil  # type: ignore
 
 from . import __version__
 from .buildmon import BuildMonitor, LOG as PLOG
-from .compilers import LOG as BLOG, parse_warnings
+from .compilers import LOG as BLOG, parse_warnings, COMPILER_REGEX_MAP
 
 LOG = logging.getLogger("CONMON")
 DECOLORIZE_REGEX = re.compile(r"[\u001b]\[\d{1,2}m", re.UNICODE)
@@ -67,7 +67,7 @@ class ConanParser:
     STATES = {
         "configuration": {
             "start": lambda line: line == "Configuration:",
-            "end": lambda line: not (re.match(r"(\[[\w.-]+\]$)|[^\s:]+\s*[:=]", line)),
+            "end": lambda line: not (re.match(r"(\[[\w.-]+]$)|[^\s:]+\s*[:=]", line)),
         },
         "build": {
             "start": lambda line: line == "Calling build()",
@@ -131,7 +131,7 @@ class ConanParser:
             return
 
         match = re.fullmatch(
-            r"((?P<progress>\[[0-9\s/%]+\]\s)"
+            r"((?P<progress>\[[0-9\s/%]+]\s)"
             r"(Building|Linking).*?)?"
             r"(?P<file>[\-.\w]+\.[a-zA-Z]{1,3})?",
             line.lstrip(),
@@ -218,7 +218,8 @@ class ConanParser:
 
     def parse_reference(self, line) -> str:
         ref_match = re.fullmatch(
-            fr"\.*{self.REF_REGEX.pattern}[\s:]{{1,2}}(?P<rest>.*)", line,
+            fr"\.*{self.REF_REGEX.pattern}[\s:]{{1,2}}(?P<rest>.*)",
+            line,
         )
 
         if ref_match:
@@ -280,6 +281,17 @@ class ConanParser:
             self.current_state = None
 
     def finalize(self, errs: str):
+        err_lines = []
+        idx = 0
+        for match in COMPILER_REGEX_MAP["cmake"].finditer(errs):
+            err_lines.extend(errs[idx : match.span()[0]].splitlines())
+            idx = match.span()[1]
+            log_level = logging.getLevelName(match.group("severity").upper())
+            if not isinstance(log_level, int):
+                log_level = logging.getLevelName("ERROR")
+            LOG.log(log_level, match.group(0))
+        err_lines.extend(errs[idx:].splitlines())
+
         if self.current_state:
             for callback in self.callbacks:
                 assert callable(callback)
@@ -287,7 +299,7 @@ class ConanParser:
 
         log_level = logging.ERROR
         lines: List[str] = []
-        for line in errs.splitlines():
+        for line in err_lines:
             if not line:
                 continue
             match = re.match(
@@ -373,7 +385,9 @@ def register_callback(process: psutil.Process, parser: ConanParser):
 
         proc_fh = filehandler("CONMON_PROC_JSON", hint="process debug json")
         json.dump(
-            list(buildmon.proc_cache.values()), proc_fh, indent=2,
+            list(buildmon.proc_cache.values()),
+            proc_fh,
+            indent=2,
         )
         proc_fh.close()
 
@@ -487,7 +501,7 @@ def parse_warnings_conan(
 
 
 def main() -> int:
-    """ main entry point for console script """
+    """main entry point for console script"""
 
     args = parse_args(sys.argv[1:])
 

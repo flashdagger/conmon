@@ -20,7 +20,7 @@ COMPILER_REGEX_MAP = {
         r"(?P<file>[^\n(]+)\((?P<line>\d+),(?P<column>\d+)\):\s"
         r"(?P<severity>[a-z\s]+):\s"
         r"(?P<info>.*?)"
-        r"(\s\[(?P<category>[^\]]+)\])?"
+        r"(\s\[(?P<category>[^]]+)])?"
         r"\n"
         r"((?P<hint>[^\n]+\n[\s~]*\^[\s~]*)\n)?",
         re.VERBOSE | re.MULTILINE,
@@ -29,11 +29,11 @@ COMPILER_REGEX_MAP = {
         r"^(?P<context>(In\ file\ included\ from\ [^\n]+:\d+:\n)*"
         r"|((?:[A-za-z]:)?[^\n:]+:\ In\ function\ [^:]+:\n)?)"
         r"(?P<file>(?:[A-za-z]:)?[^\n:]+):"
-        r"(?:(?P<line>\d+):)"
+        r"(?P<line>\d+):"
         r"(?:(?P<column>\d+):)?\s"
         r"(?P<severity>[a-z\s]+):\s"
         r"(?P<info>.*?)"
-        r"(\s\[(?P<category>[^\]]+)\])?"
+        r"(\s\[(?P<category>[^]]+)])?"
         r"\n"
         r"((?P<hint>[^\n]+\n[\s~]*\^[\s~]*)\n)?",
         re.VERBOSE | re.MULTILINE,
@@ -43,7 +43,7 @@ COMPILER_REGEX_MAP = {
         r"(?P<severity>[a-z\s]+)\s"
         r"(?P<category>[A-Z]+\d+):\s"
         r"(?P<info>.+?)"
-        r"(\s\[(?P<project>[^\]]+)\])?"
+        r"(\s\[(?P<project>[^]]+)])?"
         r"\n",
         re.VERBOSE | re.MULTILINE,
     ),
@@ -118,7 +118,9 @@ def parse_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
             continue
         stat_list = list(stat for stat in stats_iter)
         LOG.info(
-            "Compilation issued %3s %s(s)", sum(key[-1] for key in stat_list), severity,
+            "Compilation issued %3s %s(s)",
+            sum(key[-1] for key in stat_list),
+            severity,
         )
         for _, key, value in stat_list:
             if key is None:
