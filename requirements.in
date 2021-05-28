@@ -1,13 +1,10 @@
-
 # the project itself as editable
 -e file:.
-
-# project dependencies
-conan==1.27.*
 
 # development dependencies
 black
 bump2version
+cmake
 mypy
 pyflakes
 pylint

@@ -16,6 +16,7 @@ import sys
 from contextlib import contextmanager
 from pathlib import Path
 from subprocess import check_call, CalledProcessError, call, check_output
+from typing import Any
 
 HASH_ALGO = "md5"
 CURRENT_PATH = Path(__file__).parent.absolute()
@@ -27,6 +28,7 @@ LINUX = sys.platform.startswith("linux")
 LOG = logging.getLogger("PYVENV")
 
 
+# pylint: disable=too-few-public-methods
 class GLOBALS:
     min_version = "3.6"
 
@@ -46,7 +48,7 @@ def setup_logging(default_level="WARNING"):
     LOG.setLevel(logging.getLevelName(default_level))
 
 
-def assert_module(name):
+def assert_module(name) -> Any:
     spec = importlib.util.find_spec(name)  # type: ignore
     module = spec and spec.loader and importlib.import_module(name)
     if module:
@@ -76,9 +78,9 @@ def assert_python_version():
 
 
 def find_executable(name, path):
-    if os.name == "nt":
+    if WINDOWS:
         bin_dir = path / "Scripts"
-    elif os.name == "posix":
+    elif LINUX:
         bin_dir = path / "bin"
     else:
         return None
@@ -93,8 +95,9 @@ def patch_activate(path):
         return
 
     content = script.read_text()
-    script.write_text(content.replace("delims=:", "delims=.:"))
-    LOG.info("Patched %s", script)
+    if "delims=:." not in content:
+        script.write_text(content.replace("delims=:", "delims=:."))
+        LOG.info("Patched %s", script)
 
 
 def assert_precommit():
@@ -108,7 +111,7 @@ def check_config(path):
     if config.exists():
         mapping = dict()
         for line in config.read_text().splitlines():
-            if not "=" in line:
+            if "=" not in line:
                 continue
             key, value = line.split("=", maxsplit=1)
             mapping[key.strip()] = value.strip()
@@ -195,7 +198,8 @@ def sync(venv_path: Path):
         if not REQ_TXT.exists():
             LOG.info("Creating requirements.txt (this might take a while)")
             safe_call(
-                [str(pip_compile), "--quiet"], cwd=CURRENT_PATH,
+                [str(pip_compile), "--quiet"],
+                cwd=CURRENT_PATH,
             )
         elif has_changed:
             LOG.info(
@@ -267,7 +271,10 @@ def create_parser():
         default=".".join(map(str, sys.version_info[:2])),
     )
     parser.add_argument(
-        "--path", metavar="<path>", help="directory of the virtual env", default=None
+        "--path",
+        metavar="<path>",
+        help="directory of the virtual env",
+        default=os.getenv("VIRTUAL_ENV"),
     )
     parser.add_argument(
         "--run",
@@ -293,7 +300,7 @@ def parse_args(args):
 
 
 def main() -> int:
-    """ main entry point for console script """
+    """main entry point for console script"""
 
     args = parse_args(sys.argv[1:])
     GLOBALS.min_version = args.min_version
