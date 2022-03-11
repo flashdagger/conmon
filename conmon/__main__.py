@@ -61,8 +61,8 @@ class StrictConfigParser(ConfigParser):
 class ConanParser:
     REF_PART_PATTERN = r"\w[\w\+\.\-]{1,50}"
     REF_REGEX = re.compile(
-        fr"(?P<ref>(?P<name>{REF_PART_PATTERN})/(?P<version>{REF_PART_PATTERN})@"
-        fr"?((?P<user>{REF_PART_PATTERN})/(?P<channel>{REF_PART_PATTERN}))?)"
+        rf"(?P<ref>(?P<name>{REF_PART_PATTERN})/(?P<version>{REF_PART_PATTERN})@"
+        rf"?((?P<user>{REF_PART_PATTERN})/(?P<channel>{REF_PART_PATTERN}))?)"
     )
     STATES = {
         "configuration": {
@@ -218,7 +218,7 @@ class ConanParser:
 
     def parse_reference(self, line) -> str:
         ref_match = re.fullmatch(
-            fr"\.*{self.REF_REGEX.pattern}[\s:]{{1,2}}(?P<rest>.*)",
+            rf"\.*{self.REF_REGEX.pattern}[\s:]{{1,2}}(?P<rest>.*)",
             line,
         )
 
@@ -283,7 +283,7 @@ class ConanParser:
     def finalize(self, errs: str):
         err_lines = []
         idx = 0
-        for match in COMPILER_REGEX_MAP["cmake"].finditer(errs):
+        for match in COMPILER_REGEX_MAP["cmake"].finditer(errs + "\n"):
             err_lines.extend(errs[idx : match.span()[0]].splitlines())
             idx = match.span()[1]
             log_level = logging.getLevelName(match.group("severity").upper())

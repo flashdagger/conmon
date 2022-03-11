@@ -71,3 +71,31 @@ def test_cmake_warning_regex():
     assert match[2].group("function") == "message"
     assert match[2].group("line") == "9"
     assert match[2].group("info") == "  some warning text\n"
+
+
+def test_cmake_warning_regex_multiline():
+    log = """
+    CMake Warning:
+      Manually-specified variables were not used by the project:
+    
+        CMAKE_EXPORT_NO_PACKAGE_REGISTRY
+        CMAKE_INSTALL_BINDIR
+        CMAKE_INSTALL_DATAROOTDIR
+        CMAKE_INSTALL_INCLUDEDIR
+        CMAKE_INSTALL_LIBDIR
+        CMAKE_INSTALL_LIBEXECDIR
+        CMAKE_INSTALL_OLDINCLUDEDIR
+        MAKE_INSTALL_SBINDIR
+        
+        
+    """
+    regex = COMPILER_REGEX_MAP["cmake"]
+    error_string = dedent(log)
+    match = list(regex.finditer(error_string))
+    assert len(match) == 1
+    info = "\n".join(error_string.splitlines()[2:-1])
+    expected = dict(severity="Warning", file=None, line=None, info=info)
+    err_match = {
+        key: match[0].group(key) for key in set(expected) & set(regex.groupindex)
+    }
+    assert expected == err_match

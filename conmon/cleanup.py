@@ -236,7 +236,7 @@ def main() -> int:
             return 1
         num = float(match.group(1))
         factor = {"k": 1, "m": 2, "g": 3}.get(match.group(2), 0)
-        GLOBAL.min_size = int(num * 1024 ** factor)
+        GLOBAL.min_size = int(num * 1024**factor)
 
     colorama_args = dict(autoreset=True, convert=None, strip=None, wrap=True)
     # prevent messing up colorama settings

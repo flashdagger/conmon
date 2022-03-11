@@ -24,7 +24,7 @@ expected_items = [
         info="implicit declaration of function ‘memset’",
         context="src/main/src/Em_FilteringQmFu.c: In function ‘Em_FilteringQmFu_processSensorSignals’:\n",
         hint="     memset(&reicevedSignals, 0, sizeof(reicevedSignals));\n"
-             "     ^~~~~~",
+        "     ^~~~~~",
     ),
     dict(
         file="src/main/src/Em_FilteringQmFu.c",
@@ -45,7 +45,7 @@ expected_items = [
         info="include ‘<string.h>’ or provide a declaration of ‘memset’",
         context="",
         hint=None,
-    )
+    ),
 ]
 
 
