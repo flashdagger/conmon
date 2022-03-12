@@ -9,11 +9,61 @@ from pathlib import Path
 from statistics import mean, median
 from textwrap import shorten
 from threading import Event, Thread
-from typing import Any, Dict, FrozenSet, List, Optional
+from typing import Any, Dict, List, Optional, Set, Hashable
 
 import psutil  # type: ignore
 
 LOG = logging.getLogger("BUILDMON")
+
+
+class MappingPair(tuple):
+    pass
+
+
+def freeze_json_object(obj) -> Hashable:
+    if isinstance(obj, set):
+        return tuple((freeze_json_object(value) for value in sorted(obj)))
+    if isinstance(obj, (list, tuple)):
+        return tuple(freeze_json_object(value) for value in obj)
+    if isinstance(obj, dict):
+        return MappingPair(
+            (key, freeze_json_object(value)) for key, value in obj.items()
+        )
+    assert isinstance(obj, Hashable), type(obj)
+    return obj
+
+
+def unfreeze_json_object(obj: Hashable) -> Any:
+    if isinstance(obj, tuple) and not isinstance(obj, MappingPair):
+        return [unfreeze_json_object(item) for item in obj]
+    if isinstance(obj, MappingPair):
+        return {key: unfreeze_json_object(value) for key, value in obj}
+    return obj
+
+
+def append_to_set(
+    obj: Dict[str, Any], mapping: Dict[Hashable, Any], value_key: str
+) -> None:
+    keyitem = obj.pop(value_key)
+    frozen_obj = freeze_json_object(obj)
+    if isinstance(keyitem, list):
+        mapping.setdefault(frozen_obj, []).extend(keyitem)
+    elif isinstance(keyitem, set):
+        mapping.setdefault(frozen_obj, set()).update(keyitem)
+    else:
+        raise ValueError("keyitem must be list() or set()")
+
+
+def merge_mapping(mapping: Dict[Hashable, Set], value_key: str) -> List[Dict[str, Any]]:
+    def sort_if_set(_value):
+        if isinstance(_value, set):
+            return list(sorted(_value))
+        return _value
+
+    return [
+        {**unfreeze_json_object(key), **{value_key: sort_if_set(value)}}
+        for key, value in mapping.items()
+    ]
 
 
 class WinShlex(shlex.shlex):
@@ -128,16 +178,20 @@ def identify_compiler(name: str) -> Optional[str]:
 
 class BuildMonitor(Thread):
     PARSER = CompilerParser(prog=Path(__file__).stem)
-    ERRORS = set()
+    ERRORS: Set[str] = set()
 
-    def __init__(self, proc: Optional[psutil.Process] = None):
+    def __init__(self, proc: psutil.Process):
         super().__init__(daemon=True)
         self.proc = proc
-        self.proc_cache: Dict = dict()
-        self.rsp_cache: Dict = dict()
-        self.translation_units: Dict[FrozenSet, Dict] = {}
+        self.proc_cache: Dict = {}
+        self.rsp_cache: Dict = {}
+        self._translation_units: Dict[Hashable, Set] = {}
         self.finish = Event()
         self.timing: List[float] = []
+
+    @property
+    def translation_units(self):
+        return merge_mapping(self._translation_units, value_key="sources")
 
     @staticmethod
     def canonical_option(option: str) -> str:
@@ -220,7 +274,8 @@ class BuildMonitor(Thread):
                 process_map["cmdline"], cwd=process_map["cwd"]
             )
         else:
-            raise Exception("Unknown compiler type %s" % compiler_type)
+            LOG.error("Unknown compiler type %s", compiler_type)
+            return
 
         self.parse_tus(process_map)
 
@@ -233,55 +288,31 @@ class BuildMonitor(Thread):
         if not args.compile_not_link:
             return
 
-        args.sources = []
-        args.compiler = proc["exe"]
-
-        data = dict()
-        data["flags"] = list(
-            sorted(
-                {
-                    first
-                    for first, second in zip(unknown_args, unknown_args[1:])
-                    if re.match(r"^-[-\w=]+$", first) and second.startswith("-")
-                }
-            )
-        )
-        for key, value in vars(args).items():
-            if key not in {"cc_frontend", "compile_not_link"}:
-                data[key] = value
+        data = dict(compiler=proc["exe"])
+        data["flags"] = {
+            first
+            for first, second in zip(unknown_args, unknown_args[1:])
+            if re.match(r"^-[-\w=]+$", first) and second.startswith("-")
+        }
+        for key, value in sorted(vars(args).items()):
+            if not value:
+                continue
+            if key in {"includes", "system_includes"}:
+                data[key] = {self.make_absolute(path, proc["cwd"]) for path in value}
+            elif key not in {"cc_frontend", "compile_not_link"}:
+                data[key] = set(value) if isinstance(value, list) else value
 
         for file in reversed(unknown_args):
             if file.startswith("-"):
                 continue
             abs_file = self.make_absolute(file, proc["cwd"])
             if self.is_valid_tu(abs_file):
-                data["sources"].append(abs_file)
+                data.setdefault("sources", set()).add(abs_file)
 
-        if not data["sources"]:
+        if not data.get("sources"):
             return
 
-        for key in ("includes", "system_includes"):
-            data[key] = [self.make_absolute(path, proc["cwd"]) for path in data[key]]
-
-        self.append_data(data, value_key="sources")
-
-    def append_data(self, mapping: Dict, value_key: str):
-        hash_set = set()
-        for key, value in mapping.items():
-            if key == value_key:
-                continue
-            hash_set.add((key, frozenset(value)))
-
-        hash_set_frozen = frozenset(hash_set)
-        value = self.translation_units.get(hash_set_frozen)
-        if value:
-            key_set = set(value[value_key])
-            for next_value in mapping[value_key]:
-                if next_value in key_set:
-                    continue
-                value[value_key].append(next_value)
-        else:
-            self.translation_units[hash_set_frozen] = mapping
+        append_to_set(data, self._translation_units, value_key="sources")
 
     def scan(self) -> None:
         t_start = time.monotonic()
@@ -325,7 +356,7 @@ class BuildMonitor(Thread):
                     self.ERRORS.add(errmsg)
                     LOG.error(errmsg)
 
-        translation_units = self.translation_units.values()
+        translation_units = self.translation_units
         num_tus = sum(len(unit["sources"]) for unit in translation_units)
         if num_tus:
             LOG.info(

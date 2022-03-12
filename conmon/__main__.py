@@ -364,14 +364,12 @@ def register_callback(process: psutil.Process, parser: ConanParser):
         assert buildmon is not None
         buildmon.finish.set()
         buildmon.join()
-        tu_list = list(buildmon.translation_units.values())
+        tu_list = buildmon.translation_units
 
         package_re = re.compile(r".*?[a-f0-9]{40}")
         for unit in tu_list:
             src_match = package_re.match(unit["sources"][0])
-            unit["defines"].sort()
-            unit["sources"].sort()
-            includes, unit["includes"] = unit["includes"], []
+            includes, unit["includes"] = unit.get("includes", []), []
             for include in sorted(includes):
                 inc_match = package_re.match(include)
                 if (
@@ -381,7 +379,7 @@ def register_callback(process: psutil.Process, parser: ConanParser):
                 ):
                     unit["includes"].append(include)
                 else:
-                    unit["system_includes"].append(include)
+                    unit.setdefault("system_includes", []).append(include)
 
         proc_fh = filehandler("CONMON_PROC_JSON", hint="process debug json")
         json.dump(
