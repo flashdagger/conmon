@@ -96,7 +96,7 @@ class CompilerParser(argparse.ArgumentParser):
                 if not arg.lower().startswith(option):
                     continue
                 prefix, rest = arg[: len(option)], arg[len(option) :]
-                if prefix in self.IGNORE_FLAGS_LONG:
+                if rest.startswith("-") or prefix in self.IGNORE_FLAGS_LONG:
                     break
                 assert prefix.lower() == option
                 if rest:
@@ -127,7 +127,8 @@ def identify_compiler(name: str) -> Optional[str]:
 
 
 class BuildMonitor(Thread):
-    PARSER = CompilerParser()
+    PARSER = CompilerParser(prog=Path(__file__).stem)
+    ERRORS = set()
 
     def __init__(self, proc: psutil.Process):
         super().__init__(daemon=True)
@@ -307,7 +308,13 @@ class BuildMonitor(Thread):
                 time.sleep(sleep_time_s)
 
         for info_map in self.proc_cache.values():
-            self.check_process(info_map)
+            try:
+                self.check_process(info_map)
+            except BaseException as exc:
+                errmsg = repr(exc)
+                if errmsg not in self.ERRORS:
+                    self.ERRORS.add(errmsg)
+                    LOG.error(errmsg)
 
         num_tus = sum(len(unit["sources"]) for unit in self.translation_units.values())
         if num_tus:
