@@ -34,7 +34,7 @@ class WinShlex(shlex.shlex):
 
 class CompilerParser(argparse.ArgumentParser):
     IGNORE_FLAGS_LONG = {"-diagnostics", "-nologo", "-showIncludes"}
-    IGNORE_FLAGS_SHORT = {"-o", "-s", "-TP", "-TC", "-FS"}
+    IGNORE_FLAGS_SHORT = {"-s", "-TP", "-TC", "-FS"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, allow_abbrev=False, **kwargs)
@@ -130,7 +130,7 @@ class BuildMonitor(Thread):
     PARSER = CompilerParser(prog=Path(__file__).stem)
     ERRORS = set()
 
-    def __init__(self, proc: psutil.Process):
+    def __init__(self, proc: Optional[psutil.Process] = None):
         super().__init__(daemon=True)
         self.proc = proc
         self.proc_cache: Dict = dict()
@@ -253,7 +253,11 @@ class BuildMonitor(Thread):
         for key in ("includes", "system_includes"):
             data[key] = [self.make_absolute(path, proc["cwd"]) for path in data[key]]
 
-        self.flags.update((arg for arg in unknown_args if re.match(r"^-[-\w=]+$", arg)))
+        self.flags.update(
+            first
+            for first, second in zip(unknown_args, unknown_args[1:])
+            if re.match(r"^-[-\w=]+$", first) and second.startswith("-")
+        )
         self.append_data(data, value_key="sources")
 
     def append_data(self, mapping: Dict, value_key: str):
