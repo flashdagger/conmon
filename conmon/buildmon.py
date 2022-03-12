@@ -9,7 +9,7 @@ from pathlib import Path
 from statistics import mean, median
 from textwrap import shorten
 from threading import Event, Thread
-from typing import Any, Dict, FrozenSet, List, Optional, Set
+from typing import Any, Dict, FrozenSet, List, Optional
 
 import psutil  # type: ignore
 
@@ -136,7 +136,6 @@ class BuildMonitor(Thread):
         self.proc_cache: Dict = dict()
         self.rsp_cache: Dict = dict()
         self.translation_units: Dict[FrozenSet, Dict] = {}
-        self.flags: Set[str] = set()
         self.finish = Event()
         self.timing: List[float] = []
 
@@ -236,9 +235,20 @@ class BuildMonitor(Thread):
 
         args.sources = []
         args.compiler = proc["exe"]
-        data = vars(args)
-        for key in ("cc_frontend", "compile_not_link"):
-            del data[key]
+
+        data = dict()
+        data["flags"] = list(
+            sorted(
+                {
+                    first
+                    for first, second in zip(unknown_args, unknown_args[1:])
+                    if re.match(r"^-[-\w=]+$", first) and second.startswith("-")
+                }
+            )
+        )
+        for key, value in vars(args).items():
+            if key not in {"cc_frontend", "compile_not_link"}:
+                data[key] = value
 
         for file in reversed(unknown_args):
             if file.startswith("-"):
@@ -253,11 +263,6 @@ class BuildMonitor(Thread):
         for key in ("includes", "system_includes"):
             data[key] = [self.make_absolute(path, proc["cwd"]) for path in data[key]]
 
-        self.flags.update(
-            first
-            for first, second in zip(unknown_args, unknown_args[1:])
-            if re.match(r"^-[-\w=]+$", first) and second.startswith("-")
-        )
         self.append_data(data, value_key="sources")
 
     def append_data(self, mapping: Dict, value_key: str):
@@ -320,9 +325,14 @@ class BuildMonitor(Thread):
                     self.ERRORS.add(errmsg)
                     LOG.error(errmsg)
 
-        num_tus = sum(len(unit["sources"]) for unit in self.translation_units.values())
+        translation_units = self.translation_units.values()
+        num_tus = sum(len(unit["sources"]) for unit in translation_units)
         if num_tus:
-            LOG.info("Detected %s translation units", num_tus)
+            LOG.info(
+                "Detected %s translation units in %s sets",
+                num_tus,
+                len(translation_units),
+            )
         LOG.debug(
             "Timings: max=%.3e min=%.3e mean=%.3e median=%.3e",
             max(self.timing),

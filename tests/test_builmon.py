@@ -19,6 +19,7 @@ cases = [
                 "-fno-inline",
                 "-Wall",
                 "-g",
+                "-include-pch",
                 "-fvisibility=hidden",
                 "-Iinclude",
                 "-fPIC",
@@ -36,6 +37,16 @@ cases = [
         },
         "translation_unit": {
             "compiler": "clang",
+            "flags": [
+                "-O0",
+                "-Wall",
+                "-fPIC",
+                "-fno-inline",
+                "-fvisibility-inlines-hidden",
+                "-fvisibility=hidden",
+                "-g",
+                "-pthread",
+        ],
             "defines": [
                 "BOOST_STACKTRACE_ADDR2LINE_LOCATION=/usr/bin/addr2line",
                 "BOOST_ALL_NO_LIB=1",
@@ -47,16 +58,6 @@ cases = [
             "system_includes": [],
             "undefines": [],
         },
-        "flags": {
-            "-O0",
-            "-Wall",
-            "-fPIC",
-            "-fno-inline",
-            "-fvisibility-inlines-hidden",
-            "-fvisibility=hidden",
-            "-g",
-            "-pthread",
-        },
     }
 ]
 
@@ -67,7 +68,6 @@ def test_buildmon_process(case):
     monitor.check_process(case["proc"])
     translation_units = tuple(monitor.translation_units.values())
     assert len(translation_units) == 1
-    assert monitor.flags == case["flags"]
 
     for key in ("includes", "system_includes", "sources"):
         for tu in translation_units:

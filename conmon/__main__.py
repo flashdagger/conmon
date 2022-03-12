@@ -392,7 +392,6 @@ def register_callback(process: psutil.Process, parser: ConanParser):
         proc_fh.close()
 
         ref_log = parser.ref_log
-        ref_log["flags"] = list(sorted(buildmon.flags))
         ref_log["translation_units"] = tu_list
         ref_log["warnings"] = parse_warnings_conan(
             ref_log["build"], parser.log["config"]
