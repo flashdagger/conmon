@@ -49,8 +49,8 @@ def filehandler(env, mode="w", hint="report"):
 
 class StrictConfigParser(ConfigParser):
     OPTCRE = re.compile(
-        r"(?P<option>[^=\s][^=:]*)"  # allow only = or :
-        r"\s*(?P<vi>[=:])\s*"  # for option separator
+        r"(?P<option>[^=\s]*)"  # allow only = or :
+        r"(?P<vi>[=\s])\s*"  # for option separator
         r"(?P<value>.*)$"
     )
 
