@@ -53,6 +53,7 @@ cases = [
                 "-fvisibility-inlines-hidden",
                 "-fvisibility=hidden",
                 "-g",
+                "-include-pch",
                 "-pthread",
             ],
             "defines": [
@@ -60,8 +61,8 @@ cases = [
                 "BOOST_STACKTRACE_ADDR2LINE_LOCATION=/usr/bin/addr2line",
                 "_GLIBCXX_USE_CXX11_ABI=1",
             ],
-            "sources": ["source/power.cpp"],
             "includes": ["source", "source/include"],
+            "sources": ["source/power.cpp"],
         },
     }
 ]

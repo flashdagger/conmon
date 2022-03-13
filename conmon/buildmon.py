@@ -138,7 +138,8 @@ class CompilerParser(argparse.ArgumentParser):
         options = {option.lower() for option in options if not option.startswith("--")}
         options = tuple(sorted(options, reverse=True, key=len))
 
-        new_args = []
+        clean_args = []
+        unknown_args = []
         for arg in args:
             if arg in self.IGNORE_FLAGS_SHORT:
                 continue
@@ -146,32 +147,38 @@ class CompilerParser(argparse.ArgumentParser):
                 if not arg.lower().startswith(option):
                     continue
                 prefix, rest = arg[: len(option)], arg[len(option) :]
-                if rest.startswith("-") or prefix in self.IGNORE_FLAGS_LONG:
+                if prefix in self.IGNORE_FLAGS_LONG:
+                    break
+                if rest.startswith("-"):
+                    unknown_args.append(arg)
                     break
                 assert prefix.lower() == option
                 if rest:
-                    new_args.extend((prefix, rest))
+                    clean_args.extend((prefix, rest))
                 else:
-                    new_args.append(arg)
+                    clean_args.append(arg)
                 break
             else:
-                new_args.append(arg)
+                clean_args.append(arg)
 
-        return new_args
+        return clean_args, unknown_args
 
     def parse_known_args(self, args=None, namespace=None):
-        return super().parse_known_args(
-            args=self.cleanup_args(args), namespace=namespace
+        clean_args, unknown_args = self.cleanup_args(args)
+        args, _unknown_args = super().parse_known_args(
+            args=clean_args, namespace=namespace
         )
+        unknown_args.extend(_unknown_args)
+        return args, unknown_args
 
 
 def identify_compiler(name: str) -> Optional[str]:
     parts = set(name.replace("+", "").replace(".exe", "").split("-"))
-    if parts & {"gcc", "g", "cc", "c", "clang"}:
-        return "gnu"
-
     if "cl" in parts:
         return "msvc"
+
+    if parts & {"gcc", "g", "cc", "c", "clang"}:
+        return "gnu"
 
     return None
 

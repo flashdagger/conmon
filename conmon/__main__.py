@@ -527,10 +527,13 @@ def main() -> int:
         colorlog.ColoredFormatter("%(log_color)s[%(name)s:%(levelname)s] %(message)s")
     )
 
+    # general logger
     LOG.addHandler(handler)
     LOG.setLevel(logging.DEBUG)
+    # conan build logger
     BLOG.addHandler(handler)
     BLOG.setLevel(logging.INFO)
+    # buildmon process logger
     PLOG.addHandler(handler)
     PLOG.setLevel(logging.INFO)
 
