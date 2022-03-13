@@ -4,7 +4,6 @@
 # development dependencies
 black
 bump2version
-cmake
 mypy
 pyflakes
 pylint
