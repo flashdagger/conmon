@@ -44,15 +44,16 @@ def filehandler(env, mode="w", hint="report"):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         LOG.info("Saving %s to %s", hint, path)
     else:
-        fmt = "export %s=<path>"
+        path = ".".join(env.lower().split("_")[-2:])
+        fmt = f"export %s={path}"
         for name in PARENT_PROCS:
             if name == "bash":
                 break
             if name == "powershell.exe":
-                fmt = "$env:%s='<path>'"
+                fmt = f"$env:%s='{path}'"
                 break
             if name == "cmd.exe":
-                fmt = "set %s=<path>"
+                fmt = f"set %s={path}"
                 break
         # pylint: disable=logging-fstring-interpolation
         LOG.info(f"use {fmt!r} to generate %s", env, hint)
@@ -276,7 +277,7 @@ class ConanParser:
         else:
             self.state_end = self.STATES[self.current_state]["end"](rest)
 
-        match_download = re.match(r"Downloading conan\w+\.[a-z]{3}$", rest)
+        match_download = re.match(r"Downloading conan\w+\.[a-z]{2,3}$", rest)
         if self.current_state == "build":
             self.build(rest)
         elif self.current_state == "package":
