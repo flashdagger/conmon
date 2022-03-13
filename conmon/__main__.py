@@ -35,6 +35,8 @@ from .compilers import LOG as BLOG, parse_warnings, COMPILER_REGEX_MAP
 LOG = logging.getLogger("CONMON")
 DECOLORIZE_REGEX = re.compile(r"[\u001b]\[\d{1,2}m", re.UNICODE)
 
+PARENT_PROCS = [parent.name() for parent in psutil.Process(os.getppid()).parents()]
+
 
 def filehandler(env, mode="w", hint="report"):
     path = os.getenv(env, os.devnull)
@@ -42,7 +44,17 @@ def filehandler(env, mode="w", hint="report"):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         LOG.info("Saving %s to %s", hint, path)
     else:
-        LOG.info("set $env:%s to generate %s", env, hint)
+        fmt = "export %s=<path>"
+        for name in PARENT_PROCS:
+            if name == "bash":
+                break
+            if name == "powershell.exe":
+                fmt = "$env:%s='<path>'"
+                break
+            if name == "cmd.exe":
+                fmt = "set %s=<path>"
+                break
+        LOG.info(f"use {fmt!r} to generate %s", env, hint)
 
     return open(path, mode)
 
