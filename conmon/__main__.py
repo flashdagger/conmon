@@ -54,9 +54,10 @@ def filehandler(env, mode="w", hint="report"):
             if name == "cmd.exe":
                 fmt = "set %s=<path>"
                 break
+        # pylint: disable=logging-fstring-interpolation
         LOG.info(f"use {fmt!r} to generate %s", env, hint)
 
-    return open(path, mode)
+    return open(path, mode, encoding="utf8")
 
 
 class StrictConfigParser(ConfigParser):
@@ -69,6 +70,31 @@ class StrictConfigParser(ConfigParser):
 
     def optionxform(self, optionstr):
         return optionstr
+
+
+class ScreenWriter:
+    def __init__(self):
+        self._last_line = ""
+
+    def reset(self):
+        self._last_line = ""
+
+    def print(self, line: str, overwrite=False, indent=-1):
+        append = indent >= 0
+        spaces = " " * max(0, indent - len(self._last_line)) if append else ""
+
+        if self._last_line and not append:
+            printed_line = "\r" + colorama.ansi.clear_line(2) + line
+        else:
+            printed_line = spaces + line
+
+        if overwrite:
+            self._last_line = line
+            print(printed_line, end="")
+            sys.stdout.flush()
+        else:
+            self._last_line = ""
+            print(printed_line)
 
 
 class ConanParser:
@@ -98,44 +124,25 @@ class ConanParser:
 
     def __init__(self):
         self.log: Dict[str, Any] = defaultdict(dict)
-        self.last_line_len = 0
         self.ref = ""
+        self.last_ref = ""
         self.current_state: Optional[str] = None
         self.state_start = True
         self.state_end = False
         self.rest: str
-        self.pending_line = False
+        self.screen = ScreenWriter()
         self.warnings = 0
         self.callbacks = []
 
-    def print_line(self, line="", *, overwrite=False, indent=0, end="\n"):
-        if not (line or end):
-            return
-
-        self.pending_line = not bool(end)
-        spaces = " " * max(1, indent - self.last_line_len) if indent else ""
-
-        if overwrite:
-            if self.last_line_len:
-                # clear the whole line
-                print(colorama.ansi.clear_line(2), end="\r")
-            else:
-                print("")
-            self.last_line_len = len(line)
-        else:
-            self.last_line_len = 0
-        print(spaces + line, end=end)
-
     def build(self, line: str):
         if self.state_start:
-            self.print_line(f"Building {self.ref} ", overwrite=True, end="")
-            sys.stdout.flush()
+            self.screen.print(f"Building {self.ref} ", overwrite=True)
             self.ref_log.setdefault("build", [])
             self.ref_log.setdefault("log", []).append(line)
             return
 
         if self.state_end:
-            self.print_line("done", indent=39)
+            self.screen.print("done", indent=39)
             sys.stdout.flush()
             self.ref_log.setdefault("log", []).append(line)
             return
@@ -157,37 +164,33 @@ class ConanParser:
                 else line
             )
             if self.warnings:
-                self.print_line(
+                self.screen.print(
                     colorama.Fore.YELLOW + f"{self.warnings:3} warning(s)",
-                    overwrite=False,
                     indent=35,
-                    end="",
                 )
             self.warnings = 0
-            self.print_line(output, overwrite=True, end="")
+            self.screen.print(output, overwrite=True)
         else:
             match = re.match(
                 r"(?:^|.*?\s)(warning|error)[:\s]", line, flags=re.IGNORECASE
             )
             info = match.group(1)[0].upper() if match else ""
             if info == "E":
-                prefix = "\n" if self.pending_line else ""
-                self.print_line(colorama.Fore.RED + f"{prefix}{info} {line}")
+                self.screen.print(colorama.Fore.RED + f"{info} {line}")
             elif info == "W":
                 self.warnings += 1
-            else:
-                self.print_line(info, end="")
+            elif info:
+                self.screen.print(info, indent=0)
         self.ref_log["build"].append(line)
-        sys.stdout.flush()
 
     def package(self, line: str):
         if self.state_start:
-            self.print_line(f"Packaging {self.ref} ", overwrite=True, end="")
+            self.screen.print(f"Packaging {self.ref} ", overwrite=True)
             sys.stdout.flush()
             self.ref_log.setdefault("log", []).append(line)
             return
         if self.state_end:
-            self.print_line("done", indent=39)
+            self.screen.print("done", indent=39)
         match = re.match(r".*?([0-9a-f]{32,40})", line)
         if match:
             if "package revision" in match.group():
@@ -198,7 +201,7 @@ class ConanParser:
 
     @staticmethod
     def parse_config(content: str) -> Mapping[str, Any]:
-        mapping = dict()
+        mapping = {}
         buffer = StringIO(content)
         config = StrictConfigParser()
         config.read_file(buffer, "profile.ini")
@@ -237,6 +240,7 @@ class ConanParser:
 
         if ref_match:
             ref, rest = ref_match.group("ref"), ref_match.group("rest")
+            self.last_ref = self.ref
         else:
             ref, rest = None, line
 
@@ -272,6 +276,7 @@ class ConanParser:
         else:
             self.state_end = self.STATES[self.current_state]["end"](rest)
 
+        match_download = re.match(r"Downloading conan\w+\.[a-z]{3}$", rest)
         if self.current_state == "build":
             self.build(rest)
         elif self.current_state == "package":
@@ -281,9 +286,14 @@ class ConanParser:
         elif self.ref:
             key = self.current_state or "log"
             self.ref_log.setdefault(key, []).append(rest)
-        elif line:
-            self.print_line(line)
-            self.log.setdefault("stdout", []).append(line)
+        elif match_download and self.last_ref:
+            self.screen.print(
+                f"{self.last_ref}: {match_download.group()}", overwrite=True
+            )
+        else:
+            if line:
+                self.log.setdefault("stdout", []).append(line)
+            self.screen.print(line)
 
         if self.state_start or self.state_end:
             for callback in self.callbacks:
@@ -420,9 +430,8 @@ def monitor(args: List[str]) -> int:
     os.environ["CONAN_NON_INTERACTIVE"] = "1"
 
     if not os.getenv("CONAN_TRACE_FILE"):
-        tmp_file = tempfile.NamedTemporaryFile("w", delete=False)
-        os.environ["CONAN_TRACE_FILE"] = tmp_file.name
-        tmp_file.close()
+        tmp_file, os.environ["CONAN_TRACE_FILE"] = tempfile.mkstemp()
+        os.close(tmp_file)
 
     conan_version = check_conan()
     full_command = [sys.executable, "-m", "conans.conan", *args]
@@ -454,7 +463,7 @@ def monitor(args: List[str]) -> int:
     tracelog = []
 
     if os.getenv("CONAN_TRACE_FILE"):
-        with open(os.environ["CONAN_TRACE_FILE"]) as fh:
+        with open(os.environ["CONAN_TRACE_FILE"], encoding="utf8") as fh:
             for line in fh.readlines():
                 action = json.loads(line)
                 if action["_action"] in {"REST_API_CALL", "UNZIP"}:
