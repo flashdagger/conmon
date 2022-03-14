@@ -68,7 +68,6 @@ def to_int(mapping: Dict[str, Any], *keys: str) -> None:
 
 
 def parse_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
-    compiler_regex = COMPILER_REGEX_MAP[compiler]
     stats: Dict[Tuple[str, str], int] = Counter()
     groupdict: Dict[str, Any]
     warnings = []
@@ -87,6 +86,11 @@ def parse_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
 
     keyset = set()
     ident_set = set()
+    compiler_regex = COMPILER_REGEX_MAP.get(compiler)
+    if not compiler_regex:
+        LOG.warning("parse_warnings: unknown type %r", compiler)
+        return warnings
+
     for match in compiler_regex.finditer(output):
         groupdict = match.groupdict()
         ident = hash(frozenset(groupdict.items()))

@@ -176,6 +176,24 @@ class ConanParser:
 
         return mapping
 
+    @property
+    def compiler_type(self) -> Optional[str]:
+        profile = self.log.get("config", {})
+        if "settings" not in profile:
+            return None
+
+        compiler = profile["settings"].get("compiler")
+        if "clang-cl" in profile.get("env", {}).get("CC", ""):
+            compiler_type = "clang-cl"
+        elif compiler in {"clang", "gcc", "cc"}:
+            compiler_type = "gnu"
+        elif compiler == "Visual Studio":
+            compiler_type = "vs"
+        else:
+            compiler_type = None
+
+        return compiler_type
+
     def config(self, line):
         if self.state_start:
             assert line == "Configuration:"
@@ -381,8 +399,11 @@ def register_callback(process: psutil.Process, parser: ConanParser):
 
         ref_log = parser.ref_log
         ref_log["translation_units"] = tu_list
-        ref_log["warnings"] = parse_warnings_conan(
-            ref_log["build"], parser.log["config"]
+        ref_log["warnings"] = (
+            parse_warnings(
+                "\n".join((*ref_log.get("stderr", ()), *ref_log["build"])),
+                compiler=parser.compiler_type,
+            ),
         )
         buildmon = None
 
@@ -474,25 +495,6 @@ def monitor(args: List[str]) -> int:
         LOG.info(hint)
 
     return returncode
-
-
-def parse_warnings_conan(
-    log: Iterable[str], profile: Dict[str, Any]
-) -> List[Dict[str, Any]]:
-    if "settings" not in profile:
-        return []
-    compiler = profile["settings"].get("compiler")
-
-    if "clang-cl" in profile.get("env", {}).get("CC", ""):
-        compiler_type = "clang-cl"
-    elif compiler in {"clang", "gcc", "cc"}:
-        compiler_type = "gnu"
-    elif compiler == "Visual Studio":
-        compiler_type = "vs"
-    else:
-        raise Exception(f"unknown compiler {compiler!r}")
-
-    return parse_warnings("\n".join(log), compiler=compiler_type)
 
 
 def main() -> int:
