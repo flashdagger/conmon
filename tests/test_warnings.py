@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+import textwrap
 
 from conmon.compilers import COMPILER_REGEX_MAP, parse_warnings
 
@@ -69,3 +70,19 @@ def test_parsing_gnu():
         expected_item["column"] = int(expected_item["column"])
         expected_item["from"] = "compiler"
         assert warning == expected_item
+
+
+def test_gnu_hint():
+    warning_output = """
+    /build/source_subfolder/bzip2.c: In function ‘applySavedFileAttrToOutputFile’:
+    /build/source_subfolder/bzip2.c:1073:11: warning: ignoring return value of ‘fchown’, declared with attribute warn_unused_result [-Wunused-result]
+     1073 |    (void) fchown ( fd, fileMetaInfo.st_uid, fileMetaInfo.st_gid );
+          |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    """
+
+    lines = textwrap.dedent(warning_output).splitlines()
+    warnings = parse_warnings(output="\n".join(lines), compiler="gnu")
+    assert len(lines) == 6
+    assert warnings, "No warnings parsed"
+    assert warnings[0]["hint"].splitlines() == lines[3:5]

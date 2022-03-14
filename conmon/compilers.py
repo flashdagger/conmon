@@ -35,7 +35,7 @@ COMPILER_REGEX_MAP = {
         r"(?P<info>.*?)"
         r"(\s\[(?P<category>[^]]+)])?"
         r"\n"
-        r"((?P<hint>[^\n]+\n[\s~]*\^[\s~]*)\n)?",
+        r"((?P<hint>[^\n]+\n[\s|~]*\^[\s~]*)\n)?",
         re.VERBOSE | re.MULTILINE,
     ),
     "vs": re.compile(
