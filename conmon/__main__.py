@@ -40,12 +40,12 @@ LOG_HINTS = {}
 
 
 def filehandler(env, mode="w", hint="report"):
-    path = os.getenv(env, os.devnull)
-    if path != os.devnull:
+    path = os.getenv(env)
+    if path:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         LOG_HINTS.setdefault(f"saved {hint} to {path!r}")
     else:
-        path = ".".join(env.lower().split("_")[-2:])
+        hint_path = ".".join(env.lower().split("_")[-2:])
         fmt = "export {}={}"
         for name in PARENT_PROCS:
             if name == "bash":
@@ -57,9 +57,9 @@ def filehandler(env, mode="w", hint="report"):
                 fmt = "set {}={}"
                 break
         template = f"hint: use {fmt!r} to save {{}}"
-        LOG_HINTS.setdefault(template.format(env, path, hint))
+        LOG_HINTS.setdefault(template.format(env, hint_path, hint))
 
-    return open(path, mode, encoding="utf8")
+    return open(path or os.devnull, mode, encoding="utf8")
 
 
 class ConanParser:
@@ -246,6 +246,7 @@ class ConanParser:
         return self.log["requirements"].setdefault(groupdict["name"], groupdict)
 
     def process(self, line: str, error_lines: Iterable[str] = ()):
+        line = line.rstrip()
         rest = self.parse_reference(line)
 
         if error_lines:
@@ -305,37 +306,32 @@ class ConanParser:
                 assert callable(callback)
                 callback(self.current_state, self.ref, False)
 
-        log_level = logging.ERROR
-        lines: List[str] = []
-        for line in stderr:
-            if not line:
-                continue
-            match = re.match(
-                rf"(?:{self.REF_REGEX.pattern}:\s+)?"
-                rf"(?P<severity>ERROR|WARN):\s+(?P<msg>.*)",
-                line,
-            )
-            if match:
-                if lines:
-                    LOG.log(log_level, "\n".join(lines))
-                    lines.clear()
+        warning_regex = re.compile(
+            rf"(?:{self.REF_REGEX.pattern}:\s+)?"
+            rf"(?P<severity>ERROR|WARN):\s+(?P<msg>.*)"
+        )
+        errors = "\n".join(stderr)
+        errlist = []
+        last_idx = 0
+        for match in re.finditer(
+            warning_regex,
+            errors,
+        ):
+            if errlist:
+                errlist[-1]["msg"] += errors[last_idx : match.span()[0]]
+            errlist.append(match.groupdict())
+            last_idx = match.span()[1]
 
-                ref = match.group("name")
-                log_level = logging.getLevelName(match.group("severity"))
+        if errlist:
+            errlist[-1]["msg"] += errors[last_idx:]
+        else:
+            errlist.append(dict(ref=None, severity="ERROR", msg=errors))
 
-                if ref:
-                    self.log["requirements"].setdefault(ref, {}).setdefault(
-                        "stdout", []
-                    ).append(": ".join((match.group("severity"), match.group("msg"))))
-                    line = ": ".join((match.group("ref"), match.group("msg")))
-                else:
-                    line = match.group("msg")
-
-            lines.append(line)
-
-        if lines:
-            LOG.log(log_level, "\n".join(lines))
-            lines.clear()
+        for match in errlist:
+            log_level = logging.getLevelName(match["severity"])
+            ref = match["ref"]
+            msg = f"{ref}: {match['msg']}" if ref else match["msg"]
+            LOG.log(log_level, msg.rstrip())
 
 
 def check_conan() -> str:
@@ -441,12 +437,12 @@ def monitor(args: List[str]) -> int:
     stopwatch = StopWatch()
     stderr = AsyncPipeReader(process.stderr)
     for line in iter(process.stdout.readline, ""):
+        raw_fh.write(line)
         error_lines = list(stderr.readlines())
         raw_fh.write("".join(error_lines))
-        raw_fh.write(line)
         if stopwatch.timespan_elapsed(1.0):
             raw_fh.flush()
-        parser.process(DECOLORIZE_REGEX.sub("", line.rstrip()), error_lines)
+        parser.process(DECOLORIZE_REGEX.sub("", line), error_lines)
 
     _, errors = process.communicate(input=None, timeout=None)
     assert not errors
