@@ -27,10 +27,10 @@ import colorama  # type: ignore
 import colorlog  # type: ignore
 import psutil  # type: ignore
 
-from conmon.utils import StopWatch, StrictConfigParser, ScreenWriter
+from conmon.utils import StopWatch, StrictConfigParser, ScreenWriter, AsyncPipeReader
 from . import __version__
 from .buildmon import BuildMonitor, LOG as PLOG
-from .compilers import LOG as BLOG, parse_warnings, COMPILER_REGEX_MAP
+from .compilers import LOG as BLOG, parse_warnings
 
 LOG = logging.getLogger("CONMON")
 DECOLORIZE_REGEX = re.compile(r"[\u001b]\[\d{1,2}m", re.UNICODE)
@@ -219,13 +219,21 @@ class ConanParser:
 
     @property
     def ref_log(self) -> Dict[str, Any]:
+        if not self.ref:
+            return self.log
+
         match = self.REF_REGEX.fullmatch(self.ref)
         assert match
         groupdict = match.groupdict()
         return self.log["requirements"].setdefault(groupdict["name"], groupdict)
 
-    def process(self, line: str):
+    def process(self, line: str, error_lines: Iterable[str] = ()):
         rest = self.parse_reference(line)
+
+        if error_lines:
+            self.ref_log.setdefault("stderr", []).extend(
+                line.rstrip() for line in error_lines
+            )
 
         if self.ref and self.ref in line and "is locked" in line:
             LOG.warning(line)
@@ -247,7 +255,8 @@ class ConanParser:
         elif self.current_state == "package":
             self.package(rest)
         elif self.current_state == "configuration":
-            self.config(line)
+            assert line == rest
+            self.config(rest)
         elif self.ref:
             key = self.current_state or "stdout"
             self.ref_log.setdefault(key, []).append(rest)
@@ -269,16 +278,9 @@ class ConanParser:
             self.current_state = None
 
     def finalize(self, errs: str):
-        err_lines = []
-        idx = 0
-        for match in COMPILER_REGEX_MAP["cmake"].finditer(errs + "\n"):
-            err_lines.extend(errs[idx : match.span()[0]].splitlines())
-            idx = match.span()[1]
-            log_level = logging.getLevelName(match.group("severity").upper())
-            if not isinstance(log_level, int):
-                log_level = logging.getLevelName("ERROR")
-            LOG.log(log_level, match.group(0))
-        err_lines.extend(errs[idx:].splitlines())
+        stderr = self.log.pop("stderr", [])
+        stderr.extend(errs.splitlines(keepends=False))
+        self.log["stderr"] = stderr
 
         if self.current_state:
             for callback in self.callbacks:
@@ -287,7 +289,7 @@ class ConanParser:
 
         log_level = logging.ERROR
         lines: List[str] = []
-        for line in err_lines:
+        for line in stderr:
             if not line:
                 continue
             match = re.match(
@@ -416,20 +418,25 @@ def monitor(args: List[str]) -> int:
 
     raw_fh = filehandler("CONMON_CONAN_LOG", hint="raw conan output")
     stopwatch = StopWatch()
+    stderr = AsyncPipeReader(process.stderr)
     for line in iter(process.stdout.readline, ""):
+        error_lines = list(stderr.readlines())
+        raw_fh.write("".join(error_lines))
         raw_fh.write(line)
         if stopwatch.timespan_elapsed(1.0):
             raw_fh.flush()
-        parser.process(DECOLORIZE_REGEX.sub("", line.rstrip()))
+        parser.process(DECOLORIZE_REGEX.sub("", line.rstrip()), error_lines)
 
     _, errors = process.communicate(input=None, timeout=None)
+    assert not errors
+    returncode = process.wait()
+
+    errors = "".join(stderr.readlines())
     raw_fh.write(errors)
     raw_fh.close()
+    parser.finalize(errors)
 
-    parser.finalize(errors.rstrip())
-    returncode = process.wait()
     tracelog = []
-
     if os.getenv("CONAN_TRACE_FILE"):
         with open(os.environ["CONAN_TRACE_FILE"], encoding="utf8") as fh:
             for line in fh.readlines():
@@ -454,7 +461,6 @@ def monitor(args: List[str]) -> int:
 
     parser.log.update(
         dict(
-            stderr=errors.splitlines(),
             tracelog=tracelog,
             command=full_command,
             returncode=returncode,

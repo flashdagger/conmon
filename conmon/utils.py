@@ -3,6 +3,9 @@ import shlex
 import sys
 import time
 from configparser import ConfigParser
+from contextlib import suppress
+from queue import Queue
+from threading import Thread
 from typing import Hashable, Any, Dict, Set, List
 
 import colorama
@@ -78,6 +81,24 @@ class ScreenWriter:
         else:
             self._last_line = ""
             print(printed_line)
+
+
+class AsyncPipeReader:
+    def __init__(self, pipe):
+        self.pipe = pipe
+        self.queue = Queue()
+        self.thread = Thread(target=self.reader, args=[self.pipe, self.queue])
+        self.thread.start()
+
+    @staticmethod
+    def reader(pipe, queue):
+        with suppress(ValueError):
+            for line in iter(pipe.readline, ""):
+                queue.put(line)
+
+    def readlines(self):
+        while not self.queue.empty():
+            yield self.queue.get()
 
 
 class MappingPair(tuple):
