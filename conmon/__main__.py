@@ -160,13 +160,13 @@ class ConanParser:
         if self.state_start:
             self.screen.print(f"Building {self.ref} ", overwrite=True)
             self.ref_log.setdefault("build", [])
-            self.ref_log.setdefault("log", []).append(line)
+            self.ref_log.setdefault("stdout", []).append(line)
             return
 
         if self.state_end:
             self.screen.print("done", indent=39)
             sys.stdout.flush()
-            self.ref_log.setdefault("log", []).append(line)
+            self.ref_log.setdefault("stdout", []).append(line)
             return
 
         if not line:
@@ -209,7 +209,7 @@ class ConanParser:
         if self.state_start:
             self.screen.print(f"Packaging {self.ref} ", overwrite=True)
             sys.stdout.flush()
-            self.ref_log.setdefault("log", []).append(line)
+            self.ref_log.setdefault("stdout", []).append(line)
             return
         if self.state_end:
             self.screen.print("done", indent=39)
@@ -306,7 +306,7 @@ class ConanParser:
         elif self.current_state == "configuration":
             self.config(line)
         elif self.ref:
-            key = self.current_state or "log"
+            key = self.current_state or "stdout"
             self.ref_log.setdefault(key, []).append(rest)
         elif match_download and self.last_ref:
             self.screen.print(
@@ -362,7 +362,7 @@ class ConanParser:
 
                 if ref:
                     self.log["requirements"].setdefault(ref, {}).setdefault(
-                        "log", []
+                        "stdout", []
                     ).append(": ".join((match.group("severity"), match.group("msg"))))
                     line = ": ".join((match.group("ref"), match.group("msg")))
                 else:
