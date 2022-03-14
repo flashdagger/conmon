@@ -9,6 +9,7 @@ import platform
 import re
 import sys
 import tempfile
+import time
 from collections import defaultdict
 from configparser import ConfigParser
 from contextlib import suppress
@@ -43,7 +44,7 @@ def filehandler(env, mode="w", hint="report"):
     path = os.getenv(env, os.devnull)
     if path != os.devnull:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        LOG_HINTS.append(f"{hint} was saved to {path}")
+        LOG_HINTS.append(f"saved {hint} to {path!r}")
     else:
         path = ".".join(env.lower().split("_")[-2:])
         fmt = "export {}={}"
@@ -60,6 +61,25 @@ def filehandler(env, mode="w", hint="report"):
         LOG_HINTS.append(template.format(env, path, hint))
 
     return open(path, mode, encoding="utf8")
+
+
+class StopWatch:
+    def __init__(self):
+        self._last_ts = time.time()
+
+    @property
+    def elapsed_seconds(self) -> float:
+        return time.time() - self._last_ts
+
+    def timespan_elapsed(self, timespan_s: float) -> bool:
+        if self.elapsed_seconds >= timespan_s:
+            self._last_ts = time.time() - self.elapsed_seconds % timespan_s
+            return True
+
+        return False
+
+    def reset(self):
+        self._last_ts = time.time()
 
 
 class StrictConfigParser(ConfigParser):
@@ -242,7 +262,7 @@ class ConanParser:
 
         if ref_match:
             ref, rest = ref_match.group("ref"), ref_match.group("rest")
-            self.last_ref = self.ref
+            self.last_ref = ref
         else:
             ref, rest = None, line
 
@@ -452,8 +472,11 @@ def monitor(args: List[str]) -> int:
     register_callback(process, parser)
 
     raw_fh = filehandler("CONMON_CONAN_LOG", hint="raw conan output")
+    stopwatch = StopWatch()
     for line in iter(process.stdout.readline, ""):
         raw_fh.write(line)
+        if stopwatch.timespan_elapsed(1.0):
+            raw_fh.flush()
         parser.process(DECOLORIZE_REGEX.sub("", line.rstrip()))
 
     _, errors = process.communicate(input=None, timeout=None)
@@ -495,8 +518,8 @@ def monitor(args: List[str]) -> int:
         )
     )
 
-    with filehandler("CONMON_REPORT_JSON", hint="report json") as fd:
-        json.dump(parser.log, fd, indent=2)
+    with filehandler("CONMON_REPORT_JSON", hint="report json") as fh:
+        json.dump(parser.log, fh, indent=2)
 
     for hint in LOG_HINTS:
         LOG.info(hint)
