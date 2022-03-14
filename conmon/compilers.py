@@ -100,17 +100,13 @@ def parse_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
         to_int(groupdict, "line", "column")
         groupdict["from"] = "compiler"
         severity = groupdict["severity"]
-        if severity in {"note"}:
-            LOG.info(match.group().rstrip())
-            continue
-
         warnings.append(groupdict)
 
-        key = groupdict["category"]
+        key = groupdict["category"] or ":".join((groupdict["file"], groupdict["info"]))
         if key:
             stats[(severity, key)] += 1
 
-        if severity in {"warning", "error", "fatal error"} and (
+        if severity in {"warning", "error", "fatal error", "note"} and (
             key is None or key not in keyset
         ):
             LOG.log(log_level(severity), match.group().rstrip())
