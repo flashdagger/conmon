@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 from psutil import Process
 
-from conmon.buildmon import (
-    BuildMonitor,
+from conmon.buildmon import BuildMonitor
+from conmon.utils import (
     freeze_json_object,
     unfreeze_json_object,
     append_to_set,
