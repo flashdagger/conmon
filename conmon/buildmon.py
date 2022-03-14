@@ -299,7 +299,7 @@ class BuildMonitor(Thread):
         data["flags"] = {
             first
             for first, second in zip(unknown_args, unknown_args[1:])
-            if re.match(r"^-[-\w=]+$", first) and second.startswith("-")
+            if re.match(r"^-[-\w:=]+$", first) and second.startswith("-")
         }
         for key, value in sorted(vars(args).items()):
             if not value:

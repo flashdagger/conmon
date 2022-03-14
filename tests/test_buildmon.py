@@ -26,6 +26,7 @@ cases = [
                 "-O0",
                 "-fno-inline",
                 "-g",
+                "-Zc:forScope",
                 "-Wall",
                 "-include-pch",
                 "-fvisibility=hidden",
@@ -48,6 +49,7 @@ cases = [
             "flags": [
                 "-O0",
                 "-Wall",
+                "-Zc:forScope",
                 "-fPIC",
                 "-fno-inline",
                 "-fvisibility-inlines-hidden",
