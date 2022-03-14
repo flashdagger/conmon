@@ -36,27 +36,28 @@ LOG = logging.getLogger("CONMON")
 DECOLORIZE_REGEX = re.compile(r"[\u001b]\[\d{1,2}m", re.UNICODE)
 
 PARENT_PROCS = [parent.name() for parent in psutil.Process(os.getppid()).parents()]
+LOG_HINTS = []
 
 
 def filehandler(env, mode="w", hint="report"):
     path = os.getenv(env, os.devnull)
     if path != os.devnull:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        LOG.info("Saving %s to %s", hint, path)
+        LOG_HINTS.append(f"{hint} was saved to {path}")
     else:
         path = ".".join(env.lower().split("_")[-2:])
-        fmt = f"export %s={path}"
+        fmt = "export {}={}"
         for name in PARENT_PROCS:
             if name == "bash":
                 break
             if name == "powershell.exe":
-                fmt = f"$env:%s='{path}'"
+                fmt = "$env:{}='{}'"
                 break
             if name == "cmd.exe":
-                fmt = f"set %s={path}"
+                fmt = "set {}={}"
                 break
-        # pylint: disable=logging-fstring-interpolation
-        LOG.info(f"use {fmt!r} to generate %s", env, hint)
+        template = f"hint: use {fmt!r} to save {{}}"
+        LOG_HINTS.append(template.format(env, path, hint))
 
     return open(path, mode, encoding="utf8")
 
@@ -494,9 +495,11 @@ def monitor(args: List[str]) -> int:
         )
     )
 
-    json_fh = filehandler("CONMON_REPORT_JSON", hint="report json")
-    json.dump(parser.log, json_fh, indent=2)
-    json_fh.close()
+    with filehandler("CONMON_REPORT_JSON", hint="report json") as fd:
+        json.dump(parser.log, fd, indent=2)
+
+    for hint in LOG_HINTS:
+        LOG.info(hint)
 
     return returncode
 
