@@ -11,8 +11,8 @@ COMPILER_REGEX_MAP = {
         r"^CMake\ (?P<severity>\w+)"
         r"(?:\ (?:in|at)\ (?P<file>(?:[A-za-z]:)?[^\n:]+)"
         r"(?::(?P<line>\d+)\ \((?P<function>\w+)\))?)?:\n"
-        r"(?P<info>(\s+[^\n]+\n)+)"
-        r"(?P<context>Call\ Stack[^\n]+\n(\s+[^\n]+\n)+)?",
+        r"(?P<info>(?:\ +[^\n]+\n\n?)+)"
+        r"(?P<context>Call\ Stack[^\n]+(?:\n\ +[^\n]+)+)?",
         re.VERBOSE | re.MULTILINE,
     ),
     "clang-cl": re.compile(

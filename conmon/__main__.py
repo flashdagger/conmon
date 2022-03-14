@@ -107,7 +107,7 @@ class ConanParser:
             return
 
         if self.state_end:
-            self.screen.print("done", indent=39)
+            self.screen.print(f"{self.ref}: build finished")
             sys.stdout.flush()
             self.ref_log.setdefault("stdout", []).append(line)
             return
