@@ -37,14 +37,14 @@ LOG = logging.getLogger("CONMON")
 DECOLORIZE_REGEX = re.compile(r"[\u001b]\[\d{1,2}m", re.UNICODE)
 
 PARENT_PROCS = [parent.name() for parent in psutil.Process(os.getppid()).parents()]
-LOG_HINTS = []
+LOG_HINTS = {}
 
 
 def filehandler(env, mode="w", hint="report"):
     path = os.getenv(env, os.devnull)
     if path != os.devnull:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        LOG_HINTS.append(f"saved {hint} to {path!r}")
+        LOG_HINTS.setdefault(f"saved {hint} to {path!r}")
     else:
         path = ".".join(env.lower().split("_")[-2:])
         fmt = "export {}={}"
@@ -58,7 +58,7 @@ def filehandler(env, mode="w", hint="report"):
                 fmt = "set {}={}"
                 break
         template = f"hint: use {fmt!r} to save {{}}"
-        LOG_HINTS.append(template.format(env, path, hint))
+        LOG_HINTS.setdefault(template.format(env, path, hint))
 
     return open(path, mode, encoding="utf8")
 
