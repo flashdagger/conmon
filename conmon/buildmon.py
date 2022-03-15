@@ -120,7 +120,7 @@ def identify_compiler(name: str) -> Optional[str]:
 
 
 class BuildMonitor(Thread):
-    PARSER = CompilerParser(prog=Path(__file__).stem)
+    PARSER = CompilerParser(prog=Path(__file__).stem, add_help=False)
     ERRORS: Set[str] = set()
 
     def __init__(self, proc: psutil.Process):
