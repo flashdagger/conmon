@@ -322,7 +322,7 @@ class ConanParser:
         ):
             first_idx = match.span()[0]
             if errlist:
-                errlist[-1]["msg"] += errors[last_idx : first_idx]
+                errlist[-1]["msg"] += errors[last_idx:first_idx]
             elif first_idx:
                 errlist.append(dict(ref=None, severity="ERROR", msg=errors[:first_idx]))
 
@@ -542,7 +542,9 @@ def parse_args(args: List[str]):
     parsing commandline parameters
     """
     description = "Run conan as monitored process with parsed JSON output"
-    parser = argparse.ArgumentParser(description=description, prog="conmon")
+    parser = argparse.ArgumentParser(
+        description=description, prog="conmon", add_help=False
+    )
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s version {__version__}"
     )
@@ -553,7 +555,10 @@ def parse_args(args: List[str]):
         nargs=argparse.REMAINDER,
     )
 
-    return parser.parse_args(args)
+    known_args, unknown_args = parser.parse_known_args(args)
+    known_args.cmd.extend(unknown_args)
+
+    return known_args
 
 
 if __name__ == "__main__":
