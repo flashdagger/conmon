@@ -1,3 +1,4 @@
+import os
 import re
 import shlex
 import sys
@@ -59,18 +60,30 @@ class StrictConfigParser(ConfigParser):
 
 
 class ScreenWriter:
+    CLEAR_LINE = colorama.ansi.clear_line(2)
+    RESET_LINE = "\r" if os.name == "nt" else colorama.ansi.CSI + "1G"
+
     def __init__(self):
         self._last_line = ""
 
     def reset(self):
         self._last_line = ""
 
+    @staticmethod
+    def fit_width(line: str):
+        size = columns = len(line)
+        with suppress(OSError):
+            (columns, _lines), _ = os.get_terminal_size(), columns
+        return line[: min(size, columns - 1)]
+
     def print(self, line: str, overwrite=False, indent=-1):
         append = indent >= 0
         spaces = " " * max(0, indent - len(self._last_line)) if append else ""
+        if overwrite:
+            line = self.fit_width(line)
 
         if self._last_line and not append:
-            printed_line = "\r" + colorama.ansi.clear_line(2) + line
+            printed_line = self.CLEAR_LINE + self.RESET_LINE + line
         else:
             printed_line = spaces + line
 
