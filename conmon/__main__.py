@@ -12,6 +12,7 @@ import tempfile
 from collections import defaultdict
 from contextlib import suppress
 from io import StringIO
+from itertools import chain
 from pathlib import Path
 from subprocess import PIPE, check_output, CalledProcessError
 from typing import (
@@ -30,7 +31,7 @@ import psutil  # type: ignore
 from conmon.utils import StopWatch, StrictConfigParser, ScreenWriter, AsyncPipeReader
 from . import __version__
 from .buildmon import BuildMonitor, LOG as PLOG
-from .compilers import LOG as BLOG, parse_warnings
+from .compilers import LOG as BLOG, parse_compiler_warnings, parse_cmake_warnings
 
 LOG = logging.getLogger("CONMON")
 DECOLORIZE_REGEX = re.compile(r"[\u001b]\[\d{1,2}m", re.UNICODE)
@@ -65,9 +66,25 @@ def filehandler(env, mode="w", hint="report"):
 class ConanParser:
     REF_PART_PATTERN = r"\w[\w\+\.\-]{1,50}"
     REF_REGEX = re.compile(
-        rf"(?P<ref>(?P<name>{REF_PART_PATTERN})/(?P<version>{REF_PART_PATTERN})@"
-        rf"?((?P<user>{REF_PART_PATTERN})/(?P<channel>{REF_PART_PATTERN}))?)"
+        rf"""(?x)
+        (?P<ref>
+            (?P<name>{REF_PART_PATTERN})/
+            {REF_PART_PATTERN}@?        # version
+            (
+                {REF_PART_PATTERN}/     # user
+                {REF_PART_PATTERN}      # channel
+             )?
+         )
+        """
     )
+    WARNING_REGEX = re.compile(
+        rf"""
+        (?:{REF_REGEX.pattern}:\ +)?
+        (?P<severity>ERROR|WARN):\ +(?P<info>.*)
+        """,
+        re.VERBOSE,
+    )
+
     STATES = {
         "configuration": {
             "start": lambda line: line == "Configuration:",
@@ -118,8 +135,8 @@ class ConanParser:
         match = re.fullmatch(
             r"""(?x)
                     ^(?:
-                        (?P<progress>\[[0-9\s/%]+]\ )? 
-                        [a-zA-Z ]+\ 
+                        (?P<progress>\[[0-9\s/%]+]\ )?  # from ninja or cmake
+                        [a-zA-Z ]+\                     # e.g. Building or Linking
                     )?
                     (?P<file>[\-.\w/\\]+\.[a-zA-Z]{1,3})
                     $
@@ -129,7 +146,7 @@ class ConanParser:
         if match:
             progress, file = match.groups()
             if len(file) > 30:
-                file = f"[...] {file[-24:]}"
+                file = f"...{file[-27:]}"
             output = (progress or "") + file + " "
             if self.warnings:
                 self.screen.print(
@@ -253,8 +270,8 @@ class ConanParser:
         rest = self.parse_reference(line)
 
         if error_lines:
-            self.ref_log.setdefault("stderr", []).extend(
-                line.rstrip() for line in error_lines
+            self.ref_log.setdefault("stderr_lines", []).append(
+                [line.rstrip() for line in error_lines]
             )
 
         if self.ref and self.ref in line and "is locked" in line:
@@ -299,46 +316,42 @@ class ConanParser:
         if self.state_end:
             self.current_state = None
 
-    def finalize(self, errs: str):
-        stderr = self.log.pop("stderr", [])
-        stderr.extend(errs.splitlines(keepends=False))
-        self.log["stderr"] = stderr
+    def finalize(self, errs: List[str]):
+        self.log.setdefault("stderr_lines", []).append(errs)
 
         if self.current_state:
             for callback in self.callbacks:
                 assert callable(callback)
                 callback(self.current_state, self.ref, False)
 
-        warning_regex = re.compile(
-            rf"(?:{self.REF_REGEX.pattern}:\s+)?"
-            rf"(?P<severity>ERROR|WARN):\s+(?P<msg>.*)"
-        )
-        errors = "\n".join(stderr)
-        errlist = []
-        last_idx = 0
-        for match in re.finditer(
-            warning_regex,
-            errors,
-        ):
-            first_idx = match.span()[0]
-            if errlist:
-                errlist[-1]["msg"] += errors[last_idx:first_idx]
-            elif first_idx:
-                errlist.append(dict(ref=None, severity="ERROR", msg=errors[:first_idx]))
+        for lines in self.log.pop("stderr_lines"):
+            self.log.setdefault("stderr", []).extend(lines)
+            errmsg = "\n".join(lines)
+            if not errmsg:
+                continue
+            match = self.WARNING_REGEX.search(errmsg)
+            if match and match.group("severity") == "ERROR":
+                LOG.error(errmsg)
+            else:
+                LOG.warning(errmsg)
 
-            errlist.append(match.groupdict())
-            last_idx = match.span()[1]
-
-        if errlist:
-            errlist[-1]["msg"] += errors[last_idx:]
-        elif errors.rstrip():
-            errlist.append(dict(ref=None, severity="ERROR", msg=errors.lstrip()))
-
-        for match in errlist:
-            log_level = logging.getLevelName(match["severity"])
-            ref = match["ref"]
-            msg = f"{ref}: {match['msg']}" if ref else match["msg"]
-            LOG.log(log_level, msg.rstrip())
+    def parse_conan_warnings(self, output: str) -> List[Dict[str, Any]]:
+        warnings = []
+        last_item: Optional[Dict] = None
+        for line in output.splitlines(keepends=False):
+            match = self.WARNING_REGEX.fullmatch(line)
+            if match:
+                last_item = match.groupdict()
+                last_item["severity"] = (
+                    "warning" if last_item["severity"].startswith("WARN") else "error"
+                )
+                last_item["from"] = "conan"
+                warnings.append(last_item)
+                if match["ref"]:
+                    LOG.warning(line)
+            elif last_item:
+                last_item["info"] += f"\n{line}"
+        return warnings
 
 
 def check_conan() -> str:
@@ -402,17 +415,35 @@ def register_callback(process: psutil.Process, parser: ConanParser):
 
         ref_log = parser.ref_log
         ref_log["translation_units"] = tu_list
-        ref_log["warnings"] = (
-            parse_warnings(
-                "\n".join((*ref_log.get("stderr", ()), *ref_log["build"])),
+
+        warnings = ref_log.setdefault("warnings", [])
+        warnings.extend(
+            parse_compiler_warnings(
+                "\n".join(ref_log["build"]),
                 compiler=parser.compiler_type,
             ),
         )
-        for line in re.findall(
-            r"(?m)(?:^|.*[^\w\n])(?:WARN|WARNING|ERROR)[^\w\n].*",
-            "\n".join(ref_log.get("stderr", ())),
-        ):
-            BLOG.warning(line)
+        stderr_lines = ref_log.pop("stderr_lines", ())
+        ref_log["stderr"] = list(chain(*stderr_lines))
+
+        def popwarnings(error_lines, parse_func):
+            residue = []
+            parsed_warnings = []
+
+            for lines in error_lines:
+                warnings_found = parse_func("\n".join(lines))
+                if warnings_found:
+                    parsed_warnings.extend(warnings_found)
+                else:
+                    residue.append(lines)
+
+            return parsed_warnings, residue
+
+        cmake_warnings, stderr_lines = popwarnings(stderr_lines, parse_cmake_warnings)
+        conan_warnings, stderr_lines = popwarnings(stderr_lines, parser.parse_conan_warnings)
+        warnings.extend((*cmake_warnings, *conan_warnings))
+        if stderr_lines:
+            LOG.error("\n".join(stderr_lines))
 
     parser.callbacks.append(callback)
 
@@ -459,10 +490,10 @@ def monitor(args: List[str]) -> int:
     assert not errors
     returncode = process.wait()
 
-    errors = "".join(stderr.readlines())
-    raw_fh.write(errors)
-    raw_fh.close()
+    errors = [line.rstrip() for line in stderr.readlines()]
     parser.finalize(errors)
+    raw_fh.write("\n".join(errors))
+    raw_fh.close()
 
     tracelog = []
     if os.getenv("CONAN_TRACE_FILE"):

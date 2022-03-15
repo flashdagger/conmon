@@ -25,7 +25,7 @@ def test_ref_regex_ok(expected):
     expected["ref"] = ref
     match = ConanParser.REF_REGEX.fullmatch(expected["ref"])
     assert match is not None
-    assert match.groupdict() == expected
+    assert match.groupdict().items() <= expected.items()
 
 
 @pytest.mark.parametrize("expected", invalid_refs)

@@ -6,7 +6,7 @@ from pathlib import Path
 from pprint import pprint
 
 from conmon.__main__ import filehandler
-from .compilers import parse_warnings
+from .compilers import parse_compiler_warnings
 
 
 def parse_build(key, lines):
@@ -56,7 +56,7 @@ def check(report):
 
 
 def check_warnings(report):
-    result = parse_warnings("\n".join(report["build"]), "gnu")
+    result = parse_compiler_warnings("\n".join(report["build"]), "gnu")
     stats = Counter((mapping.get("category") for mapping in result))
     pprint(stats)
 

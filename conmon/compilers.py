@@ -67,8 +67,7 @@ def to_int(mapping: Dict[str, Any], *keys: str) -> None:
         mapping[key] = int(value)
 
 
-def parse_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
-    stats: Dict[Tuple[str, str], int] = Counter()
+def parse_cmake_warnings(output: str) -> List[Dict[str, Any]]:
     groupdict: Dict[str, Any]
     warnings = []
 
@@ -84,6 +83,13 @@ def parse_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
         elif groupdict["severity"] == "warning" and groupdict["file"]:
             LOG.warning(match.group().rstrip())
 
+    return warnings
+
+
+def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
+    stats: Dict[Tuple[str, str], int] = Counter()
+    groupdict: Dict[str, Any]
+    warnings = []
     keyset = set()
     ident_set = set()
     compiler_regex = COMPILER_REGEX_MAP.get(compiler)

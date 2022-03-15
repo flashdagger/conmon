@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 import textwrap
 
-from conmon.compilers import COMPILER_REGEX_MAP, parse_warnings
+from conmon.compilers import COMPILER_REGEX_MAP, parse_compiler_warnings
 
 output = [
     "text before",
@@ -60,7 +60,7 @@ def test_warnings_gnu():
 
 
 def test_parsing_gnu():
-    warnings = parse_warnings(output="\n".join(output), compiler="gnu")
+    warnings = parse_compiler_warnings(output="\n".join(output), compiler="gnu")
 
     assert len(warnings) == 3
 
@@ -82,7 +82,7 @@ def test_gnu_hint():
     """
 
     lines = textwrap.dedent(warning_output).splitlines()
-    warnings = parse_warnings(output="\n".join(lines), compiler="gnu")
+    warnings = parse_compiler_warnings(output="\n".join(lines), compiler="gnu")
     assert len(lines) == 6
     assert warnings, "No warnings parsed"
     assert warnings[0]["hint"].splitlines() == lines[3:5]
