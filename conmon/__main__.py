@@ -69,10 +69,10 @@ class ConanParser:
         rf"""(?x)
         (?P<ref>
             (?P<name>{REF_PART_PATTERN})/
-            {REF_PART_PATTERN}@?        # version
+            (?P<version>{REF_PART_PATTERN})@?
             (
-                {REF_PART_PATTERN}/     # user
-                {REF_PART_PATTERN}      # channel
+                (?P<user>{REF_PART_PATTERN})/
+                (?P<channel>{REF_PART_PATTERN})
              )?
          )
         """
@@ -81,7 +81,7 @@ class ConanParser:
         rf"""
         (?:{REF_REGEX.pattern}:\ +)?
         (?P<severity>ERROR|WARN):\ +(?P<info>.*)
-        """,
+        """.replace("(?:(?x)", "(?x)(?:"),
         re.VERBOSE,
     )
 
@@ -342,6 +342,8 @@ class ConanParser:
             match = self.WARNING_REGEX.fullmatch(line)
             if match:
                 last_item = match.groupdict()
+                for key in list(self.WARNING_REGEX.groupindex.keys())[1:5]:
+                    last_item.pop(key, None)
                 last_item["severity"] = (
                     "warning" if last_item["severity"].startswith("WARN") else "error"
                 )
@@ -442,8 +444,10 @@ def register_callback(process: psutil.Process, parser: ConanParser):
         cmake_warnings, stderr_lines = popwarnings(stderr_lines, parse_cmake_warnings)
         conan_warnings, stderr_lines = popwarnings(stderr_lines, parser.parse_conan_warnings)
         warnings.extend((*cmake_warnings, *conan_warnings))
-        if stderr_lines:
-            LOG.error("\n".join(stderr_lines))
+
+        res_msg = "\n".join(chain(*stderr_lines)).rstrip()
+        if res_msg:
+            LOG.error(res_msg)
 
     parser.callbacks.append(callback)
 

@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 import textwrap
 
+from conmon.__main__ import ConanParser
 from conmon.compilers import COMPILER_REGEX_MAP, parse_compiler_warnings
 
 output = [
@@ -86,3 +87,15 @@ def test_gnu_hint():
     assert len(lines) == 6
     assert warnings, "No warnings parsed"
     assert warnings[0]["hint"].splitlines() == lines[3:5]
+
+
+def test_conan_warning():
+    parser = ConanParser()
+    warnings = parser.parse_conan_warnings("libjpeg/1.2.3: WARN: package is corrupted")
+    assert len(warnings) == 1
+    assert warnings[0] == {
+        "from": "conan",
+        "ref": "libjpeg/1.2.3",
+        "severity": "warning",
+        "info": "package is corrupted",
+    }
