@@ -81,7 +81,9 @@ class ConanParser:
         rf"""
         (?:{REF_REGEX.pattern}:\ +)?
         (?P<severity>ERROR|WARN):\ +(?P<info>.*)
-        """.replace("(?:(?x)", "(?x)(?:"),
+        """.replace(
+            "(?:(?x)", "(?x)(?:"
+        ),
         re.VERBOSE,
     )
 
@@ -442,7 +444,9 @@ def register_callback(process: psutil.Process, parser: ConanParser):
             return parsed_warnings, residue
 
         cmake_warnings, stderr_lines = popwarnings(stderr_lines, parse_cmake_warnings)
-        conan_warnings, stderr_lines = popwarnings(stderr_lines, parser.parse_conan_warnings)
+        conan_warnings, stderr_lines = popwarnings(
+            stderr_lines, parser.parse_conan_warnings
+        )
         warnings.extend((*cmake_warnings, *conan_warnings))
 
         res_msg = "\n".join(chain(*stderr_lines)).rstrip()

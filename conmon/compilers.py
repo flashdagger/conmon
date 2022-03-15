@@ -39,13 +39,16 @@ COMPILER_REGEX_MAP = {
         re.VERBOSE | re.MULTILINE,
     ),
     "vs": re.compile(
-        r"(?P<file>^[^\n(]+)(\((?P<line>\d+)(,(?P<column>\d+))?\))?\s?:\s"
-        r"(?P<severity>[a-z\s]+)\s"
-        r"(?P<category>[A-Z]+\d+):\s"
-        r"(?P<info>.+?)"
-        r"(\s\[(?P<project>[^]]+)])?"
-        r"\n",
-        re.VERBOSE | re.MULTILINE,
+        r"""(?xm)
+        (?P<file>^[^\n(]+)
+        ( 
+          \( (?P<line>\d+) (?:, (?P<column>\d+) )? \)
+        )? \ ?:\ 
+        (?P<severity>[a-z\s]+)  \ 
+        (?P<category>[A-Z]+\d+):\ 
+        (?P<info>.+?)
+        (\ \[ (?P<project>[^]]+) ])? \n
+        """
     ),
 }
 
