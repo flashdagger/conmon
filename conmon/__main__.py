@@ -117,17 +117,18 @@ class ConanParser:
         self.screen = ScreenWriter()
         self.warnings = 0
         self.callbacks = []
+        self._resolved = False
 
     def build(self, line: str):
         if self.state_start:
-            self.screen.print(f"Building {self.ref} ", overwrite=True)
+            self.screen.print(f"Building {self.ref}")
             self.ref_log.setdefault("build", [])
             self.ref_log.setdefault("stdout", []).append(line)
             return
 
         if self.state_end:
             self.ref_log.setdefault("stdout", []).append(line)
-            self.screen.print(f"finished build for {self.ref}")
+            self.screen.print("", overwrite=True)
             sys.stdout.flush()
             return
 
@@ -172,12 +173,9 @@ class ConanParser:
 
     def package(self, line: str):
         if self.state_start:
-            self.screen.print(f"Packaging {self.ref} ", overwrite=True)
-            sys.stdout.flush()
+            self.screen.print(f"Packaging {self.ref} ")
             self.ref_log.setdefault("stdout", []).append(line)
             return
-        if self.state_end:
-            self.screen.print("done", indent=39)
         match = re.match(r".*?([0-9a-f]{32,40})", line)
         if match:
             if "package revision" in match.group():
@@ -301,14 +299,16 @@ class ConanParser:
         elif self.ref:
             key = self.current_state or "stdout"
             self.ref_log.setdefault(key, []).append(rest)
+            self.screen.print(f"{line} ", overwrite=True)
         elif match_download and self.last_ref:
             self.screen.print(
-                f"{match_download.group()} for {self.last_ref}", overwrite=True
+                f"{match_download.group()} for {self.last_ref} ", overwrite=True
             )
         else:
-            if line:
-                self.log.setdefault("stdout", []).append(line)
-            self.screen.print(line)
+            if line.startswith("Installing (downloading, building) binaries..."):
+                self._resolved = True
+            self.log.setdefault("stdout", []).append(line)
+            self.screen.print(f"{line} ", overwrite=self._resolved)
 
         if self.state_start or self.state_end:
             for callback in self.callbacks:
@@ -320,6 +320,7 @@ class ConanParser:
 
     def finalize(self, errs: List[str]):
         self.log.setdefault("stderr_lines", []).append(errs)
+        self.screen.print("")
 
         if self.current_state:
             for callback in self.callbacks:
