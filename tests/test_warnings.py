@@ -62,7 +62,7 @@ def test_warnings_gnu():
 def test_parsing_gnu():
     warnings = parse_warnings(output="\n".join(output), compiler="gnu")
 
-    assert len(warnings) == 2
+    assert len(warnings) == 3
 
     for idx, warning in enumerate(warnings):
         expected_item = dict(expected_items[idx])

@@ -107,27 +107,30 @@ class ConanParser:
             return
 
         if self.state_end:
-            self.screen.print(f"{self.ref}: build finished")
-            sys.stdout.flush()
             self.ref_log.setdefault("stdout", []).append(line)
+            self.screen.print(f"finished build for {self.ref}")
+            sys.stdout.flush()
             return
 
         if not line:
             return
 
         match = re.fullmatch(
-            r"((?P<progress>\[[0-9\s/%]+]\s)"
-            r"(Building|Linking).*?)?"
-            r"(?P<file>[\-.\w]+\.[a-zA-Z]{1,3})?",
+            r"""(?x)
+                    ^(?:
+                        (?P<progress>\[[0-9\s/%]+]\ )? 
+                        [a-zA-Z ]+\ 
+                    )?
+                    (?P<file>[\-.\w/\\]+\.[a-zA-Z]{1,3})
+                    $
+            """,
             line.lstrip(),
         )
-        if match and match.group():
-            groupdict = match.groupdict()
-            output = (
-                (groupdict["progress"] or "") + groupdict["file"] + " "
-                if groupdict["file"]
-                else line
-            )
+        if match:
+            progress, file = match.groups()
+            if len(file) > 30:
+                file = f"[...] {file[-24:]}"
+            output = (progress or "") + file + " "
             if self.warnings:
                 self.screen.print(
                     colorama.Fore.YELLOW + f"{self.warnings:3} warning(s)",
@@ -281,7 +284,7 @@ class ConanParser:
             self.ref_log.setdefault(key, []).append(rest)
         elif match_download and self.last_ref:
             self.screen.print(
-                f"{self.last_ref}: {match_download.group()}", overwrite=True
+                f"{match_download.group()} for {self.last_ref}", overwrite=True
             )
         else:
             if line:
@@ -317,15 +320,19 @@ class ConanParser:
             warning_regex,
             errors,
         ):
+            first_idx = match.span()[0]
             if errlist:
-                errlist[-1]["msg"] += errors[last_idx : match.span()[0]]
+                errlist[-1]["msg"] += errors[last_idx : first_idx]
+            elif first_idx:
+                errlist.append(dict(ref=None, severity="ERROR", msg=errors[:first_idx]))
+
             errlist.append(match.groupdict())
             last_idx = match.span()[1]
 
         if errlist:
             errlist[-1]["msg"] += errors[last_idx:]
-        else:
-            errlist.append(dict(ref=None, severity="ERROR", msg=errors))
+        elif errors.rstrip():
+            errlist.append(dict(ref=None, severity="ERROR", msg=errors.lstrip()))
 
         for match in errlist:
             log_level = logging.getLevelName(match["severity"])
@@ -385,13 +392,13 @@ def register_callback(process: psutil.Process, parser: ConanParser):
                 else:
                     unit.setdefault("system_includes", []).append(include)
 
-        proc_fh = filehandler("CONMON_PROC_JSON", hint="process debug json")
-        json.dump(
-            list(buildmon.proc_cache.values()),
-            proc_fh,
-            indent=2,
-        )
-        proc_fh.close()
+        with filehandler("CONMON_PROC_JSON", hint="process debug json") as proc_fh:
+            json.dump(
+                list(buildmon.proc_cache.values()),
+                proc_fh,
+                indent=2,
+            )
+        buildmon = None
 
         ref_log = parser.ref_log
         ref_log["translation_units"] = tu_list
@@ -401,7 +408,11 @@ def register_callback(process: psutil.Process, parser: ConanParser):
                 compiler=parser.compiler_type,
             ),
         )
-        buildmon = None
+        for line in re.findall(
+            r"(?m)(?:^|.*[^\w\n])(?:WARN|WARNING|ERROR)[^\w\n].*",
+            "\n".join(ref_log.get("stderr", ())),
+        ):
+            BLOG.warning(line)
 
     parser.callbacks.append(callback)
 
