@@ -464,9 +464,14 @@ def monitor(args: List[str]) -> int:
     # tell conan not to prompt for user input
     os.environ["CONAN_NON_INTERACTIVE"] = "1"
 
-    if not os.getenv("CONAN_TRACE_FILE"):
-        tmp_file, os.environ["CONAN_TRACE_FILE"] = tempfile.mkstemp()
+    trace_path = Path(os.getenv("CONAN_TRACE_FILE", "."))
+    if trace_path == Path("."):
+        tmp_file, tmp_name = tempfile.mkstemp()
+        trace_path = Path(tmp_name)
+        os.environ["CONAN_TRACE_FILE"] = tmp_name
         os.close(tmp_file)
+    elif not trace_path.is_absolute():
+        os.environ["CONAN_TRACE_FILE"] = str(trace_path.absolute())
 
     conan_version = check_conan()
     full_command = [sys.executable, "-m", "conans.conan", *args]
@@ -505,27 +510,25 @@ def monitor(args: List[str]) -> int:
     raw_fh.close()
 
     tracelog = []
-    if os.getenv("CONAN_TRACE_FILE"):
-        with open(os.environ["CONAN_TRACE_FILE"], encoding="utf8") as fh:
-            for line in fh.readlines():
-                action = json.loads(line)
-                if action["_action"] in {"REST_API_CALL", "UNZIP"}:
-                    continue
-                ref_id = action.get("_id")
-                if not ref_id:
-                    tracelog.append(action)
-                    continue
-                name, *_ = ref_id.split("/", maxsplit=1)
-                pkg_id = ref_id.split(":", maxsplit=1)
-                req = parser.log["requirements"].setdefault(name, {})
-                if len(pkg_id) == 2:
-                    req["package_id"] = pkg_id[1]
-                req.setdefault("actions", []).append(action["_action"])
+    if trace_path.exists():
+        for line in trace_path.read_text().splitlines():
+            action = json.loads(line)
+            if action["_action"] in {"REST_API_CALL", "UNZIP"}:
+                continue
+            ref_id = action.get("_id")
+            if not ref_id:
+                tracelog.append(action)
+                continue
+            name, *_ = ref_id.split("/", maxsplit=1)
+            pkg_id = ref_id.split(":", maxsplit=1)
+            req = parser.log["requirements"].setdefault(name, {})
+            if len(pkg_id) == 2:
+                req["package_id"] = pkg_id[1]
+            req.setdefault("actions", []).append(action["_action"])
 
-        with suppress(FileNotFoundError):
-            if "tmp" in os.environ["CONAN_TRACE_FILE"]:
-                os.unlink(os.environ["CONAN_TRACE_FILE"])
-                os.unlink(os.environ["CONAN_TRACE_FILE"] + ".lock")
+        if trace_path.name.startswith("tmp"):
+            trace_path.unlink(missing_ok=True)
+            Path(str(trace_path) + ".lock").unlink(missing_ok=True)
 
     parser.log.update(
         dict(
