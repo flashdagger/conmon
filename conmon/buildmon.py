@@ -54,6 +54,13 @@ class CompilerParser(argparse.ArgumentParser):
             action="store_true",
         )
         self.add_argument(
+            "-f",
+            help="specifying the output file format (nasm specific)",
+            dest="nasm_output",
+            default=None,
+            action="store",
+        )
+        self.add_argument(
             "-D", "-d", help="defines", dest="defines", action="append", default=[]
         )
         self.add_argument(
@@ -113,7 +120,7 @@ def identify_compiler(name: str) -> Optional[str]:
     if "cl" in parts:
         return "msvc"
 
-    if parts & {"gcc", "g", "cc", "c", "clang"}:
+    if parts & {"gcc", "g", "cc", "c", "clang", "nasm"}:
         return "gnu"
 
     return None
@@ -152,7 +159,7 @@ class BuildMonitor(Thread):
     def is_valid_tu(file: str) -> bool:
         path = Path(file)
         if (
-            path.suffix not in {".c", ".cpp", ".cxx", ".cc"}
+            path.suffix not in {".c", ".cpp", ".cxx", ".cc", ".asm"}
             or set(path.parts) & {"CMakeFiles", "cmake.tmp"}
             or re.match(r".*/cmake-[23].\d+/Modules/(CMake|Check)", path.as_posix())
         ):
@@ -225,10 +232,7 @@ class BuildMonitor(Thread):
     def parse_tus(self, proc: Dict) -> None:
         args, unknown_args = self.PARSER.parse_known_args(proc["cmdline"])
 
-        if args.cc_frontend:
-            return
-
-        if not args.compile_not_link:
+        if args.cc_frontend or not (args.compile_not_link or args.nasm_output):
             return
 
         data = dict(compiler=proc["exe"])

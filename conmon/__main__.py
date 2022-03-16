@@ -96,7 +96,7 @@ class ConanParser:
                 .*? # msbuild prints only the filename
             )?
             (?P<file>
-                [\-.\w/\\]+ (?(status) $ | \.(?:cpp|c)$ )
+                [\-.\w/\\]+ (?(status) $ | \.(?:asm|cpp|c)$ )
             )
     """
     )
@@ -167,7 +167,9 @@ class ConanParser:
         if not line:
             return
 
-        match = self.BUILD_STATUS_REGEX.fullmatch(line) or self.BUILD_STATUS_REGEX2.match(line)
+        match = self.BUILD_STATUS_REGEX.fullmatch(
+            line
+        ) or self.BUILD_STATUS_REGEX2.match(line)
         if match:
             status, file = match.groups()
             prefix = f"{status.strip()} " if status else ""
@@ -178,7 +180,9 @@ class ConanParser:
                 strip_left=True,
                 placeholder="...",
             )
-            output = re.sub(r"\.\.\.[^/\\]+(?=[/\\])", "...", output)  # shorten at path separator
+            output = re.sub(
+                r"\.\.\.[^/\\]+(?=[/\\])", "...", output
+            )  # shorten at path separator
             if self.warnings:
                 self.screen.print(
                     colorama.Fore.YELLOW + f"{self.warnings:4} warning(s)",
@@ -450,12 +454,21 @@ def register_callback(process: psutil.Process, parser: ConanParser):
         ref_log["translation_units"] = tu_list
 
         warnings = ref_log.setdefault("warnings", [])
+        build_stdout = "\n".join(ref_log["build"])
         warnings.extend(
             parse_compiler_warnings(
-                "\n".join(ref_log["build"]),
+                build_stdout,
                 compiler=parser.compiler_type,
             ),
         )
+        # NASM compiler is type GNU
+        if parser.compiler_type == "vs":
+            warnings.extend(
+                parse_compiler_warnings(
+                    build_stdout,
+                    compiler="gnu",
+                ),
+            )
         stderr_lines = ref_log.pop("stderr_lines", ())
         ref_log["stderr"] = list(chain(*stderr_lines))
 
