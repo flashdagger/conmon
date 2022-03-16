@@ -27,7 +27,13 @@ import colorama  # type: ignore
 import colorlog  # type: ignore
 import psutil  # type: ignore
 
-from conmon.utils import StopWatch, StrictConfigParser, ScreenWriter, AsyncPipeReader
+from conmon.utils import (
+    StopWatch,
+    StrictConfigParser,
+    ScreenWriter,
+    AsyncPipeReader,
+    shorten,
+)
 from . import __version__
 from .buildmon import BuildMonitor, LOG as PLOG
 from .compilers import (
@@ -71,7 +77,7 @@ class ConanParser:
     REF_PART_PATTERN = r"\w[\w\+\.\-]{1,50}"
     REF_REGEX = re.compile(
         rf"""(?x)
-        (?P<ref>
+            (?P<ref>
             (?P<name>{REF_PART_PATTERN})/
             (?P<version>{REF_PART_PATTERN})@?
             (
@@ -79,6 +85,28 @@ class ConanParser:
                 (?P<channel>{REF_PART_PATTERN})
              )?
          )
+        """
+    )
+    BUILD_STATUS_REGEX = re.compile(
+        r"""(?x)
+            (?:
+                (?P<status>
+                    \[[0-9\s/%]+] | \ +CC(?:LD)?(?=\ )
+                )?  # ninja, cmake or automake
+                .*? # msbuild prints only the filename
+            )?
+            (?P<file>
+                [\-.\w/\\]+ (?(status) $ | \.(?:cpp|c)$ )
+            )
+    """
+    )
+    BUILD_STATUS_REGEX2 = re.compile(
+        r"""(?x)
+            (?P<status>(?!))?
+            .*\ -c\ 
+            (?P<file>
+                [\-.\w/\\]+ \. (?:cpp|c) (?=\ ) 
+            )
         """
     )
     WARNING_REGEX = re.compile(
@@ -139,26 +167,22 @@ class ConanParser:
         if not line:
             return
 
-        match = re.fullmatch(
-            r"""(?xm)
-                    ^(?:
-                        (?P<progress>\[[0-9\s/%]+]\ )?  # from ninja or cmake
-                        .+\                             # e.g. Building or Linking
-                    )?
-                    (?P<file>[\-.\w/\\]+\.[acopx]{1,3})
-                    $
-            """,
-            line.lstrip(),
-        )
+        match = self.BUILD_STATUS_REGEX.fullmatch(line) or self.BUILD_STATUS_REGEX2.match(line)
         if match:
-            progress, file = match.groups()
-            if len(file) > 30:
-                file = f"...{file[-27:]}"
-            output = (progress or "") + file + " "
+            status, file = match.groups()
+            prefix = f"{status.strip()} " if status else ""
+            output = shorten(
+                file,
+                width=40,
+                template=f"{prefix}{{}} ",
+                strip_left=True,
+                placeholder="...",
+            )
+            output = re.sub(r"\.\.\.[^/\\]+(?=[/\\])", "...", output)  # shorten at path separator
             if self.warnings:
                 self.screen.print(
-                    colorama.Fore.YELLOW + f"{self.warnings:3} warning(s)",
-                    indent=35,
+                    colorama.Fore.YELLOW + f"{self.warnings:4} warning(s)",
+                    indent=40,
                 )
             self.warnings = 0
             self.screen.print(output, overwrite=True)
@@ -451,7 +475,9 @@ def register_callback(process: psutil.Process, parser: ConanParser):
         warning_output, stderr_lines = filter_compiler_warnings(
             stderr_lines, compiler=parser.compiler_type
         )
-        compiler_warnings = parse_compiler_warnings(warning_output, compiler=parser.compiler_type)
+        compiler_warnings = parse_compiler_warnings(
+            warning_output, compiler=parser.compiler_type
+        )
         cmake_warnings, stderr_lines = popwarnings(stderr_lines, parse_cmake_warnings)
         conan_warnings, stderr_lines = popwarnings(
             stderr_lines, parser.parse_conan_warnings
@@ -460,7 +486,7 @@ def register_callback(process: psutil.Process, parser: ConanParser):
 
         res_msg = "\n".join(chain(*stderr_lines)).rstrip()
         if res_msg:
-            LOG.warning("<stderr> %s", res_msg)
+            LOG.warning("[STDERR] %s", res_msg)
 
     parser.callbacks.append(callback)
 

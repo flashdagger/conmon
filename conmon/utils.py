@@ -162,3 +162,19 @@ def merge_mapping(mapping: Dict[Hashable, Set], value_key: str) -> List[Dict[str
         {**unfreeze_json_object(key), **{value_key: sort_if_set(value)}}
         for key, value in mapping.items()
     ]
+
+
+def shorten(
+    string: str, width: int, *, template="{}", strip_left=False, placeholder="[...]"
+):
+    full_text = template.format(string)
+    diff_size = width - len(full_text)
+    if diff_size >= 0:
+        return full_text
+    diff_size -= len(placeholder)
+    stripped_string = (
+        f"{placeholder}{string[-diff_size:]}"
+        if strip_left
+        else f"{string[:diff_size]}{placeholder}"
+    )
+    return template.format(stripped_string)
