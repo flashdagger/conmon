@@ -89,6 +89,27 @@ def parse_cmake_warnings(output: str) -> List[Dict[str, Any]]:
     return warnings
 
 
+def filter_compiler_warnings(
+    output: List[List[str]], compiler: str
+) -> Tuple[str, List[List[str]]]:
+    residue = []
+    parsed_output = []
+    compiler_regex = COMPILER_REGEX_MAP.get(compiler)
+
+    if not compiler_regex:
+        LOG.warning("filter_compiler_warnings: unknown type %r", compiler)
+        return "", output
+
+    for lines in output:
+        text = "\n".join(lines)
+        if compiler_regex.search(text):
+            parsed_output.append(text)
+        else:
+            residue.append(lines)
+
+    return "\n".join(parsed_output), residue
+
+
 def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
     stats: Dict[Tuple[str, str], int] = Counter()
     groupdict: Dict[str, Any]

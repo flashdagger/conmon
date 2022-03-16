@@ -10,11 +10,11 @@ import re
 import sys
 import tempfile
 from collections import defaultdict
-from contextlib import suppress
 from io import StringIO
 from itertools import chain
 from pathlib import Path
 from subprocess import PIPE, check_output, CalledProcessError
+from textwrap import shorten
 from typing import (
     Any,
     Dict,
@@ -31,7 +31,12 @@ import psutil  # type: ignore
 from conmon.utils import StopWatch, StrictConfigParser, ScreenWriter, AsyncPipeReader
 from . import __version__
 from .buildmon import BuildMonitor, LOG as PLOG
-from .compilers import LOG as BLOG, parse_compiler_warnings, parse_cmake_warnings
+from .compilers import (
+    LOG as BLOG,
+    parse_compiler_warnings,
+    parse_cmake_warnings,
+    filter_compiler_warnings,
+)
 
 LOG = logging.getLogger("CONMON")
 DECOLORIZE_REGEX = re.compile(r"[\u001b]\[\d{1,2}m", re.UNICODE)
@@ -136,10 +141,10 @@ class ConanParser:
             return
 
         match = re.fullmatch(
-            r"""(?x)
+            r"""(?xm)
                     ^(?:
                         (?P<progress>\[[0-9\s/%]+]\ )?  # from ninja or cmake
-                        [a-zA-Z ]+\                     # e.g. Building or Linking
+                        .+\                     # e.g. Building or Linking
                     )?
                     (?P<file>[\-.\w/\\]+\.[a-zA-Z]{1,3})
                     $
@@ -444,15 +449,19 @@ def register_callback(process: psutil.Process, parser: ConanParser):
 
             return parsed_warnings, residue
 
+        warning_output, stderr_lines = filter_compiler_warnings(
+            stderr_lines, compiler=parser.compiler_type
+        )
+        compiler_warnings = parse_compiler_warnings(warning_output, compiler=parser.compiler_type)
         cmake_warnings, stderr_lines = popwarnings(stderr_lines, parse_cmake_warnings)
         conan_warnings, stderr_lines = popwarnings(
             stderr_lines, parser.parse_conan_warnings
         )
-        warnings.extend((*cmake_warnings, *conan_warnings))
+        warnings.extend((*compiler_warnings, *cmake_warnings, *conan_warnings))
 
         res_msg = "\n".join(chain(*stderr_lines)).rstrip()
         if res_msg:
-            LOG.error(res_msg)
+            LOG.warning("<stderr> %s", shorten(res_msg, width=100, subsequent_indent="  > "))
 
     parser.callbacks.append(callback)
 
