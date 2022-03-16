@@ -14,7 +14,6 @@ from io import StringIO
 from itertools import chain
 from pathlib import Path
 from subprocess import PIPE, check_output, CalledProcessError
-from textwrap import shorten
 from typing import (
     Any,
     Dict,
@@ -144,9 +143,9 @@ class ConanParser:
             r"""(?xm)
                     ^(?:
                         (?P<progress>\[[0-9\s/%]+]\ )?  # from ninja or cmake
-                        .+\                     # e.g. Building or Linking
+                        .+\                             # e.g. Building or Linking
                     )?
-                    (?P<file>[\-.\w/\\]+\.[a-zA-Z]{1,3})
+                    (?P<file>[\-.\w/\\]+\.[acopx]{1,3})
                     $
             """,
             line.lstrip(),
@@ -461,7 +460,7 @@ def register_callback(process: psutil.Process, parser: ConanParser):
 
         res_msg = "\n".join(chain(*stderr_lines)).rstrip()
         if res_msg:
-            LOG.warning("<stderr> %s", shorten(res_msg, width=100, subsequent_indent="  > "))
+            LOG.warning("<stderr> %s", res_msg)
 
     parser.callbacks.append(callback)
 

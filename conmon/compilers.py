@@ -41,11 +41,11 @@ COMPILER_REGEX_MAP = {
     "vs": re.compile(
         r"""(?xm)
         (?P<file>^[^\n(]+)
-        ( 
+        (
           \( (?P<line>\d+) (?:, (?P<column>\d+) )? \)
-        )? \ ?:\ 
-        (?P<severity>[a-z\s]+)  \ 
-        (?P<category>[A-Z]+\d+):\ 
+        )? \ ?:\ #
+        (?P<severity>[a-z\s]+)  \ #
+        (?P<category>[A-Z]+\d+):\ #
         (?P<info>.+?)
         (\ \[ (?P<project>[^]]+) ])? \n
         """
@@ -113,7 +113,7 @@ def filter_compiler_warnings(
 def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
     stats: Dict[Tuple[str, str], int] = Counter()
     groupdict: Dict[str, Any]
-    warnings = []
+    warnings: List[Dict[str, Any]] = []
     keyset = set()
     ident_set = set()
     compiler_regex = COMPILER_REGEX_MAP.get(compiler)
@@ -135,8 +135,8 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
         if severity not in {"warning", "error", "fatal error"}:
             continue
 
-        key = groupdict["category"] or "no_category"
-        stats[(severity, key)] += 1
+        key = (severity, groupdict["category"] or "no-category")
+        stats[key] += 1
 
         if key not in keyset:
             LOG.log(log_level(severity), match.group().rstrip())
@@ -144,7 +144,7 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
 
     total_stats = ((key[0], key[1], stats[key]) for key in sorted(stats))
     for severity, stats_iter in groupby(total_stats, key=lambda item: item[0]):
-        stat_list = list(stat for stat in stats_iter)
+        stat_list: List[Any] = list(stat for stat in stats_iter)
         LOG.info(
             "Compilation issued %3s %s(s)",
             sum(key[-1] for key in stat_list),
