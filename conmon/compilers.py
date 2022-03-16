@@ -111,20 +111,18 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
         severity = groupdict["severity"]
         warnings.append(groupdict)
 
-        key = groupdict["category"] or ":".join((groupdict["file"], groupdict["info"]))
-        if key:
-            stats[(severity, key)] += 1
+        if severity not in {"warning", "error", "fatal error"}:
+            continue
 
-        if severity in {"warning", "error", "fatal error", "note"} and (
-            key is None or key not in keyset
-        ):
+        key = groupdict["category"] or "no_category"
+        stats[(severity, key)] += 1
+
+        if key not in keyset:
             LOG.log(log_level(severity), match.group().rstrip())
             keyset.add(key)
 
     total_stats = ((key[0], key[1], stats[key]) for key in sorted(stats))
     for severity, stats_iter in groupby(total_stats, key=lambda item: item[0]):
-        if severity in {"note"}:
-            continue
         stat_list = list(stat for stat in stats_iter)
         LOG.info(
             "Compilation issued %3s %s(s)",
