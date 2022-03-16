@@ -8,12 +8,16 @@ LOG = logging.getLogger("BUILD")
 
 COMPILER_REGEX_MAP = {
     "cmake": re.compile(
-        r"^CMake\ (?P<severity>\w+)"
-        r"(?:\ (?:in|at)\ (?P<file>(?:[A-za-z]:)?[^\n:]+)"
-        r"(?::(?P<line>\d+)\ \((?P<function>\w+)\))?)?:\n"
-        r"(?P<info>(?:\ +[^\n]+\n\n?)+)"
-        r"(?P<context>Call\ Stack[^\n]+(?:\n\ +[^\n]+)+)?",
-        re.VERBOSE | re.MULTILINE,
+        r"""(?xm)
+            ^CMake\ (?P<severity>\w+)
+            (?:
+                \ (?:in|at)\ (?P<file>(?:[A-za-z]:)?[^\n:]+)
+                (?::(?P<line>\d+)\ \((?P<function>\w+)\))?
+             )?:
+             \n
+            (?P<info> (?:\ +[^\n]+\n{1,2})+ )
+            (?P<context>Call\ Stack[^\n]+ (?:\n\ +[^\n]+)+)?
+        """
     ),
     "clang-cl": re.compile(
         r"^(?P<context>(In\ file\ included\ from\ [^\n]+:\d+:\n)*)"
@@ -26,28 +30,38 @@ COMPILER_REGEX_MAP = {
         re.VERBOSE | re.MULTILINE,
     ),
     "gnu": re.compile(
-        r"^(?P<context>(In\ file\ included\ from\ [^\n]+:\d+:\n)*"
-        r"|((?:[A-za-z]:)?[^\n:]+:\ In\ function\ [^:]+:\n)?)"
-        r"(?P<file>(?:[A-za-z]:)?[^\n:]+):"
-        r"(?P<line>\d+):"
-        r"(?:(?P<column>\d+):)?\s"
-        r"(?P<severity>[a-z\s]+):\s"
-        r"(?P<info>.*?)"
-        r"(\s\[(?P<category>[^]]+)])?"
-        r"\n"
-        r"((?P<hint>[^\n]+\n[\s|~]*\^[\s~]*)\n)?",
-        re.VERBOSE | re.MULTILINE,
+        r"""(?xm)
+             ^(?P<context>
+                (In\ file\ included\ from\ [^\n]+:\d+:\n)*
+              | (
+                  (?:[A-za-z]:)? [^\n:]+:\ In\ function\ [^:]+:\n
+                )?
+              )
+             (?P<file>(?:[A-za-z]:)?[^\n:]+):
+             (?P<line>\d+):
+             (?:(?P<column>\d+):)?\ 
+             (?P<severity>[a-z\s]+):\ 
+             (?P<info>.*?)
+             (\ \[(?P<category>[^]]+)])?
+             \n
+             (
+                (?P<hint>[^\n]+\n[\s|~]*\^[\s~]*)
+                \n
+             )?
+        """
     ),
     "vs": re.compile(
         r"""(?xm)
         (?P<file>^[^\n(]+)
         (
           \( (?P<line>\d+) (?:, (?P<column>\d+) )? \)
-        )? \ ?:\ #
+        )? 
+        \ ?:\ #
         (?P<severity>[a-z\s]+)  \ #
         (?P<category>[A-Z]+\d+):\ #
         (?P<info>.+?)
-        (\ \[ (?P<project>[^]]+) ])? \n
+        (\ \[ (?P<project>[^]]+) ])?
+        \n
         """
     ),
 }
