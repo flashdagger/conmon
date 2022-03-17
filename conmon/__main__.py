@@ -103,7 +103,7 @@ class ConanParser:
     )
     BUILD_STATUS_REGEX2 = re.compile(
         r"""(?x)
-            (?P<status>(?!))?
+            (?P<status>(?!))? # should never match
             .*\ -c\ 
             (?P<file>
                 [\-.\w/\\]+ \. (?:cpp|c) (?=\ ) 
@@ -112,10 +112,21 @@ class ConanParser:
     )
     WARNING_REGEX = re.compile(
         rf"""
-        (?:{REF_REGEX.pattern}:\ +)?
-        (?P<severity>ERROR|WARN):\ +(?P<info>.*)
+        ^(?:{REF_REGEX.pattern}:\ +)?
+        (?P<severity>ERROR|WARN):\ +
+        (?P<info>
+            .*
+            (?:
+                \n 
+                (?! 
+                    (?:[^:]+:\ +)?
+                    (?:ERROR|WARN):\ + 
+                )
+                .+
+            )*
+        )
         """.replace(
-            "(?:(?x)", "(?x)(?:"
+            "(?:(?x)", "(?xm)(?:"
         ),
         re.VERBOSE,
     )
@@ -359,16 +370,11 @@ class ConanParser:
                 assert callable(callback)
                 callback(self.current_state, self.ref, False)
 
-        for lines in self.log.pop("stderr_lines"):
+        for lines in self.log.pop("stderr_lines", ()):
             self.log.setdefault("stderr", []).extend(lines)
-            errmsg = "\n".join(lines)
-            if not errmsg:
-                continue
-            match = self.WARNING_REGEX.search(errmsg)
-            if match and match.group("severity") == "ERROR":
-                LOG.error(errmsg)
-            else:
-                LOG.warning(errmsg)
+            for match in self.WARNING_REGEX.finditer("\n".join(lines)):
+                loglevel = getattr(logging, match.group("severity"), logging.WARNING)
+                LOG.log(loglevel, match.group("info"))
 
     def parse_conan_warnings(self, output: str) -> List[Dict[str, Any]]:
         warnings = []
