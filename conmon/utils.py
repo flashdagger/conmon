@@ -5,6 +5,7 @@ import sys
 import time
 from configparser import ConfigParser
 from contextlib import suppress
+from io import TextIOBase
 from queue import Queue
 from threading import Thread
 from typing import Hashable, Any, Dict, Set, List, Iterable, TypeVar, Iterator
@@ -66,9 +67,6 @@ class ScreenWriter:
     def __init__(self):
         self._last_line = ""
 
-    def reset(self):
-        self._last_line = ""
-
     @staticmethod
     def fit_width(line: str):
         size = columns = len(line)
@@ -79,6 +77,7 @@ class ScreenWriter:
     def reset(self):
         if self._last_line:
             print(self.CLEAR_LINE + self.RESET_LINE, end="")
+            self._last_line = ""
 
     def print(self, line: str, overwrite=False, indent=-1):
         append = indent >= 0
@@ -108,12 +107,20 @@ class AsyncPipeReader:
         self.thread.start()
 
     @staticmethod
-    def reader(pipe, queue):
+    def reader(pipe: TextIOBase, queue: Queue) -> None:
         with suppress(ValueError):
             for line in iter(pipe.readline, ""):
                 queue.put(line)
 
-    def readlines(self):
+    @property
+    def exhausted(self) -> bool:
+        return self.queue.empty() and not self.thread.is_alive()
+
+    @property
+    def not_empty(self) -> bool:
+        return not self.queue.empty()
+
+    def readlines(self) -> Iterator[str]:
         while not self.queue.empty():
             yield self.queue.get()
 

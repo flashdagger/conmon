@@ -19,8 +19,8 @@ from typing import (
     Dict,
     Iterable,
     List,
-    Mapping,
     Optional,
+    Set,
 )
 
 import colorama  # type: ignore
@@ -71,7 +71,98 @@ def filehandler(env, mode="w", hint="report"):
         template = f"hint: use {fmt!r} to save {{}}"
         LOG_HINTS.setdefault(template.format(env, hint_path, hint))
 
-    return open(path or os.devnull, mode, encoding="utf8")
+    return open(path or os.devnull, mode, encoding="utf-8")
+
+
+class State:
+    _ACTIVE: Set["State"] = set()  # currently active
+    _EXECUTE: Set["State"] = set()  # can be executed
+
+    def __init__(self, parser: "ConanParser"):
+        self._EXECUTE.add(self)
+        self._parser = parser
+
+    @classmethod
+    def all_active(cls):
+        return tuple(cls._ACTIVE)
+
+    @classmethod
+    def all_states(cls):
+        return tuple(cls._EXECUTE)
+
+    @property
+    def is_active(self) -> bool:
+        return self in self._ACTIVE
+
+    def _deactivate(self, final=False):
+        if not self.is_active:
+            LOG.debug("%s already deactivated", self.__class__.__name__)
+            return
+
+        self._ACTIVE.remove(self)
+        if final:
+            self._EXECUTE.remove(self)
+
+    def deactivate(self):
+        self._deactivate(final=True)
+
+    @classmethod
+    def deactivate_all(cls):
+        for state in tuple(cls._ACTIVE):
+            state.deactivate()
+
+    def _activate(self):
+        if self.is_active:
+            LOG.debug("%s already active", self.__class__.__name__)
+            return
+
+        self.deactivate_all()
+        self._ACTIVE.add(self)
+
+    def _activated(self, ref: Optional[str], line: str) -> bool:
+        raise NotImplementedError
+
+    def _process(self, ref: Optional[str], line: str) -> None:
+        raise NotImplementedError
+
+    def process(self, ref: Optional[str], line: str) -> None:
+        if self.is_active:
+            self._process(ref, line)
+        elif self._activated(ref, line):
+            self._activate()
+
+
+class Config(State):
+    def __init__(self, parser: "ConanParser"):
+        super().__init__(parser)
+        self.lines = []
+
+    def _activated(self, ref: Optional[str], line: str) -> bool:
+        if line == "Configuration:":
+            self._parser.log.setdefault("config", {})
+            return True
+        return False
+
+    def _process(self, ref: Optional[str], line: str) -> None:
+        if (
+            "[env]" in self.lines
+            and not re.match(r"\w+=", line)
+            or not re.match(r"(\[[\w.-]+]$)|[^\s:]+\s*[:=]", line)
+        ):
+            self.deactivate()
+        else:
+            self.lines.append(line)
+
+    def _deactivate(self, final=False):
+        mapping = self._parser.log["config"]
+        buffer = StringIO("\n".join(self.lines))
+        config = StrictConfigParser()
+        config.read_file(buffer, "profile.ini")
+
+        for section in config.sections():
+            mapping[section] = dict(config.items(section))
+
+        super()._deactivate(final=True)
 
 
 class ConanParser:
@@ -105,9 +196,9 @@ class ConanParser:
     BUILD_STATUS_REGEX2 = re.compile(
         r"""(?x)
             (?P<status>(?!))? # should never match
-            .*\ -c\ 
+            .*\ -c\           # compile but don't link
             (?P<file>
-                [\-.\w/\\]+ \. (?:cpp|c) (?=\ ) 
+                [\-.\w/\\]+ \. (?:cpp|c) (?=\ )
             )
         """
     )
@@ -121,10 +212,6 @@ class ConanParser:
     SEVERITY_REGEX = re.compile(r"(?xm).+?:\ (?P<severity>warning|error):?\ [a-zA-Z]")
 
     STATES = {
-        "configuration": {
-            "start": lambda line: line == "Configuration:",
-            "end": lambda line: not (re.match(r"(\[[\w.-]+]$)|[^\s:]+\s*[:=]", line)),
-        },
         "build": {
             "start": lambda line: line == "Calling build()",
             "end": lambda line: re.match(r"Package '(\w+)' built$", line),
@@ -151,6 +238,7 @@ class ConanParser:
         self.warnings = 0
         self.callbacks = []
         self._resolved = False
+        Config(self)
 
     def build(self, line: str):
         if self.state_start:
@@ -162,7 +250,6 @@ class ConanParser:
         if self.state_end:
             self.ref_log.setdefault("stdout", []).append(line)
             self.screen.print("", overwrite=True)
-            sys.stdout.flush()
             return
 
         if not line:
@@ -215,18 +302,6 @@ class ConanParser:
                 self.ref_log["package_id"] = match.group(1)
         self.ref_log.setdefault("package", []).append(line)
 
-    @staticmethod
-    def parse_config(content: str) -> Mapping[str, Any]:
-        mapping = {}
-        buffer = StringIO(content)
-        config = StrictConfigParser()
-        config.read_file(buffer, "profile.ini")
-
-        for section in config.sections():
-            mapping[section] = dict(config.items(section))
-
-        return mapping
-
     @property
     def compiler_type(self) -> str:
         profile = self.log.get("config", {})
@@ -244,27 +319,6 @@ class ConanParser:
             compiler_type = "unknown"
 
         return compiler_type
-
-    def config(self, line):
-        if self.state_start:
-            assert line == "Configuration:"
-            return
-
-        if (
-            "[env]" in self.log["config"].get("profile", ())
-            and line
-            and "=" not in line
-        ):
-            self.state_end = True
-
-        if self.state_end:
-            profile = self.log["config"].pop("profile")
-            self.log["config"] = self.parse_config("\n".join(profile))
-            self.current_state = None
-            if line:
-                self.process(line)
-        else:
-            self.log["config"].setdefault("profile", []).append(line)
 
     def parse_reference(self, line) -> str:
         ref_match = re.fullmatch(
@@ -330,9 +384,11 @@ class ConanParser:
         rest = self.parse_reference(line)
 
         self.handle_errors(error_lines)
-
         if self.ref and self.ref in line and "is locked" in line:
             LOG.warning(line)
+
+        for state in State.all_states():
+            state.process(self.ref, rest)
 
         self.state_start = False
         self.state_end = False
@@ -350,9 +406,8 @@ class ConanParser:
             self.build(rest)
         elif self.current_state == "package":
             self.package(rest)
-        elif self.current_state == "configuration":
-            assert line == rest
-            self.config(rest)
+        elif State.all_active():
+            pass
         elif self.ref:
             key = self.current_state or "stdout"
             self.ref_log.setdefault(key, []).append(rest)
@@ -376,6 +431,7 @@ class ConanParser:
             self.current_state = None
 
     def finalize(self, errs: List[str]):
+        State.deactivate_all()
         self.screen.print("")
         self.handle_errors(errs)
 
@@ -551,7 +607,7 @@ def monitor(args: List[str]) -> int:
 
     tracelog = []
     if trace_path.exists():
-        for line in trace_path.read_text().splitlines():
+        for line in trace_path.read_text(encoding="utf-8").splitlines():
             action = json.loads(line)
             if action["_action"] in {"REST_API_CALL", "UNZIP"}:
                 continue
