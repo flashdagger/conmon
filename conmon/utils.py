@@ -7,9 +7,9 @@ from configparser import ConfigParser
 from contextlib import suppress
 from queue import Queue
 from threading import Thread
-from typing import Hashable, Any, Dict, Set, List
+from typing import Hashable, Any, Dict, Set, List, Iterable, TypeVar, Iterator
 
-import colorama
+import colorama  # type: ignore
 
 
 class StopWatch:
@@ -178,3 +178,15 @@ def shorten(
         else f"{string[:diff_size]}{placeholder}"
     )
     return template.format(stripped_string)
+
+
+T = TypeVar("T", bound=Hashable)
+
+
+def unique(items: Iterable[T]) -> Iterator[T]:
+    seen = set()
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        yield item

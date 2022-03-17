@@ -143,14 +143,16 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
             continue
         ident_set.add(ident)
         to_int(groupdict, "line", "column")
-        groupdict["from"] = "compiler"
+        groupdict["from"] = (
+            "autotools" if groupdict.get("file") in {"configure.ac"} else "compiler"
+        )
         severity = groupdict["severity"]
         warnings.append(groupdict)
 
         if severity not in {"warning", "error", "fatal error"}:
             continue
 
-        key = (severity, groupdict["category"] or "no-category")
+        key = (severity, groupdict["category"] or "<no-category>")
         stats[key] += 1
 
         if key not in keyset:

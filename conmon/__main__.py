@@ -33,6 +33,7 @@ from conmon.utils import (
     ScreenWriter,
     AsyncPipeReader,
     shorten,
+    unique,
 )
 from . import __version__
 from .buildmon import BuildMonitor, LOG as PLOG
@@ -497,7 +498,9 @@ def register_callback(process: psutil.Process, parser: ConanParser):
         )
         warnings.extend((*compiler_warnings, *cmake_warnings, *conan_warnings))
 
-        res_msg = "\n".join(chain(*stderr_lines)).rstrip()
+        filtered = unique(tuple(lines) for lines in stderr_lines)
+        res_msg = "\n---\n".join(("\n".join(lines) for lines in filtered))
+        res_msg = "\n" + res_msg.strip("\n")
         if res_msg:
             LOG.warning("[STDERR] %s", res_msg)
 
