@@ -21,6 +21,7 @@ from typing import (
     List,
     Optional,
     Set,
+    Type,
 )
 
 import colorama  # type: ignore
@@ -78,9 +79,13 @@ class State:
     _ACTIVE: Set["State"] = set()  # currently active
     _EXECUTE: Set["State"] = set()  # can be executed
 
-    def __init__(self, parser: "ConanParser"):
-        self._EXECUTE.add(self)
-        self._parser = parser
+    def __init__(self, _parser: "ConanParser"):
+        pass
+
+    @classmethod
+    def add(cls, state_cls: Type["State"], *args):
+        assert state_cls not in {type(state) for state in cls._EXECUTE}
+        cls._EXECUTE.add(state_cls(*args))
 
     @classmethod
     def all_active(cls):
@@ -104,7 +109,7 @@ class State:
             self._EXECUTE.remove(self)
 
     def deactivate(self):
-        self._deactivate(final=True)
+        self._deactivate(final=False)
 
     @classmethod
     def deactivate_all(cls):
@@ -135,13 +140,11 @@ class State:
 class Config(State):
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
-        self.lines = []
+        self.lines: List[str] = []
+        self.log = parser.log.setdefault("config", {})
 
     def _activated(self, ref: Optional[str], line: str) -> bool:
-        if line == "Configuration:":
-            self._parser.log.setdefault("config", {})
-            return True
-        return False
+        return line == "Configuration:"
 
     def _process(self, ref: Optional[str], line: str) -> None:
         if (
@@ -154,15 +157,42 @@ class Config(State):
             self.lines.append(line)
 
     def _deactivate(self, final=False):
-        mapping = self._parser.log["config"]
         buffer = StringIO("\n".join(self.lines))
         config = StrictConfigParser()
         config.read_file(buffer, "profile.ini")
 
         for section in config.sections():
-            mapping[section] = dict(config.items(section))
+            self.log[section] = dict(config.items(section))
 
         super()._deactivate(final=True)
+
+
+class Package(State):
+    def __init__(self, parser: "ConanParser"):
+        super().__init__(parser)
+        self.parser = parser
+        self.log = parser.log
+
+    def _activated(self, ref: Optional[str], line: str) -> bool:
+        if line == "Calling package()":
+            self.parser.screen.print(f"Packaging {ref}")
+            self.log = self.parser.ref_log
+            self.log.setdefault("stdout", []).append(line)
+            return True
+        return False
+
+    def _process(self, ref: Optional[str], line: str) -> None:
+        match = re.match(r"(?P<prefix>[\w ]+) '?(?P<id>[a-z0-9]{32,40})(?:[' ]|$)", line)
+        if not match:
+            self.log.setdefault("package", []).append(line)
+            return
+
+        if match.group("prefix") == "Created package revision":
+            self.log["package_revision"] = match.group("id")
+            self.deactivate()
+            return
+
+        self.log["package_id"] = match.group("id")
 
 
 class ConanParser:
@@ -216,14 +246,6 @@ class ConanParser:
             "start": lambda line: line == "Calling build()",
             "end": lambda line: re.match(r"Package '(\w+)' built$", line),
         },
-        "export": {
-            "start": lambda line: re.match(r"^exports[:_]", line),
-            "end": lambda line: not re.match(r"^exports[:_]", line),
-        },
-        "package": {
-            "start": lambda line: line == "Calling package()",
-            "end": lambda line: re.match(r"^Created package revision ", line),
-        },
     }
 
     def __init__(self):
@@ -238,7 +260,8 @@ class ConanParser:
         self.warnings = 0
         self.callbacks = []
         self._resolved = False
-        Config(self)
+        State.add(Config, self)
+        State.add(Package, self)
 
     def build(self, line: str):
         if self.state_start:
@@ -288,19 +311,6 @@ class ConanParser:
             elif info:
                 self.screen.print(info, indent=0)
         self.ref_log["build"].append(line)
-
-    def package(self, line: str):
-        if self.state_start:
-            self.screen.print(f"Packaging {self.ref} ")
-            self.ref_log.setdefault("stdout", []).append(line)
-            return
-        match = re.match(r".*?([0-9a-f]{32,40})", line)
-        if match:
-            if "package revision" in match.group():
-                self.ref_log["package_revision"] = match.group(1)
-            else:
-                self.ref_log["package_id"] = match.group(1)
-        self.ref_log.setdefault("package", []).append(line)
 
     @property
     def compiler_type(self) -> str:
@@ -404,8 +414,6 @@ class ConanParser:
         match_download = re.match(r"Downloading conan\w+\.[a-z]{2,3}$", rest)
         if self.current_state == "build":
             self.build(rest)
-        elif self.current_state == "package":
-            self.package(rest)
         elif State.all_active():
             pass
         elif self.ref:
