@@ -37,12 +37,13 @@ COMPILER_REGEX_MAP = {
                   (?:[A-za-z]:)? [^\n:]+:\ In\ function\ [^:]+:\n
                 )?
               )
+              \ *
              (?P<file>(?:[A-za-z]:)?[^\n:]+):
              (?P<line>\d+):
              (?:(?P<column>\d+):)?\ 
              (?P<severity>[a-z\s]+):\ 
              (?P<info>.*?)
-             (\ \[(?P<category>[^]]+)])?
+             (\ \[(?P<category>[\w+-]+)])?
              \n
              (
                 (?P<hint>[^\n]+\n[\s|~]*\^[\s~]*)

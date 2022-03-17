@@ -13,7 +13,7 @@ output = [
     "src/main/src/Em_FilteringQmFu.c:266:5: warning: implicit declaration of function \u2018memset\u2019 [-Wimplicit-function-declaration]",
     "     memset(&reicevedSignals, 0, sizeof(reicevedSignals));",
     "     ^~~~~~",
-    r"C:\source_subfolder\source\common\x86\seaintegral.asm:92: warning: improperly calling multi-line macro `SETUP_STACK_POINTER' with 0 parameters [-w+macro-params-legacy]",
+    r" C:\source_subfolder\source\common\x86\seaintegral.asm:92: warning: improperly calling multi-line macro `SETUP_STACK_POINTER' with 0 parameters [-w+macro-params-legacy]",
     "some text",
 ]
 

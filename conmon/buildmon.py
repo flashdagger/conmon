@@ -19,8 +19,15 @@ LOG = logging.getLogger("BUILDMON")
 
 
 class CompilerParser(argparse.ArgumentParser):
-    IGNORE_FLAGS_LONG = {"-diagnostics", "-nologo", "-showIncludes"}
-    IGNORE_FLAGS_SHORT = {"-s", "-TP", "-TC", "-FS"}
+    IGNORED_FLAGS = {
+        "-diagnostics",
+        "-nologo",
+        "-showIncludes",
+        "-s",
+        "-TP",
+        "-TC",
+        "-FS",
+    }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, allow_abbrev=False, **kwargs)
@@ -41,7 +48,6 @@ class CompilerParser(argparse.ArgumentParser):
         )
         self.add_argument(
             "-I",
-            "-i",
             help="include paths",
             dest="includes",
             action="append",
@@ -61,46 +67,39 @@ class CompilerParser(argparse.ArgumentParser):
             action="store",
         )
         self.add_argument(
-            "-D", "-d", help="defines", dest="defines", action="append", default=[]
+            "-D", help="defines", dest="defines", action="append", default=[]
         )
         self.add_argument(
-            "-U", "-u", help="undefines", dest="undefines", action="append", default=[]
+            "-U", help="undefines", dest="undefines", action="append", default=[]
         )
         self.add_argument(
             "-cc1", help="compiler frontend", dest="cc_frontend", action="store_true"
         )
 
     def cleanup_args(self, args):
-        options = set(self.IGNORE_FLAGS_LONG)
+        options = set()
 
         for action in self._actions:
             options.update(set(action.option_strings))
             if isinstance(action.default, list):
                 action.default.clear()
 
-        options = {option.lower() for option in options if not option.startswith("--")}
+        options = {
+            option
+            for option in options
+            if not option.startswith("--") and option[1].islower()
+        }
         options = tuple(sorted(options, reverse=True, key=len))
 
         clean_args = []
         unknown_args = []
         for arg in args:
-            if arg in self.IGNORE_FLAGS_SHORT:
+            if arg in self.IGNORED_FLAGS:
                 continue
             for option in options:
-                if not arg.lower().startswith(option):
-                    continue
-                prefix, rest = arg[: len(option)], arg[len(option) :]
-                if prefix in self.IGNORE_FLAGS_LONG:
-                    break
-                if rest.startswith("-"):
+                if arg.startswith(option) and arg != option:
                     unknown_args.append(arg)
                     break
-                assert prefix.lower() == option
-                if rest:
-                    clean_args.extend((prefix, rest))
-                else:
-                    clean_args.append(arg)
-                break
             else:
                 clean_args.append(arg)
 
