@@ -119,6 +119,7 @@ class ConanParser:
         ),
         re.VERBOSE,
     )
+    SEVERITY_REGEX = re.compile(r"(?xm).+?:\ (?P<severity>warning|error):?\ [a-zA-Z]")
 
     STATES = {
         "configuration": {
@@ -192,10 +193,8 @@ class ConanParser:
             self.warnings = 0
             self.screen.print(output, overwrite=True)
         else:
-            match = re.match(
-                r"(?:^|.*?\s)(warning|error)[:\s]", line, flags=re.IGNORECASE
-            )
-            info = match.group(1)[0].upper() if match else ""
+            match = self.SEVERITY_REGEX.match(line)
+            info = match.group("severity")[0].upper() if match else ""
             if info == "E":
                 self.screen.print(colorama.Fore.RED + f"{info} {line}")
             elif info == "W":
@@ -501,7 +500,7 @@ def register_callback(process: psutil.Process, parser: ConanParser):
         filtered = unique(tuple(lines) for lines in stderr_lines)
         res_msg = "\n---\n".join(("\n".join(lines) for lines in filtered))
         res_msg = "\n" + res_msg.strip("\n")
-        if res_msg:
+        if res_msg.strip():
             LOG.warning("[STDERR] %s", res_msg)
 
     parser.callbacks.append(callback)
