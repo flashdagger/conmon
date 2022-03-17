@@ -76,6 +76,10 @@ class ScreenWriter:
             (columns, _lines), _ = os.get_terminal_size(), columns
         return line[: min(size, columns - 1)]
 
+    def reset(self):
+        if self._last_line:
+            print(self.CLEAR_LINE + self.RESET_LINE, end="")
+
     def print(self, line: str, overwrite=False, indent=-1):
         append = indent >= 0
         spaces = " " * max(0, indent - len(self._last_line)) if append else ""

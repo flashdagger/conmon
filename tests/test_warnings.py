@@ -78,12 +78,13 @@ def test_gnu_hint():
 
 
 def test_conan_warning():
-    parser = ConanParser()
-    warnings = parser.parse_conan_warnings("libjpeg/1.2.3: WARN: package is corrupted")
-    assert len(warnings) == 1
-    assert warnings[0] == {
-        "from": "conan",
+    match = ConanParser.WARNING_REGEX.fullmatch(
+        "libjpeg/1.2.3: WARN: package is corrupted"
+    )
+    assert match
+    expected = {
         "ref": "libjpeg/1.2.3",
-        "severity": "warning",
+        "severity": "WARN",
         "info": "package is corrupted",
     }
+    assert {key: match.group(key) for key in expected.keys()} == expected
