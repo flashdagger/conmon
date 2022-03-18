@@ -83,9 +83,11 @@ class State:
         pass
 
     @classmethod
-    def add(cls, state_cls: Type["State"], *args):
+    def add(cls, state_cls: Type["State"], *args) -> "State":
         assert state_cls not in {type(state) for state in cls._EXECUTE}
-        cls._EXECUTE.add(state_cls(*args))
+        state = state_cls(*args)
+        cls._EXECUTE.add(state)
+        return state
 
     @classmethod
     def all_active(cls):
@@ -182,7 +184,9 @@ class Package(State):
         return False
 
     def _process(self, ref: Optional[str], line: str) -> None:
-        match = re.match(r"(?P<prefix>[\w ]+) '?(?P<id>[a-z0-9]{32,40})(?:[' ]|$)", line)
+        match = re.match(
+            r"(?P<prefix>[\w ]+) '?(?P<id>[a-z0-9]{32,40})(?:[' ]|$)", line
+        )
         if not match:
             self.log.setdefault("package", []).append(line)
             return
@@ -360,17 +364,17 @@ class ConanParser:
         groupdict = match.groupdict()
         return self.log["requirements"].setdefault(groupdict["name"], groupdict)
 
-    def handle_errors(self, lines):
+    def handle_errors(self, lines, final=False):
         processed = []
         residue = []
         loglevel = logging.WARNING
 
         def flush():
             if processed:
-                self.ref_log.setdefault("stderr", []).extend(processed)
                 self.screen.reset()
                 LOG.log(loglevel, "\n".join(processed).strip("\n"))
 
+        stderr = self.ref_log.setdefault("stderr", [])
         for line in lines:
             line = line.rstrip()
             match = self.WARNING_REGEX.match(line)
@@ -380,8 +384,10 @@ class ConanParser:
                 loglevel = getattr(logging, severity, logging.WARNING)
                 prefix = f"{ref}: " if ref else ""
                 processed = [f"{prefix}{info}"]
-            elif processed:
+                stderr.append(line)
+            elif processed or final:
                 processed.append(line)
+                stderr.append(line)
             else:
                 residue.append(line)
 
@@ -440,13 +446,13 @@ class ConanParser:
 
     def finalize(self, errs: List[str]):
         State.deactivate_all()
-        self.screen.print("")
-        self.handle_errors(errs)
 
         if self.current_state:
             for callback in self.callbacks:
                 assert callable(callback)
                 callback(self.current_state, self.ref, False)
+
+        self.handle_errors(errs, final=True)
 
 
 def check_conan() -> str:
@@ -605,7 +611,6 @@ def monitor(args: List[str]) -> int:
         parser.process(DECOLORIZE_REGEX.sub("", line), error_lines)
 
     _, errors = process.communicate(input=None, timeout=None)
-    assert not errors
     returncode = process.wait()
 
     errors = [line.rstrip() for line in stderr.readlines()]
