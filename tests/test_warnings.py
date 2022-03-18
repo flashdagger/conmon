@@ -6,7 +6,7 @@ import textwrap
 import pytest
 
 from conmon.__main__ import ConanParser
-from conmon.compilers import COMPILER_REGEX_MAP, parse_compiler_warnings
+from conmon.compilers import WarningRegex, parse_compiler_warnings
 
 output = [
     "src/main/src/Em_FilteringQmFu.c: In function \u2018Em_FilteringQmFu_processSensorSignals\u2019:",
@@ -45,7 +45,7 @@ dataset = [
         ],
         id="gnu",
     ),
-    pytest.param([], id="vs"),
+    pytest.param([], id="msvc"),
     pytest.param([], id="clang-cl"),
     pytest.param([], id="cmake"),
 ]
@@ -56,7 +56,7 @@ def test_warnings_regex(expected, request):
     compiler = request.node.callspec.id
     matches = list(
         match.groupdict()
-        for match in re.finditer(COMPILER_REGEX_MAP[compiler], "\n".join(output))
+        for match in re.finditer(WarningRegex.get(compiler), "\n".join(output))
     )
     assert matches == expected
 

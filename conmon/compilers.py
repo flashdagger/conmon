@@ -2,12 +2,13 @@ import logging
 import re
 from collections import Counter
 from itertools import groupby
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Pattern
 
 LOG = logging.getLogger("BUILD")
 
-COMPILER_REGEX_MAP = {
-    "cmake": re.compile(
+
+class WarningRegex:
+    CMAKE = re.compile(
         r"""(?xm)
             ^CMake\ (?P<severity>\w+)
             (?:
@@ -18,8 +19,8 @@ COMPILER_REGEX_MAP = {
             (?P<info> (?:\ +[^\n]+\n{1,2})+ )
             (?P<context>Call\ Stack[^\n]+ (?:\n\ +[^\n]+)+)?
         """
-    ),
-    "clang-cl": re.compile(
+    )
+    CLANG_CL = re.compile(
         r"^(?P<context>(In\ file\ included\ from\ [^\n]+:\d+:\n)*)"
         r"(?P<file>[^\n(]+)\((?P<line>\d+),(?P<column>\d+)\):\s"
         r"(?P<severity>[a-z\s]+):\s"
@@ -28,8 +29,8 @@ COMPILER_REGEX_MAP = {
         r"\n"
         r"((?P<hint>[^\n]+\n[\s~]*\^[\s~]*)\n)?",
         re.VERBOSE | re.MULTILINE,
-    ),
-    "gnu": re.compile(
+    )
+    GNU = re.compile(
         r"""(?xm)
              ^(?P<context>
                 (In\ file\ included\ from\ [^\n]+:\d+:\n)*
@@ -40,8 +41,8 @@ COMPILER_REGEX_MAP = {
               \ *
              (?P<file>(?:[A-za-z]:)?[^\n:]+):
              (?P<line>\d+):
-             (?:(?P<column>\d+):)?\ 
-             (?P<severity>[a-z\s]+):\ 
+             (?:(?P<column>\d+):)?\ #
+             (?P<severity>[a-z\s]+):\ #
              (?P<info>.*?)
              (\ \[(?P<category>[\w+-]+)])?
              \n
@@ -50,13 +51,13 @@ COMPILER_REGEX_MAP = {
                 \n
              )?
         """
-    ),
-    "vs": re.compile(
+    )
+    MSVC = re.compile(
         r"""(?xm)
         (?P<file>^[^\n(]+)
         (
           \( (?P<line>\d+) (?:, (?P<column>\d+) )? \)
-        )? 
+        )?
         \ ?:\ #
         (?P<severity>[a-z\s]+)  \ #
         (?P<category>[A-Z]+\d+):\ #
@@ -64,8 +65,12 @@ COMPILER_REGEX_MAP = {
         (\ \[ (?P<project>[^]]+) ])?
         \n
         """
-    ),
-}
+    )
+
+    @classmethod
+    def get(cls, key: str, default=None) -> Optional[Pattern]:
+        key = key.replace("-", "_").upper()
+        return getattr(cls, key, default)
 
 
 def log_level(hint: Optional[str]) -> int:
@@ -89,7 +94,7 @@ def parse_cmake_warnings(output: str) -> List[Dict[str, Any]]:
     groupdict: Dict[str, Any]
     warnings = []
 
-    for match in COMPILER_REGEX_MAP["cmake"].finditer(output):
+    for match in WarningRegex.CMAKE.finditer(output):
         groupdict = match.groupdict()
         to_int(groupdict, "line")
         groupdict["from"] = "cmake"
@@ -109,7 +114,7 @@ def filter_compiler_warnings(
 ) -> Tuple[str, List[List[str]]]:
     residue = []
     parsed_output = []
-    compiler_regex = COMPILER_REGEX_MAP.get(compiler)
+    compiler_regex = WarningRegex.get(compiler)
 
     if not compiler_regex:
         LOG.warning("filter_compiler_warnings: unknown type %r", compiler)
@@ -131,7 +136,7 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
     warnings: List[Dict[str, Any]] = []
     keyset = set()
     ident_set = set()
-    compiler_regex = COMPILER_REGEX_MAP.get(compiler)
+    compiler_regex = WarningRegex.get(compiler)
     if not compiler_regex:
         LOG.warning("parse_warnings: unknown type %r", compiler)
         return warnings

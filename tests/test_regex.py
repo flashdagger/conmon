@@ -1,7 +1,7 @@
 import pytest
 
 from conmon.__main__ import ConanParser
-from conmon.compilers import COMPILER_REGEX_MAP
+from conmon.compilers import WarningRegex
 from textwrap import dedent
 
 valid_refs = [
@@ -51,7 +51,7 @@ def test_cmake_warning_regex():
       some warning text
     -- continue
     """
-    match = list(COMPILER_REGEX_MAP["cmake"].finditer(dedent(log)))
+    match = list(WarningRegex.CMAKE.finditer(dedent(log)))
     assert len(match) == 3
 
     assert match[0].group("severity") == "Warning"
@@ -89,7 +89,7 @@ def test_cmake_warning_regex_multiline():
 
 
     """
-    regex = COMPILER_REGEX_MAP["cmake"]
+    regex = WarningRegex.CMAKE
     error_string = dedent(log)
     match = list(regex.finditer(error_string))
     assert len(match) == 1

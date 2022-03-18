@@ -368,7 +368,7 @@ class Build(State):
             ),
         )
         # NASM compiler is type GNU
-        if compiler_type == "vs":
+        if compiler_type == "msvc":
             warnings.extend(
                 parse_compiler_warnings(
                     build_stdout,
@@ -485,7 +485,7 @@ class ConanParser:
         elif compiler in {"clang", "gcc", "cc"}:
             compiler_type = "gnu"
         elif compiler == "Visual Studio":
-            compiler_type = "vs"
+            compiler_type = "msvc"
         else:
             compiler_type = "unknown"
 
