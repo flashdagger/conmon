@@ -35,6 +35,7 @@ from conmon.utils import (
     AsyncPipeReader,
     shorten,
     unique,
+    compact_pattern,
 )
 from . import __version__
 from .buildmon import BuildMonitor, LOG as PLOG
@@ -79,8 +80,8 @@ class State:
     _ACTIVE: Set["State"] = set()  # currently active
     _EXECUTE: Set["State"] = set()  # can be executed
 
-    def __init__(self, _parser: "ConanParser"):
-        pass
+    def __init__(self, parser: "ConanParser"):
+        self.screen = parser.screen
 
     @classmethod
     def add(cls, state_cls: Type["State"], *args) -> "State":
@@ -146,6 +147,60 @@ class Default(State):
         return False
 
 
+class Requirements(State):
+    def __init__(self, parser: "ConanParser"):
+        super().__init__(parser)
+        self.log = parser.log["requirements"]
+        pattern, flags = compact_pattern(parser.REF_REGEX)
+        self.regex = re.compile(
+            rf" +{pattern} from '(?P<remote>[\w-]+)' +- +(?P<status>\w+)", flags
+        )
+
+    def _activated(self, ref: Optional[str], line: str) -> bool:
+        if line in {"Requirements", "Build requirements"}:
+            self.screen.print(line)
+            return True
+        return False
+
+    def _process(self, ref: Optional[str], line: str) -> None:
+        match = self.regex.match(line)
+        if not match:
+            self.deactivate()
+            return
+
+        self.screen.print(line)
+        name, remote, status = match.group("name", "remote", "status")
+        self.log.setdefault(name, {}).update(dict(remote=remote, recipe_from=status))
+
+
+class Packages(State):
+    def __init__(self, parser: "ConanParser"):
+        super().__init__(parser)
+        self.log = parser.log["requirements"]
+        pattern, flags = compact_pattern(parser.REF_REGEX)
+        self.regex = re.compile(
+            rf" +{pattern}:(?P<package_id>[a-z0-9]+) +- +(?P<status>\w+)", flags
+        )
+
+    def _activated(self, ref: Optional[str], line: str) -> bool:
+        if line in {"Packages", "Build requirements packages"}:
+            self.screen.print(line)
+            return True
+        return False
+
+    def _process(self, ref: Optional[str], line: str) -> None:
+        match = self.regex.match(line)
+        if not match:
+            self.deactivate()
+            return
+
+        self.screen.print(line)
+        name, package_id, status = match.group("name", "package_id", "status")
+        self.log.setdefault(name, {}).update(
+            dict(package_id=package_id, package_from=status)
+        )
+
+
 class Config(State):
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
@@ -184,7 +239,7 @@ class Package(State):
 
     def _activated(self, ref: Optional[str], line: str) -> bool:
         if line == "Calling package()":
-            self.parser.screen.print(f"Packaging {ref}")
+            self.screen.print(f"Packaging {ref}")
             self.log = self.parser.ref_log
             self.log.setdefault("stdout", []).append(line)
             return True
@@ -216,7 +271,7 @@ class Build(State):
 
     def _activated(self, ref: Optional[str], line: str) -> bool:
         if line == "Calling build()":
-            self.parser.screen.print(f"Building {ref}")
+            self.screen.print(f"Building {ref}")
             self.log = self.parser.ref_log
             self.log.setdefault("stdout", []).append(line)
             self.buildmon = BuildMonitor(self.parser.proc)
@@ -251,21 +306,21 @@ class Build(State):
                 r"\.\.\.[^/\\]+(?=[/\\])", "...", output
             )  # shorten at path separator
             if self.warnings:
-                self.parser.screen.print(
+                self.screen.print(
                     colorama.Fore.YELLOW + f"{self.warnings:4} warning(s)",
                     indent=40,
                 )
             self.warnings = 0
-            self.parser.screen.print(output, overwrite=True)
+            self.screen.print(output, overwrite=True)
         else:
             match = self.parser.SEVERITY_REGEX.match(line)
             info = match.group("severity")[0].upper() if match else ""
             if info == "E":
-                self.parser.screen.print(colorama.Fore.RED + f"{info} {line}")
+                self.screen.print(colorama.Fore.RED + f"{info} {line}")
             elif info == "W":
                 self.warnings += 1
             elif info:
-                self.parser.screen.print(info, indent=0)
+                self.screen.print(info, indent=0)
 
     def translation_units(self) -> List[Dict[str, Any]]:
         assert self.buildmon
@@ -360,10 +415,13 @@ class ConanParser:
         rf"""
             (?P<ref>
             (?P<name>{REF_PART_PATTERN})/
-            (?P<version>{REF_PART_PATTERN})@?
-            (
-                (?P<user>{REF_PART_PATTERN})/
-                (?P<channel>{REF_PART_PATTERN})
+            (?P<version>{REF_PART_PATTERN})
+            (?:
+                @
+                (?:
+                    (?P<user>{REF_PART_PATTERN})/
+                    (?P<channel>{REF_PART_PATTERN})
+                )?
              )?
          )
         """,
@@ -409,6 +467,8 @@ class ConanParser:
         self.screen = ScreenWriter()
         self._resolved = False
         State.add(Default, self)
+        State.add(Requirements, self)
+        State.add(Packages, self)
         State.add(Config, self)
         State.add(Build, self)
         State.add(Package, self)
@@ -445,7 +505,7 @@ class ConanParser:
             rest = line
         else:
             rest = line
-            self.ref = None
+            self.ref = ""
 
         return rest
 
