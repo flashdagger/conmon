@@ -130,13 +130,20 @@ class State:
         raise NotImplementedError
 
     def _process(self, ref: Optional[str], line: str) -> None:
-        raise NotImplementedError
+        pass
 
     def process(self, ref: Optional[str], line: str) -> None:
         if self.is_active:
             self._process(ref, line)
         elif self._activated(ref, line):
             self._activate()
+
+
+class Default(State):
+    def _activated(self, ref: Optional[str], line: str) -> bool:
+        # if not self.all_active() and ref:
+        #     print(">>>", ref, line)
+        return False
 
 
 class Config(State):
@@ -260,14 +267,11 @@ class Build(State):
             elif info:
                 self.parser.screen.print(info, indent=0)
 
-    def _deactivate(self, final=False):
-        self.parser.screen.reset()
-
+    def translation_units(self) -> List[Dict[str, Any]]:
         assert self.buildmon
         self.buildmon.finish.set()
         self.buildmon.join()
         tu_list = self.buildmon.translation_units
-        compiler_type = self.parser.compiler_type
 
         package_re = re.compile(r".*?[a-f0-9]{40}")
         for unit in tu_list:
@@ -290,10 +294,15 @@ class Build(State):
                 proc_fh,
                 indent=2,
             )
-        self.buildmon = None
 
+        self.buildmon = None
+        return tu_list
+
+    def _deactivate(self, final=False):
+        self.parser.screen.reset()
+        compiler_type = self.parser.compiler_type
         ref_log = self.log
-        ref_log["translation_units"] = tu_list
+        ref_log["translation_units"] = self.translation_units()
 
         warnings = ref_log.setdefault("warnings", [])
         build_stdout = "\n".join(ref_log["build"])
@@ -399,6 +408,7 @@ class ConanParser:
         self.rest: str
         self.screen = ScreenWriter()
         self._resolved = False
+        State.add(Default, self)
         State.add(Config, self)
         State.add(Build, self)
         State.add(Package, self)
@@ -491,7 +501,7 @@ class ConanParser:
         for state in State.all_states():
             state.process(self.ref, rest)
 
-        match_download = re.match(r"Downloading conan\w+\.[a-z]{2,3}$", rest)
+        match_download = re.fullmatch(r"Downloading conan\w+\.[a-z]{2,3}", rest)
         if State.all_active():
             pass
         elif self.ref:
