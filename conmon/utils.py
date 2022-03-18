@@ -111,10 +111,9 @@ class ScreenWriter:
 
 
 class AsyncPipeReader:
-    def __init__(self, pipe):
-        self.pipe = pipe
-        self.queue = Queue()
-        self.thread = Thread(target=self.reader, args=[self.pipe, self.queue])
+    def __init__(self, pipe: TextIOBase):
+        self.queue: Queue[str] = Queue()
+        self.thread = Thread(target=self.reader, args=[pipe, self.queue])
         self.thread.start()
 
     @staticmethod
@@ -122,6 +121,7 @@ class AsyncPipeReader:
         with suppress(ValueError):
             for line in iter(pipe.readline, ""):
                 queue.put(line)
+        queue.put("")
 
     @property
     def exhausted(self) -> bool:
@@ -131,9 +131,15 @@ class AsyncPipeReader:
     def not_empty(self) -> bool:
         return not self.queue.empty()
 
-    def readlines(self) -> Iterator[str]:
-        while not self.queue.empty():
-            yield self.queue.get()
+    def readlines(self, block=False) -> Iterator[str]:
+        while block or not self.queue.empty():
+            line = self.queue.get(block=block)
+            if not line:
+                break
+            yield line
+
+    def readline(self) -> str:
+        return self.queue.get(block=True)
 
 
 class MappingPair(tuple):
