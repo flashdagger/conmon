@@ -199,6 +199,152 @@ class Package(State):
         self.log["package_id"] = match.group("id")
 
 
+class Build(State):
+    def __init__(self, parser: "ConanParser"):
+        super().__init__(parser)
+        self.parser = parser
+        self.log = parser.log
+        self.warnings = 0
+        self.buildmon: Optional[BuildMonitor] = None
+
+    def _activated(self, ref: Optional[str], line: str) -> bool:
+        if line == "Calling build()":
+            self.parser.screen.print(f"Building {ref}")
+            self.log = self.parser.ref_log
+            self.log.setdefault("stdout", []).append(line)
+            self.buildmon = BuildMonitor(self.parser.proc)
+            self.buildmon.start()
+            return True
+        return False
+
+    def _process(self, ref: Optional[str], line: str) -> None:
+        match = re.fullmatch(r"Package '\w+' built", line)
+        if match:
+            self.deactivate()
+            return
+
+        if not line:
+            return
+
+        self.log.setdefault("build", []).append(line)
+        match = self.parser.BUILD_STATUS_REGEX.fullmatch(
+            line
+        ) or self.parser.BUILD_STATUS_REGEX2.match(line)
+        if match:
+            status, file = match.groups()
+            prefix = f"{status.strip()} " if status else ""
+            output = shorten(
+                file,
+                width=40,
+                template=f"{prefix}{{}} ",
+                strip_left=True,
+                placeholder="...",
+            )
+            output = re.sub(
+                r"\.\.\.[^/\\]+(?=[/\\])", "...", output
+            )  # shorten at path separator
+            if self.warnings:
+                self.parser.screen.print(
+                    colorama.Fore.YELLOW + f"{self.warnings:4} warning(s)",
+                    indent=40,
+                )
+            self.warnings = 0
+            self.parser.screen.print(output, overwrite=True)
+        else:
+            match = self.parser.SEVERITY_REGEX.match(line)
+            info = match.group("severity")[0].upper() if match else ""
+            if info == "E":
+                self.parser.screen.print(colorama.Fore.RED + f"{info} {line}")
+            elif info == "W":
+                self.warnings += 1
+            elif info:
+                self.parser.screen.print(info, indent=0)
+
+    def _deactivate(self, final=False):
+        self.parser.screen.reset()
+
+        assert self.buildmon
+        self.buildmon.finish.set()
+        self.buildmon.join()
+        tu_list = self.buildmon.translation_units
+        compiler_type = self.parser.compiler_type
+
+        package_re = re.compile(r".*?[a-f0-9]{40}")
+        for unit in tu_list:
+            src_match = package_re.match(unit["sources"][0])
+            includes, unit["includes"] = unit.get("includes", []), []
+            for include in sorted(includes):
+                inc_match = package_re.match(include)
+                if (
+                    src_match
+                    and include.startswith(src_match.group())
+                    or inc_match is None
+                ):
+                    unit["includes"].append(include)
+                else:
+                    unit.setdefault("system_includes", []).append(include)
+
+        with filehandler("CONMON_PROC_JSON", hint="process debug json") as proc_fh:
+            json.dump(
+                list(self.buildmon.proc_cache.values()),
+                proc_fh,
+                indent=2,
+            )
+        self.buildmon = None
+
+        ref_log = self.log
+        ref_log["translation_units"] = tu_list
+
+        warnings = ref_log.setdefault("warnings", [])
+        build_stdout = "\n".join(ref_log["build"])
+        warnings.extend(
+            parse_compiler_warnings(
+                build_stdout,
+                compiler=compiler_type,
+            ),
+        )
+        # NASM compiler is type GNU
+        if compiler_type == "vs":
+            warnings.extend(
+                parse_compiler_warnings(
+                    build_stdout,
+                    compiler="gnu",
+                ),
+            )
+        stderr_lines = ref_log.pop("stderr_lines", ())
+        ref_log.setdefault("stderr", []).extend(chain(*stderr_lines))
+
+        def popwarnings(error_lines, parse_func):
+            residue = []
+            parsed_warnings = []
+
+            for lines in error_lines:
+                warnings_found = parse_func("\n".join(lines))
+                if warnings_found:
+                    parsed_warnings.extend(warnings_found)
+                else:
+                    residue.append(lines)
+
+            return parsed_warnings, residue
+
+        warning_output, stderr_lines = filter_compiler_warnings(
+            stderr_lines, compiler=compiler_type
+        )
+        compiler_warnings = parse_compiler_warnings(
+            warning_output, compiler=compiler_type
+        )
+        cmake_warnings, stderr_lines = popwarnings(stderr_lines, parse_cmake_warnings)
+        warnings.extend((*compiler_warnings, *cmake_warnings))
+
+        filtered = unique(tuple(lines) for lines in stderr_lines)
+        res_msg = "\n---\n".join(("\n".join(lines) for lines in filtered))
+        res_msg = "\n" + res_msg.strip("\n")
+        if res_msg.strip():
+            LOG.warning("[STDERR] %s", res_msg)
+
+        super()._deactivate(final=False)
+
+
 class ConanParser:
     REF_PART_PATTERN = r"\w[\w\+\.\-]{1,50}"
     REF_REGEX = re.compile(
@@ -245,76 +391,17 @@ class ConanParser:
     )
     SEVERITY_REGEX = re.compile(r"(?xm).+?:\ (?P<severity>warning|error):?\ [a-zA-Z]")
 
-    STATES = {
-        "build": {
-            "start": lambda line: line == "Calling build()",
-            "end": lambda line: re.match(r"Package '(\w+)' built$", line),
-        },
-    }
-
-    def __init__(self):
+    def __init__(self, process: psutil.Process):
+        self.proc = process
         self.log: Dict[str, Any] = defaultdict(dict)
         self.ref = ""
         self.last_ref = ""
-        self.current_state: Optional[str] = None
-        self.state_start = True
-        self.state_end = False
         self.rest: str
         self.screen = ScreenWriter()
-        self.warnings = 0
-        self.callbacks = []
         self._resolved = False
         State.add(Config, self)
+        State.add(Build, self)
         State.add(Package, self)
-
-    def build(self, line: str):
-        if self.state_start:
-            self.screen.print(f"Building {self.ref}")
-            self.ref_log.setdefault("build", [])
-            self.ref_log.setdefault("stdout", []).append(line)
-            return
-
-        if self.state_end:
-            self.ref_log.setdefault("stdout", []).append(line)
-            self.screen.print("", overwrite=True)
-            return
-
-        if not line:
-            return
-
-        match = self.BUILD_STATUS_REGEX.fullmatch(
-            line
-        ) or self.BUILD_STATUS_REGEX2.match(line)
-        if match:
-            status, file = match.groups()
-            prefix = f"{status.strip()} " if status else ""
-            output = shorten(
-                file,
-                width=40,
-                template=f"{prefix}{{}} ",
-                strip_left=True,
-                placeholder="...",
-            )
-            output = re.sub(
-                r"\.\.\.[^/\\]+(?=[/\\])", "...", output
-            )  # shorten at path separator
-            if self.warnings:
-                self.screen.print(
-                    colorama.Fore.YELLOW + f"{self.warnings:4} warning(s)",
-                    indent=40,
-                )
-            self.warnings = 0
-            self.screen.print(output, overwrite=True)
-        else:
-            match = self.SEVERITY_REGEX.match(line)
-            info = match.group("severity")[0].upper() if match else ""
-            if info == "E":
-                self.screen.print(colorama.Fore.RED + f"{info} {line}")
-            elif info == "W":
-                self.warnings += 1
-            elif info:
-                self.screen.print(info, indent=0)
-        self.ref_log["build"].append(line)
 
     @property
     def compiler_type(self) -> str:
@@ -342,15 +429,13 @@ class ConanParser:
 
         if ref_match:
             ref, rest = ref_match.group("ref"), ref_match.group("rest")
-            self.last_ref = ref
-        else:
-            ref, rest = None, line
-
-        if self.current_state:
-            if ref != self.ref:
-                rest = line
-        else:
             self.ref = ref
+            self.last_ref = ref
+        elif State.all_active():
+            rest = line
+        else:
+            rest = line
+            self.ref = None
 
         return rest
 
@@ -406,25 +491,12 @@ class ConanParser:
         for state in State.all_states():
             state.process(self.ref, rest)
 
-        self.state_start = False
-        self.state_end = False
-        if self.current_state is None:
-            for state, test in self.STATES.items():
-                if test["start"](rest):
-                    self.current_state = state
-                    self.state_start = True
-                    break
-        else:
-            self.state_end = self.STATES[self.current_state]["end"](rest)
-
         match_download = re.match(r"Downloading conan\w+\.[a-z]{2,3}$", rest)
-        if self.current_state == "build":
-            self.build(rest)
-        elif State.all_active():
+        if State.all_active():
             pass
         elif self.ref:
-            key = self.current_state or "stdout"
-            self.ref_log.setdefault(key, []).append(rest)
+            # key = self.current_state or "stdout"
+            # self.ref_log.setdefault(key, []).append(rest)
             self.screen.print(f"{line} ", overwrite=True)
         elif match_download and self.last_ref:
             self.screen.print(
@@ -436,22 +508,9 @@ class ConanParser:
             self.log.setdefault("stdout", []).append(line)
             self.screen.print(f"{line} ", overwrite=self._resolved)
 
-        if self.state_start or self.state_end:
-            for callback in self.callbacks:
-                assert callable(callback)
-                callback(self.current_state, self.ref, self.state_start)
-
-        if self.state_end:
-            self.current_state = None
-
     def finalize(self, errs: List[str]):
         State.deactivate_all()
-
-        if self.current_state:
-            for callback in self.callbacks:
-                assert callable(callback)
-                callback(self.current_state, self.ref, False)
-
+        self.screen.reset()
         self.handle_errors(errs, final=True)
 
 
@@ -471,100 +530,6 @@ def check_conan() -> str:
     version = re.search(r"[12](\.\d+){2}", out)
     assert version
     return version.group()
-
-
-def register_callback(process: psutil.Process, parser: ConanParser):
-    # run monitor in its own thread
-    buildmon: Optional[BuildMonitor] = None
-
-    def callback(state: Optional[str], _ref: str, start_not_end: bool):
-        nonlocal buildmon
-        if state != "build":
-            assert buildmon is None
-            return
-        if start_not_end:
-            buildmon = BuildMonitor(process)
-            buildmon.start()
-            return
-        assert buildmon is not None
-        buildmon.finish.set()
-        buildmon.join()
-        tu_list = buildmon.translation_units
-
-        package_re = re.compile(r".*?[a-f0-9]{40}")
-        for unit in tu_list:
-            src_match = package_re.match(unit["sources"][0])
-            includes, unit["includes"] = unit.get("includes", []), []
-            for include in sorted(includes):
-                inc_match = package_re.match(include)
-                if (
-                    src_match
-                    and include.startswith(src_match.group())
-                    or inc_match is None
-                ):
-                    unit["includes"].append(include)
-                else:
-                    unit.setdefault("system_includes", []).append(include)
-
-        with filehandler("CONMON_PROC_JSON", hint="process debug json") as proc_fh:
-            json.dump(
-                list(buildmon.proc_cache.values()),
-                proc_fh,
-                indent=2,
-            )
-        buildmon = None
-
-        ref_log = parser.ref_log
-        ref_log["translation_units"] = tu_list
-
-        warnings = ref_log.setdefault("warnings", [])
-        build_stdout = "\n".join(ref_log["build"])
-        warnings.extend(
-            parse_compiler_warnings(
-                build_stdout,
-                compiler=parser.compiler_type,
-            ),
-        )
-        # NASM compiler is type GNU
-        if parser.compiler_type == "vs":
-            warnings.extend(
-                parse_compiler_warnings(
-                    build_stdout,
-                    compiler="gnu",
-                ),
-            )
-        stderr_lines = ref_log.pop("stderr_lines", ())
-        ref_log.setdefault("stderr", []).extend(chain(*stderr_lines))
-
-        def popwarnings(error_lines, parse_func):
-            residue = []
-            parsed_warnings = []
-
-            for lines in error_lines:
-                warnings_found = parse_func("\n".join(lines))
-                if warnings_found:
-                    parsed_warnings.extend(warnings_found)
-                else:
-                    residue.append(lines)
-
-            return parsed_warnings, residue
-
-        warning_output, stderr_lines = filter_compiler_warnings(
-            stderr_lines, compiler=parser.compiler_type
-        )
-        compiler_warnings = parse_compiler_warnings(
-            warning_output, compiler=parser.compiler_type
-        )
-        cmake_warnings, stderr_lines = popwarnings(stderr_lines, parse_cmake_warnings)
-        warnings.extend((*compiler_warnings, *cmake_warnings))
-
-        filtered = unique(tuple(lines) for lines in stderr_lines)
-        res_msg = "\n---\n".join(("\n".join(lines) for lines in filtered))
-        res_msg = "\n" + res_msg.strip("\n")
-        if res_msg.strip():
-            LOG.warning("[STDERR] %s", res_msg)
-
-    parser.callbacks.append(callback)
 
 
 def monitor(args: List[str]) -> int:
@@ -590,7 +555,7 @@ def monitor(args: List[str]) -> int:
     )
     stderr = AsyncPipeReader(process.stderr)
 
-    parser = ConanParser()
+    parser = ConanParser(process)
     parser.log.update(
         dict(
             build_platform=platform.platform(),
@@ -598,7 +563,6 @@ def monitor(args: List[str]) -> int:
             conan_version=conan_version,
         )
     )
-    register_callback(process, parser)
 
     raw_fh = filehandler("CONMON_CONAN_LOG", hint="raw conan output")
     stopwatch = StopWatch()
