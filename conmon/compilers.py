@@ -4,6 +4,8 @@ from collections import Counter
 from itertools import groupby
 from typing import Any, Dict, List, Optional, Tuple, Pattern
 
+from conmon.utils import shorten
+
 LOG = logging.getLogger("BUILD")
 
 
@@ -44,7 +46,7 @@ class WarningRegex:
              (?:(?P<column>\d+):)?\ #
              (?P<severity>[a-z\s]+):\ #
              (?P<info>.*?)
-             (\ \[(?P<category>[\w+-]+)])?
+             (\ \[(?P<category>[\w+-=]+)])?
              \n
              (
                 (?P<hint>[^\n]+\n[\s|~]*\^[\s~]*)
@@ -54,16 +56,16 @@ class WarningRegex:
     )
     MSVC = re.compile(
         r"""(?xm)
-        (?P<file>^[^\n(]+)
-        (
-          \( (?P<line>\d+) (?:, (?P<column>\d+) )? \)
-        )?
-        \ ?:\ #
-        (?P<severity>[a-z\s]+)  \ #
-        (?P<category>[A-Z]+\d+):\ #
-        (?P<info>.+?)
-        (\ \[ (?P<project>[^]]+) ])?
-        \n
+            (?P<file>^[^\n(]+)
+            (
+              \( (?P<line>\d+) (?:, (?P<column>\d+) )? \)
+            )?
+            \ ?:\ #
+            (?P<severity>[a-z\s]+)  \ #
+            (?P<category>[A-Z]+\d+):\ #
+            (?P<info>.+?)
+            (\ \[ (?P<project>[^]]+) ])?
+            \n
         """
     )
 
@@ -161,14 +163,15 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
         stats[key] += 1
 
         if key not in keyset:
-            LOG.log(log_level(severity), match.group().rstrip())
+            output = shorten(match.group().rstrip(), width=500)
+            LOG.log(log_level(severity), output)
             keyset.add(key)
 
     total_stats = ((key[0], key[1], stats[key]) for key in sorted(stats))
     for severity, stats_iter in groupby(total_stats, key=lambda item: item[0]):
         stat_list: List[Any] = list(stat for stat in stats_iter)
         LOG.info(
-            "Compilation issued %3s %s(s)",
+            "Compilation issued %s distinct %s(s)",
             sum(key[-1] for key in stat_list),
             severity,
         )

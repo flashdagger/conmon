@@ -25,6 +25,7 @@ from typing import (
     Set,
     Type,
     Tuple,
+    TextIO,
 )
 
 import colorama  # type: ignore
@@ -199,7 +200,7 @@ class Packages(State):
         self.screen.print(line)
         name, package_id, status = match.group("name", "package_id", "status")
         self.log.setdefault(name, {}).update(
-            dict(package_id=package_id, package_from=status)
+            dict(package_id=package_id, package_status=status)
         )
 
 
@@ -264,6 +265,30 @@ class Package(State):
 
 
 class Build(State):
+    WIDTH = 60
+    BUILD_STATUS_REGEX = re.compile(
+        r"""(?x)
+            (?:
+                (?P<status>
+                    \[[0-9\s/%]+] | \ +CC(?:LD)?(?=\ )
+                )?  # ninja, cmake or automake
+                .*? # msbuild prints only the filename
+            )?
+            (?P<file>
+                [\-.\w/\\]+ (?(status) $ | \.(?:asm|cpp|c)$ )
+            )
+    """
+    )
+    BUILD_STATUS_REGEX2 = re.compile(
+        r"""(?x)
+            (?P<status>(?!))? # should never match
+            .*\ -c\           # compile but don't link
+            (?P<file>
+                [\-.\w/\\]+ \. (?:cpp|c) (?=\ )
+            )
+        """
+    )
+
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
         self.parser = parser
@@ -277,7 +302,7 @@ class Build(State):
             self.log = self.parser.ref_log
             self.log.setdefault("build", [])
             self.log.setdefault("stdout", []).append(line)
-            self.buildmon = BuildMonitor(self.parser.proc)
+            self.buildmon = BuildMonitor(self.parser.process)
             self.buildmon.start()
             return True
         return False
@@ -292,15 +317,22 @@ class Build(State):
             return
 
         self.log["build"].append(line)
-        match = self.parser.BUILD_STATUS_REGEX.fullmatch(
+        match = self.BUILD_STATUS_REGEX.fullmatch(
             line
-        ) or self.parser.BUILD_STATUS_REGEX2.match(line)
+        ) or self.BUILD_STATUS_REGEX2.match(line)
         if match:
+            if self.warnings:
+                self.screen.print(
+                    colorama.Fore.YELLOW + f"{self.warnings:4} warning(s)",
+                    indent=0,  # self.WIDTH,
+                )
+            self.warnings = 0
+
             status, file = match.groups()
             prefix = f"{status.strip()} " if status else ""
             output = shorten(
                 file,
-                width=40,
+                width=self.WIDTH,
                 template=f"{prefix}{{}} ",
                 strip_left=True,
                 placeholder="...",
@@ -308,13 +340,9 @@ class Build(State):
             output = re.sub(
                 r"\.\.\.[^/\\]+(?=[/\\])", "...", output
             )  # shorten at path separator
-            if self.warnings:
-                self.screen.print(
-                    colorama.Fore.YELLOW + f"{self.warnings:4} warning(s)",
-                    indent=40,
-                )
-            self.warnings = 0
-            self.screen.print(output, overwrite=True)
+            self.screen.print(f"{output:{self.WIDTH}}", overwrite=True)
+        elif line.startswith("--") or line.startswith("checking"):
+            self.screen.print(line, overwrite=True)
         else:
             match = self.parser.SEVERITY_REGEX.match(line)
             info = match.group("severity")[0].upper() if match else ""
@@ -431,28 +459,6 @@ class ConanParser:
         """,
         re.VERBOSE,
     )
-    BUILD_STATUS_REGEX = re.compile(
-        r"""(?x)
-            (?:
-                (?P<status>
-                    \[[0-9\s/%]+] | \ +CC(?:LD)?(?=\ )
-                )?  # ninja, cmake or automake
-                .*? # msbuild prints only the filename
-            )?
-            (?P<file>
-                [\-.\w/\\]+ (?(status) $ | \.(?:asm|cpp|c)$ )
-            )
-    """
-    )
-    BUILD_STATUS_REGEX2 = re.compile(
-        r"""(?x)
-            (?P<status>(?!))? # should never match
-            .*\ -c\           # compile but don't link
-            (?P<file>
-                [\-.\w/\\]+ \. (?:cpp|c) (?=\ )
-            )
-        """
-    )
     WARNING_REGEX = re.compile(
         rf"""(?xm)
         ^(?:{REF_REGEX.pattern}:\ +)?
@@ -463,26 +469,25 @@ class ConanParser:
     SEVERITY_REGEX = re.compile(r"(?xm).+?:\ (?P<severity>warning|error):?\ [a-zA-Z]")
 
     def __init__(self, process: psutil.Popen):
-        self.proc = process
+        self.process = process
         self.log: Dict[str, Any] = defaultdict(dict)
         self.ref = ""
         self.last_ref = ""
         self.screen = ScreenWriter()
         self._resolved = False
 
-        self.log.update(
-            dict(
-                build_platform=platform.platform(),
-                python_version=".".join(map(str, sys.implementation.version))
-                + f" ({sys.implementation.name})",
-                conan_version=self.CONAN_VERSION,
-            )
+        self.log["conan"] = dict(
+            build_platform=platform.platform(),
+            python_version=".".join(map(str, sys.implementation.version))
+            + f" ({sys.implementation.name})",
+            version=self.CONAN_VERSION,
+            command=process.cmdline(),
         )
 
         State.add(Default, self)
+        State.add(Config, self)
         State.add(Requirements, self)
         State.add(Packages, self)
-        State.add(Config, self)
         State.add(Build, self)
         State.add(Package, self)
 
@@ -593,9 +598,8 @@ class ConanParser:
             self.log.setdefault("stdout", []).append(line)
             self.screen.print(f"{line} ", overwrite=self._resolved)
 
-    def process_streams(self):
-        streams = ProcessStreamHandler(self.proc)
-        raw_fh = filehandler("CONMON_CONAN_LOG", hint="raw conan output")
+    def process_streams(self, raw_fh: TextIO):
+        streams = ProcessStreamHandler(self.process)
 
         while not streams.exhausted:
             try:
@@ -618,11 +622,8 @@ class ConanParser:
                 else:
                     self.process_line(decolorized, ())
 
-        raw_fh.close()
-        self.finalize()
-
     def process_tracelog(self, trace_path: Path):
-        self.log["tracelog"] = tracelog = []
+        self.log["conan"]["tracelog"] = tracelog = []
         for line in trace_path.read_text(encoding="utf-8").splitlines():
             action = json.loads(line)
             if action["_action"] in {"REST_API_CALL", "UNZIP"}:
@@ -636,11 +637,14 @@ class ConanParser:
             requirement = self.log["requirements"].setdefault(name, {})
             if len(pkg_id) == 2:
                 requirement["package_id"] = pkg_id[1]
-            requirement.setdefault("actions", []).append(action["_action"])
+            actions = requirement.setdefault("actions", [])
+            if action["_action"] not in actions:
+                actions.append(action["_action"])
 
     def finalize(self):
         State.deactivate_all()
         self.screen.reset()
+        self.log["conan"]["returncode"] = self.process.wait()
 
 
 def check_conan() -> Tuple[List[str], str]:
@@ -706,8 +710,9 @@ def monitor(args: List[str]) -> int:
         conan_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
     )
     parser = ConanParser(process)
-    parser.process_streams()
-    returncode = process.wait()
+    with filehandler("CONMON_CONAN_LOG", hint="raw conan output") as fh:
+        parser.process_streams(fh)
+    parser.finalize()
 
     if trace_path.exists():
         parser.process_tracelog(trace_path)
@@ -716,20 +721,13 @@ def monitor(args: List[str]) -> int:
                 if path.exists():
                     path.unlink()
 
-    parser.log.update(
-        dict(
-            command=conan_command,
-            returncode=returncode,
-        )
-    )
-
     with filehandler("CONMON_REPORT_JSON", hint="report json") as fh:
         json.dump(parser.log, fh, indent=2)
 
     for hint in LOG_HINTS:
         LOG.info(hint)
 
-    return returncode
+    return process.wait()
 
 
 def main() -> int:
