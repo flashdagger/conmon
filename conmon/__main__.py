@@ -29,13 +29,12 @@ import colorlog  # type: ignore
 import psutil  # type: ignore
 
 from conmon.utils import (
-    StopWatch,
     StrictConfigParser,
     ScreenWriter,
-    AsyncPipeReader,
     shorten,
     unique,
     compact_pattern,
+    ProcessStreamHandler,
 )
 from . import __version__
 from .buildmon import BuildMonitor, LOG as PLOG
@@ -213,8 +212,8 @@ class Config(State):
     def _process(self, ref: Optional[str], line: str) -> None:
         if (
             "[env]" in self.lines
-            and not re.match(r"\w+=", line)
-            or not re.match(r"(\[[\w.-]+]$)|[^\s:]+\s*[:=]", line)
+            and not re.match(r"\w+=|$", line)
+            or not re.match(r"(\[[\w.-]+]$)|[^\s:]+\s*[:=]|$", line)
         ):
             self.deactivate()
         else:
@@ -458,12 +457,11 @@ class ConanParser:
     )
     SEVERITY_REGEX = re.compile(r"(?xm).+?:\ (?P<severity>warning|error):?\ [a-zA-Z]")
 
-    def __init__(self, process: psutil.Process):
+    def __init__(self, process: psutil.Popen):
         self.proc = process
         self.log: Dict[str, Any] = defaultdict(dict)
         self.ref = ""
         self.last_ref = ""
-        self.rest: str
         self.screen = ScreenWriter()
         self._resolved = False
         State.add(Default, self)
@@ -578,10 +576,9 @@ class ConanParser:
             self.log.setdefault("stdout", []).append(line)
             self.screen.print(f"{line} ", overwrite=self._resolved)
 
-    def finalize(self, errs: List[str]):
+    def finalize(self):
         State.deactivate_all()
         self.screen.reset()
-        self.handle_errors(errs, final=True)
 
 
 def check_conan() -> str:
@@ -623,8 +620,7 @@ def monitor(args: List[str]) -> int:
     process = psutil.Popen(
         full_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
     )
-    stderr = AsyncPipeReader(process.stderr)
-
+    streams = ProcessStreamHandler(process)
     parser = ConanParser(process)
     parser.log.update(
         dict(
@@ -635,22 +631,24 @@ def monitor(args: List[str]) -> int:
     )
 
     raw_fh = filehandler("CONMON_CONAN_LOG", hint="raw conan output")
-    stopwatch = StopWatch()
-    for line in iter(process.stdout.readline, ""):
-        raw_fh.write(line)
-        error_lines = list(stderr.readlines())
-        raw_fh.write("".join(error_lines))
-        if stopwatch.timespan_elapsed(1.0):
-            raw_fh.flush()
-        parser.process(DECOLORIZE_REGEX.sub("", line), error_lines)
+    while not streams.exhausted:
+        stdout, stderr = streams.readboth()
 
-    _, errors = process.communicate(input=None, timeout=None)
-    returncode = process.wait()
+        if stderr and not stdout:
+            parser.process("", stderr)
 
-    errors = [line.rstrip() for line in stderr.readlines()]
-    parser.finalize(errors)
-    raw_fh.write("\n".join(errors))
+        for num, line in enumerate(stdout, 1):
+            raw_fh.write(line)
+            decolorized = DECOLORIZE_REGEX.sub("", line)
+            if num == len(stdout):
+                raw_fh.write("".join(stderr))
+                raw_fh.flush()
+                parser.process(decolorized, stderr)
+            else:
+                parser.process(decolorized, ())
     raw_fh.close()
+    parser.finalize()
+    returncode = process.wait()
 
     tracelog = []
     if trace_path.exists():
