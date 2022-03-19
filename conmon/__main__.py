@@ -548,7 +548,7 @@ class ConanParser:
         if residue:
             self.ref_log.setdefault("stderr_lines", []).append(residue)
 
-    def process(self, line: str, error_lines: Iterable[str] = ()):
+    def process_line(self, line: str, error_lines: Iterable[str] = ()):
         line = line.rstrip()
         rest = self.parse_reference(line)
 
@@ -575,6 +575,34 @@ class ConanParser:
                 self._resolved = True
             self.log.setdefault("stdout", []).append(line)
             self.screen.print(f"{line} ", overwrite=self._resolved)
+
+    def process_streams(self):
+        streams = ProcessStreamHandler(self.proc)
+        raw_fh = filehandler("CONMON_CONAN_LOG", hint="raw conan output")
+
+        while not streams.exhausted:
+            try:
+                stdout, stderr = streams.readboth()
+            except KeyboardInterrupt:
+                self.screen.reset()
+                LOG.error("Pressed Ctrl+C")
+                break
+
+            if stderr and not stdout:
+                self.process_line("", stderr)
+
+            for num, line in enumerate(stdout, 1):
+                raw_fh.write(line)
+                decolorized = DECOLORIZE_REGEX.sub("", line)
+                if num == len(stdout):
+                    raw_fh.write("".join(stderr))
+                    raw_fh.flush()
+                    self.process_line(decolorized, stderr)
+                else:
+                    self.process_line(decolorized, ())
+
+        raw_fh.close()
+        self.finalize()
 
     def finalize(self):
         State.deactivate_all()
@@ -620,7 +648,6 @@ def monitor(args: List[str]) -> int:
     process = psutil.Popen(
         full_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
     )
-    streams = ProcessStreamHandler(process)
     parser = ConanParser(process)
     parser.log.update(
         dict(
@@ -630,29 +657,7 @@ def monitor(args: List[str]) -> int:
         )
     )
 
-    raw_fh = filehandler("CONMON_CONAN_LOG", hint="raw conan output")
-    while not streams.exhausted:
-        try:
-            stdout, stderr = streams.readboth()
-        except KeyboardInterrupt:
-            parser.screen.reset()
-            LOG.error("Pressed Ctrl+C")
-            break
-
-        if stderr and not stdout:
-            parser.process("", stderr)
-
-        for num, line in enumerate(stdout, 1):
-            raw_fh.write(line)
-            decolorized = DECOLORIZE_REGEX.sub("", line)
-            if num == len(stdout):
-                raw_fh.write("".join(stderr))
-                raw_fh.flush()
-                parser.process(decolorized, stderr)
-            else:
-                parser.process(decolorized, ())
-    raw_fh.close()
-    parser.finalize()
+    parser.process_streams()
     returncode = process.wait()
 
     tracelog = []
