@@ -22,6 +22,7 @@ from typing import (
 )
 
 import colorama  # type: ignore
+import psutil  # type: ignore
 
 
 class StopWatch:
@@ -131,15 +132,38 @@ class AsyncPipeReader:
     def not_empty(self) -> bool:
         return not self.queue.empty()
 
-    def readlines(self, block=False) -> Iterator[str]:
-        while block or not self.queue.empty():
-            line = self.queue.get(block=block)
+    def readlines(self, block_all=False, block_first=False) -> Iterator[str]:
+        if self.exhausted:
+            return
+
+        if block_first:
+            line = self.queue.get(block=True)
+            if line:
+                yield line
+
+        while block_all or not self.queue.empty():
+            line = self.queue.get(block=block_all)
             if not line:
                 break
             yield line
 
     def readline(self) -> str:
         return self.queue.get(block=True)
+
+
+class ProcessStreamHandler:
+    def __init__(self, proc: psutil.Popen):
+        self.stdout = AsyncPipeReader(proc.stdout)
+        self.stderr = AsyncPipeReader(proc.stderr)
+
+    @property
+    def exhausted(self) -> bool:
+        return self.stdout.exhausted and self.stderr.exhausted
+
+    def readboth(self) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
+        stdout_lines = tuple(self.stdout.readlines(block_first=True))
+        stderr_lines = tuple(self.stderr.readlines())
+        return stdout_lines, stderr_lines
 
 
 class MappingPair(tuple):
