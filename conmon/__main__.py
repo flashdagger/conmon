@@ -10,6 +10,8 @@ import re
 import sys
 import tempfile
 from collections import defaultdict
+from importlib import import_module
+from importlib.util import find_spec
 from io import StringIO
 from itertools import chain
 from pathlib import Path
@@ -22,6 +24,7 @@ from typing import (
     Optional,
     Set,
     Type,
+    Tuple,
 )
 
 import colorama  # type: ignore
@@ -609,22 +612,45 @@ class ConanParser:
         self.screen.reset()
 
 
-def check_conan() -> str:
-    try:
-        out = check_output(
-            [sys.executable, *"-m conans.conan --version".split()],
-            universal_newlines=True,
-        )
-    except CalledProcessError as exc:
-        LOG.error("%s", exc.output)
-        sys.exit(1)
-    except FileNotFoundError:
-        LOG.error("The 'conan' command cannot be executed.")
-        sys.exit(1)
+def check_conan() -> Tuple[List[str], str]:
+    """determines the fastest method to get the version of conan"""
 
-    version = re.search(r"[12](\.\d+){2}", out)
-    assert version
-    return version.group()
+    regex = re.compile(r"[12](?:\.\d+){2}")
+    conan_command = [sys.executable, "-m", "conans.conan"]
+
+    try:
+        # parse the sourcefile without importing it
+        if not sys.modules.get("conans"):
+            spec = find_spec("conans")
+            out = Path(spec.origin).read_text(encoding="utf-8") if spec else ""
+            return conan_command, regex.findall(out)[0]
+    except (ImportError, FileNotFoundError, IndexError):
+        pass
+
+    try:
+        # import the conan module and get the version string
+        module = import_module("conans")
+        version = getattr(module, "__version__")
+        return conan_command, version
+    except (ModuleNotFoundError, AttributeError):
+        pass
+
+    # use the conan executable or python calling the module
+    for command in [["conan"], conan_command]:
+        try:
+            out = check_output(
+                [*command, "--version"],
+                universal_newlines=True,
+            )
+            return command, regex.findall(out)[0]
+        except CalledProcessError as exc:
+            LOG.error("%s", exc.output)
+            sys.exit(1)
+        except (FileNotFoundError, IndexError):
+            pass
+
+    LOG.error("The 'conan' command cannot be executed.")
+    sys.exit(1)
 
 
 def monitor(args: List[str]) -> int:
@@ -643,10 +669,10 @@ def monitor(args: List[str]) -> int:
     elif not trace_path.is_absolute():
         os.environ["CONAN_TRACE_FILE"] = str(trace_path.absolute())
 
-    conan_version = check_conan()
-    full_command = [sys.executable, "-m", "conans.conan", *args]
+    conan_command, conan_version = check_conan()
+    conan_command.extend(args)
     process = psutil.Popen(
-        full_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
+        conan_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
     )
     parser = ConanParser(process)
     parser.log.update(
@@ -684,7 +710,7 @@ def monitor(args: List[str]) -> int:
     parser.log.update(
         dict(
             tracelog=tracelog,
-            command=full_command,
+            command=conan_command,
             returncode=returncode,
         )
     )
