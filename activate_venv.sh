@@ -9,7 +9,7 @@ fi
 
 SCRIPT_PATH=$(dirname $(realpath -s $CUR_FILE))
 VENV_SCRIPT=${SCRIPT_PATH}/pyvenv.py
-VENV_PATH=${SCRIPT_PATH}/venv
+VENV_PATH=${VIRTUAL_ENV}
 ACTIVATE_SH=${VENV_PATH}/bin/activate
 
-python3 $VENV_SCRIPT --min-version 3.6 && workon conmon
+python3 $VENV_SCRIPT --min-version 3.6 --path $VENV_PATH && source $ACTIVATE_SH

@@ -203,7 +203,9 @@ def sync(venv_path: Path):
             )
         elif has_changed:
             LOG.info(
-                "%s was modified. You can run 'pip-compile' to update.", REQ_IN.name
+                "%s was modified. You can run 'pip-compile' to update %s.",
+                REQ_IN.name,
+                REQ_TXT.name,
             )
 
     with content_check(REQ_TXT, path=venv_path) as has_changed:

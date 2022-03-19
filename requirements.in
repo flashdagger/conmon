@@ -3,10 +3,14 @@
 conan
 
 # development dependencies
-black
-bump2version
-mypy
+black; platform_python_implementation != 'PyPy'
+bump2version; platform_python_implementation != 'PyPy'
+mypy; platform_python_implementation != 'PyPy'
+pre-commit; platform_python_implementation != 'PyPy'
 pyflakes
-pylint
-pytest
+pylint; platform_python_implementation != 'PyPy'
+pytest; platform_python_implementation != 'PyPy'
 wheel
+
+# on PyPy some newer versions are not available
+markupsafe<=2.0.1; platform_python_implementation == 'PyPy'
