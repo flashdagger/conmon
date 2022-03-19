@@ -621,6 +621,23 @@ class ConanParser:
         raw_fh.close()
         self.finalize()
 
+    def process_tracelog(self, trace_path: Path):
+        self.log["tracelog"] = tracelog = []
+        for line in trace_path.read_text(encoding="utf-8").splitlines():
+            action = json.loads(line)
+            if action["_action"] in {"REST_API_CALL", "UNZIP"}:
+                continue
+            ref_id = action.get("_id")
+            if not ref_id:
+                tracelog.append(action)
+                continue
+            name, *_ = ref_id.split("/", maxsplit=1)
+            pkg_id = ref_id.split(":", maxsplit=1)
+            requirement = self.log["requirements"].setdefault(name, {})
+            if len(pkg_id) == 2:
+                requirement["package_id"] = pkg_id[1]
+            requirement.setdefault("actions", []).append(action["_action"])
+
     def finalize(self):
         State.deactivate_all()
         self.screen.reset()
@@ -692,23 +709,8 @@ def monitor(args: List[str]) -> int:
     parser.process_streams()
     returncode = process.wait()
 
-    tracelog = []
     if trace_path.exists():
-        for line in trace_path.read_text(encoding="utf-8").splitlines():
-            action = json.loads(line)
-            if action["_action"] in {"REST_API_CALL", "UNZIP"}:
-                continue
-            ref_id = action.get("_id")
-            if not ref_id:
-                tracelog.append(action)
-                continue
-            name, *_ = ref_id.split("/", maxsplit=1)
-            pkg_id = ref_id.split(":", maxsplit=1)
-            req = parser.log["requirements"].setdefault(name, {})
-            if len(pkg_id) == 2:
-                req["package_id"] = pkg_id[1]
-            req.setdefault("actions", []).append(action["_action"])
-
+        parser.process_tracelog(trace_path)
         if trace_path.name.startswith("tmp"):
             for path in (trace_path, Path(str(trace_path) + ".lock")):
                 if path.exists():
@@ -716,7 +718,6 @@ def monitor(args: List[str]) -> int:
 
     parser.log.update(
         dict(
-            tracelog=tracelog,
             command=conan_command,
             returncode=returncode,
         )
