@@ -1,5 +1,6 @@
 # the project itself as editable
 -e file:.
+conan
 
 # development dependencies
 black
