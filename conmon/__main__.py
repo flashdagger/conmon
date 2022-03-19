@@ -632,7 +632,12 @@ def monitor(args: List[str]) -> int:
 
     raw_fh = filehandler("CONMON_CONAN_LOG", hint="raw conan output")
     while not streams.exhausted:
-        stdout, stderr = streams.readboth()
+        try:
+            stdout, stderr = streams.readboth()
+        except KeyboardInterrupt:
+            parser.screen.reset()
+            LOG.error("Pressed Ctrl+C")
+            break
 
         if stderr and not stdout:
             parser.process("", stderr)
