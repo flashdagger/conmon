@@ -275,6 +275,7 @@ class Build(State):
         if line == "Calling build()":
             self.screen.print(f"Building {ref}")
             self.log = self.parser.ref_log
+            self.log.setdefault("build", [])
             self.log.setdefault("stdout", []).append(line)
             self.buildmon = BuildMonitor(self.parser.proc)
             self.buildmon.start()
@@ -290,7 +291,7 @@ class Build(State):
         if not line:
             return
 
-        self.log.setdefault("build", []).append(line)
+        self.log["build"].append(line)
         match = self.parser.BUILD_STATUS_REGEX.fullmatch(
             line
         ) or self.parser.BUILD_STATUS_REGEX2.match(line)
@@ -412,6 +413,7 @@ class Build(State):
 
 
 class ConanParser:
+    CONAN_VERSION = "<undefined>"
     REF_PART_PATTERN = r"\w[\w\+\.\-]{1,50}"
     REF_REGEX = re.compile(
         rf"""
@@ -467,6 +469,16 @@ class ConanParser:
         self.last_ref = ""
         self.screen = ScreenWriter()
         self._resolved = False
+
+        self.log.update(
+            dict(
+                build_platform=platform.platform(),
+                python_version=".".join(map(str, sys.implementation.version))
+                + f" ({sys.implementation.name})",
+                conan_version=self.CONAN_VERSION,
+            )
+        )
+
         State.add(Default, self)
         State.add(Requirements, self)
         State.add(Packages, self)
@@ -530,7 +542,7 @@ class ConanParser:
                 self.screen.reset()
                 LOG.log(loglevel, "\n".join(processed).strip("\n"))
 
-        stderr = self.ref_log.setdefault("stderr", [])
+        stderr = []
         for line in lines:
             line = line.rstrip()
             match = self.WARNING_REGEX.match(line)
@@ -548,6 +560,8 @@ class ConanParser:
                 residue.append(line)
 
         flush()
+        if stderr:
+            self.ref_log.setdefault("stderr", []).extend(stderr)
         if residue:
             self.ref_log.setdefault("stderr_lines", []).append(residue)
 
@@ -669,20 +683,12 @@ def monitor(args: List[str]) -> int:
     elif not trace_path.is_absolute():
         os.environ["CONAN_TRACE_FILE"] = str(trace_path.absolute())
 
-    conan_command, conan_version = check_conan()
+    conan_command, ConanParser.CONAN_VERSION = check_conan()
     conan_command.extend(args)
     process = psutil.Popen(
         conan_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
     )
     parser = ConanParser(process)
-    parser.log.update(
-        dict(
-            build_platform=platform.platform(),
-            python_version=".".join(map(str, sys.version_info)),
-            conan_version=conan_version,
-        )
-    )
-
     parser.process_streams()
     returncode = process.wait()
 
@@ -704,8 +710,9 @@ def monitor(args: List[str]) -> int:
             req.setdefault("actions", []).append(action["_action"])
 
         if trace_path.name.startswith("tmp"):
-            trace_path.unlink(missing_ok=True)
-            Path(str(trace_path) + ".lock").unlink(missing_ok=True)
+            for path in (trace_path, Path(str(trace_path) + ".lock")):
+                if path.exists():
+                    path.unlink()
 
     parser.log.update(
         dict(
