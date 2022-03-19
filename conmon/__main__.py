@@ -621,7 +621,7 @@ def check_conan() -> Tuple[List[str], str]:
     try:
         # parse the sourcefile without importing it
         if not sys.modules.get("conans"):
-            spec = find_spec("conans")
+            spec: Any = find_spec("conans")
             out = Path(spec.origin).read_text(encoding="utf-8") if spec else ""
             return conan_command, regex.findall(out)[0]
     except (ImportError, FileNotFoundError, IndexError):

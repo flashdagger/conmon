@@ -77,28 +77,28 @@ class CompilerParser(argparse.ArgumentParser):
         )
 
     def cleanup_args(self, args):
-        options = set()
+        options: Set[str] = set()
 
         for action in self._actions:
             options.update(set(action.option_strings))
             if isinstance(action.default, list):
                 action.default.clear()
 
-        options = {
-            option
-            for option in options
-            if not option.startswith("--") and option[1].islower()
-        }
-        options = tuple(sorted(options, reverse=True, key=len))
+        options = {option for option in options if not option.startswith("--")}
+        sorted_options = tuple(sorted(options, reverse=True, key=len))
 
         clean_args = []
         unknown_args = []
         for arg in args:
             if arg in self.IGNORED_FLAGS:
                 continue
-            for option in options:
+            for option in sorted_options:
                 if arg.startswith(option) and arg != option:
-                    unknown_args.append(arg)
+                    if option[1].isupper():
+                        k = len(option)
+                        clean_args.extend((arg[:k], arg[k:]))
+                    else:
+                        unknown_args.append(arg)
                     break
             else:
                 clean_args.append(arg)
