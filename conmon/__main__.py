@@ -82,74 +82,116 @@ def filehandler(env, mode="w", hint="report"):
 
 
 class State:
-    _ACTIVE: Set["State"] = set()  # currently active
-    _EXECUTE: Set["State"] = set()  # can be executed
-
     def __init__(self, parser: "ConanParser"):
+        self.finished = False
+        self.stopped = False
         self.screen = parser.screen
-
-    @classmethod
-    def add(cls, state_cls: Type["State"], *args) -> "State":
-        assert state_cls not in {type(state) for state in cls._EXECUTE}
-        state = state_cls(*args)
-        cls._EXECUTE.add(state)
-        return state
-
-    @classmethod
-    def all_active(cls):
-        return tuple(cls._ACTIVE)
-
-    @classmethod
-    def all_states(cls):
-        return tuple(cls._EXECUTE)
-
-    @property
-    def is_active(self) -> bool:
-        return self in self._ACTIVE
-
-    def _deactivate(self, final=False):
-        if not self.is_active:
-            CONMON_LOG.debug("%s already deactivated", self.__class__.__name__)
-            return
-
-        self._ACTIVE.remove(self)
-        if final:
-            self._EXECUTE.remove(self)
 
     def deactivate(self):
         self._deactivate(final=False)
 
-    @classmethod
-    def deactivate_all(cls):
-        for state in tuple(cls._ACTIVE):
-            state.deactivate()
+    def _deactivate(self, final=False):
+        self.finished = True
+        self.stopped = final
 
-    def _activate(self):
-        if self.is_active:
-            CONMON_LOG.debug("%s already active", self.__class__.__name__)
-            return
-
-        self.deactivate_all()
-        self._ACTIVE.add(self)
-
-    def _activated(self, parsed_line: Match) -> bool:
+    def activated(self, parsed_line: Match) -> bool:
         raise NotImplementedError
 
-    def _process(self, parsed_line: Match) -> None:
-        pass
-
     def process(self, parsed_line: Match) -> None:
-        if self.is_active:
-            self._process(parsed_line)
-        elif self._activated(parsed_line):
-            self._activate()
+        raise NotImplementedError
+
+
+class StateMachine:
+    def __init__(self, parser: "ConanParser"):
+        self.screen = parser.screen
+        self.parser = parser
+        self._active: Set[State] = set()  # currently active
+        self._running: List[State] = []  # can be executed
+        self._default: Optional[State] = None
+
+    def setdefault(self, state: Optional[State]):
+        self._default = state
+
+    def add(self, state: State):
+        assert not state.stopped
+        assert state not in self.running_instances()
+        self._running.append(state)
+        return state
+
+    @property
+    def active_classes(self) -> Tuple[Type[State], ...]:
+        return tuple(type(instance) for instance in self._active)
+
+    def running_instances(self) -> Tuple[State, ...]:
+        return tuple(self._running)
+
+    def activate(self, state: State):
+        state.finished = False
+        self._active.add(state)
+
+    def deactivate(self, state: State):
+        state.finished = True
+        self._active.remove(state)
+        if state.stopped:
+            self._running.remove(state)
+
+    def deactivate_all(self):
+        for state in tuple(self._active):
+            self.deactivate(state)
+
+    def process_hooks(self, parsed_line: Match) -> None:
+        activated = []
+
+        for state in tuple(self._running):
+            if state in self._active:
+                if not state.finished:
+                    state.process(parsed_line)
+                if state.finished:
+                    self.deactivate(state)
+            elif state.activated(parsed_line):
+                activated.append(state)
+            if state in self._running and state.stopped:
+                self._running.remove(state)
+
+        if activated:
+            if len(activated) > 1:
+                CONMON_LOG.warning(
+                    "overlapping states: %s",
+                    ", ".join(type(state).__name__ for state in activated),
+                )
+            self.deactivate_all()
+            for state in activated:
+                self.activate(state)
+
+        if not self._active and self._default:
+            self.activate(self._default)
+            self._default.process(parsed_line)
 
 
 class Default(State):
-    def _activated(self, parsed_line: Match) -> bool:
-        # if not self.all_active() and ref:
-        #     print(">>>", ref, line)
+    def __init__(self, parser: "ConanParser"):
+        super().__init__(parser)
+        self.parser = parser
+        self.overwrite = False
+        self.last_line: Optional[Match] = None
+
+    def activated(self, parsed_line: Match) -> bool:
         return False
+
+    def process(self, parsed_line: Match) -> None:
+        line, ref, rest = parsed_line.group(0, "ref", "rest")
+        match = re.fullmatch(r"Downloading conan\w+\.[a-z]{2,3}", line)
+
+        if rest.startswith("Installing (downloading, building) binaries..."):
+            self.overwrite = True
+        if match and self.last_line:
+            parsed_line = self.last_line
+            ref = parsed_line.group("ref")
+            self.screen.print(f"{match.group()} for {ref} ", overwrite=True)
+        else:
+            self.last_line = parsed_line
+            self.screen.print(f"{line} ", overwrite=bool(ref) or self.overwrite)
+        self.parser.ref_log(parsed_line).setdefault("stdout", []).append(line)
 
 
 class Requirements(State):
@@ -161,14 +203,14 @@ class Requirements(State):
             rf" +{pattern} from '(?P<remote>[\w-]+)' +- +(?P<recipe_from>\w+)", flags
         )
 
-    def _activated(self, parsed_line: Match) -> bool:
+    def activated(self, parsed_line: Match) -> bool:
         line = parsed_line.group("rest")
         if line in {"Requirements", "Build requirements"}:
             self.screen.print(line)
             return True
         return False
 
-    def _process(self, parsed_line: Match) -> None:
+    def process(self, parsed_line: Match) -> None:
         line = parsed_line.group(0)
         match = self.regex.match(line)
         if not match:
@@ -192,14 +234,14 @@ class Packages(State):
             rf" +{pattern}:(?P<package_id>[a-z0-9]+) +- +(?P<status>\w+)", flags
         )
 
-    def _activated(self, parsed_line: Match) -> bool:
+    def activated(self, parsed_line: Match) -> bool:
         line = parsed_line.group("rest")
         if line in {"Packages", "Build requirements packages"}:
             self.screen.print(line)
             return True
         return False
 
-    def _process(self, parsed_line: Match) -> None:
+    def process(self, parsed_line: Match) -> None:
         line = parsed_line.group(0)
         match = self.regex.match(line)
         if not match:
@@ -219,11 +261,11 @@ class Config(State):
         self.lines: List[str] = []
         self.log = parser.log.setdefault("config", {})
 
-    def _activated(self, parsed_line: Match) -> bool:
+    def activated(self, parsed_line: Match) -> bool:
         line = parsed_line.group("rest")
         return line == "Configuration:"
 
-    def _process(self, parsed_line: Match) -> None:
+    def process(self, parsed_line: Match) -> None:
         line = parsed_line.group(0)
         if (
             "[env]" in self.lines
@@ -251,16 +293,16 @@ class Package(State):
         self.parser = parser
         self.log = parser.log
 
-    def _activated(self, parsed_line: Match) -> bool:
+    def activated(self, parsed_line: Match) -> bool:
         line, ref, rest = parsed_line.group(0, "ref", "rest")
         if rest == "Calling package()":
             self.screen.print(f"Packaging {ref}")
-            self.log = self.parser.ref_log
+            self.log = self.parser.ref_log(parsed_line)
             self.log.setdefault("stdout", []).append(line)
             return True
         return False
 
-    def _process(self, parsed_line: Match) -> None:
+    def process(self, parsed_line: Match) -> None:
         line = parsed_line.group("rest")
         match = re.match(
             r"(?P<prefix>[\w ]+) '?(?P<id>[a-z0-9]{32,40})(?:[' ]|$)", line
@@ -309,11 +351,11 @@ class Build(State):
         self.warnings = 0
         self.buildmon: Optional[BuildMonitor] = None
 
-    def _activated(self, parsed_line: Match) -> bool:
+    def activated(self, parsed_line: Match) -> bool:
         full_line, ref, line = parsed_line.group(0, "ref", "rest")
         if line == "Calling build()":
             self.screen.print(f"Building {ref}")
-            self.log = self.parser.ref_log
+            self.log = self.parser.ref_log(parsed_line)
             self.log.setdefault("build", [])
             self.log.setdefault("stdout", []).append(full_line)
             self.buildmon = BuildMonitor(self.parser.process)
@@ -321,7 +363,7 @@ class Build(State):
             return True
         return False
 
-    def _process(self, parsed_line: Match) -> None:
+    def process(self, parsed_line: Match) -> None:
         line = parsed_line.group("rest")
         match = re.fullmatch(r"Package '\w+' built", line)
         if match:
@@ -492,10 +534,7 @@ class ConanParser:
         self.parsed_line: Match = self.parse_line("")
         self.process = process
         self.log: Dict[str, Any] = defaultdict(dict)
-        self.ref = ""
-        self.last_ref = ""
         self.screen = ScreenWriter()
-        self._resolved = False
 
         self.log["conan"] = dict(
             build_platform=platform.platform(),
@@ -505,12 +544,13 @@ class ConanParser:
             command=process.cmdline(),
         )
 
-        State.add(Default, self)
-        State.add(Config, self)
-        State.add(Requirements, self)
-        State.add(Packages, self)
-        State.add(Build, self)
-        State.add(Package, self)
+        self.states = StateMachine(self)
+        self.states.setdefault(Default(self))
+        self.states.add(Config(self))
+        self.states.add(Requirements(self))
+        self.states.add(Packages(self))
+        self.states.add(Build(self))
+        self.states.add(Package(self))
 
     @property
     def compiler_type(self) -> str:
@@ -530,19 +570,16 @@ class ConanParser:
 
         return compiler_type
 
-    def parse_line(self, line) -> Match:
+    @staticmethod
+    def parse_line(line) -> Match:
         match = LINE_REGEX.match(line)
         assert match
-
-        self.ref = match.group("ref") or ""
-        if self.ref:
-            self.last_ref = self.ref
-
         return match
 
-    @property
-    def ref_log(self) -> Dict[str, Any]:
-        name = self.parsed_line.group("name")
+    def ref_log(self, parsed_line: Optional[Match]) -> Dict[str, Any]:
+        if not parsed_line:
+            parsed_line = self.parsed_line
+        name = parsed_line.group("name")
         if not name:
             return self.log
 
@@ -584,29 +621,12 @@ class ConanParser:
     def process_line(self, line: str):
         line = line.rstrip()
         self.parsed_line = self.parse_line(line)
-        rest = self.parsed_line.group("rest")
+        ref, rest = self.parsed_line.group("ref", "rest")
 
-        if self.ref and "is locked" in rest:
+        if ref and "is locked" in rest:
             CONAN_LOG.warning(line)
 
-        for state in State.all_states():
-            state.process(self.parsed_line)
-
-        match_download = re.fullmatch(r"Downloading conan\w+\.[a-z]{2,3}", rest)
-        if State.all_active():
-            pass
-        elif self.ref:
-            self.ref_log.setdefault("stdout", []).append(line)
-            self.screen.print(f"{line} ", overwrite=True)
-        elif match_download and self.last_ref:
-            self.screen.print(
-                f"{match_download.group()} for {self.last_ref} ", overwrite=True
-            )
-        else:
-            if line.startswith("Installing (downloading, building) binaries..."):
-                self._resolved = True
-            self.log.setdefault("stdout", []).append(line)
-            self.screen.print(f"{line} ", overwrite=self._resolved)
+        self.states.process_hooks(self.parsed_line)
 
     def process_streams(self, raw_fh: TextIO):
         streams = ProcessStreamHandler(self.process)
@@ -623,10 +643,11 @@ class ConanParser:
                 break
 
             if stdout:
-                raw_fh.write("".join((stdout_marker, *stdout)))
-                raw_fh.flush()
+                raw_fh.write(stdout_marker)
                 for line in stdout:
                     self.process_line(DECOLORIZE_REGEX.sub("", line))
+                    raw_fh.write(line)
+                raw_fh.flush()
 
             if stderr:
                 raw_fh.write("".join((stderr_marker, *stderr)))
@@ -653,7 +674,7 @@ class ConanParser:
                 actions.append(action["_action"])
 
     def finalize(self):
-        State.deactivate_all()
+        self.states.deactivate_all()
         self.screen.reset()
         self.log["conan"]["returncode"] = self.process.wait()
 
