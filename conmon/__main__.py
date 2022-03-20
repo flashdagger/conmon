@@ -132,21 +132,21 @@ class State:
         self.deactivate_all()
         self._ACTIVE.add(self)
 
-    def _activated(self, ref: Optional[str], line: str) -> bool:
+    def _activated(self, parsed_line: Match) -> bool:
         raise NotImplementedError
 
-    def _process(self, ref: Optional[str], line: str) -> None:
+    def _process(self, parsed_line: Match) -> None:
         pass
 
-    def process(self, ref: Optional[str], line: str) -> None:
+    def process(self, parsed_line: Match) -> None:
         if self.is_active:
-            self._process(ref, line)
-        elif self._activated(ref, line):
+            self._process(parsed_line)
+        elif self._activated(parsed_line):
             self._activate()
 
 
 class Default(State):
-    def _activated(self, ref: Optional[str], line: str) -> bool:
+    def _activated(self, parsed_line: Match) -> bool:
         # if not self.all_active() and ref:
         #     print(">>>", ref, line)
         return False
@@ -161,13 +161,15 @@ class Requirements(State):
             rf" +{pattern} from '(?P<remote>[\w-]+)' +- +(?P<recipe_from>\w+)", flags
         )
 
-    def _activated(self, ref: Optional[str], line: str) -> bool:
+    def _activated(self, parsed_line: Match) -> bool:
+        line = parsed_line.group("rest")
         if line in {"Requirements", "Build requirements"}:
             self.screen.print(line)
             return True
         return False
 
-    def _process(self, ref: Optional[str], line: str) -> None:
+    def _process(self, parsed_line: Match) -> None:
+        line = parsed_line.group(0)
         match = self.regex.match(line)
         if not match:
             self.deactivate()
@@ -190,13 +192,15 @@ class Packages(State):
             rf" +{pattern}:(?P<package_id>[a-z0-9]+) +- +(?P<status>\w+)", flags
         )
 
-    def _activated(self, ref: Optional[str], line: str) -> bool:
+    def _activated(self, parsed_line: Match) -> bool:
+        line = parsed_line.group("rest")
         if line in {"Packages", "Build requirements packages"}:
             self.screen.print(line)
             return True
         return False
 
-    def _process(self, ref: Optional[str], line: str) -> None:
+    def _process(self, parsed_line: Match) -> None:
+        line = parsed_line.group(0)
         match = self.regex.match(line)
         if not match:
             self.deactivate()
@@ -215,10 +219,12 @@ class Config(State):
         self.lines: List[str] = []
         self.log = parser.log.setdefault("config", {})
 
-    def _activated(self, ref: Optional[str], line: str) -> bool:
+    def _activated(self, parsed_line: Match) -> bool:
+        line = parsed_line.group("rest")
         return line == "Configuration:"
 
-    def _process(self, ref: Optional[str], line: str) -> None:
+    def _process(self, parsed_line: Match) -> None:
+        line = parsed_line.group(0)
         if (
             "[env]" in self.lines
             and not re.match(r"\w+=|$", line)
@@ -245,15 +251,17 @@ class Package(State):
         self.parser = parser
         self.log = parser.log
 
-    def _activated(self, ref: Optional[str], line: str) -> bool:
-        if line == "Calling package()":
+    def _activated(self, parsed_line: Match) -> bool:
+        line, ref, rest = parsed_line.group(0, "ref", "rest")
+        if rest == "Calling package()":
             self.screen.print(f"Packaging {ref}")
             self.log = self.parser.ref_log
             self.log.setdefault("stdout", []).append(line)
             return True
         return False
 
-    def _process(self, ref: Optional[str], line: str) -> None:
+    def _process(self, parsed_line: Match) -> None:
+        line = parsed_line.group("rest")
         match = re.match(
             r"(?P<prefix>[\w ]+) '?(?P<id>[a-z0-9]{32,40})(?:[' ]|$)", line
         )
@@ -286,7 +294,7 @@ class Build(State):
     )
     BUILD_STATUS_REGEX2 = re.compile(
         r"""(?x)
-            (?P<status>(?!))? # should never match
+            (?P<status>$)?    # should never match
             .*\ -c\           # compile but don't link
             (?P<file>
                 [\-.\w/\\]+ \. (?:cpp|c) (?=\ )
@@ -301,18 +309,20 @@ class Build(State):
         self.warnings = 0
         self.buildmon: Optional[BuildMonitor] = None
 
-    def _activated(self, ref: Optional[str], line: str) -> bool:
+    def _activated(self, parsed_line: Match) -> bool:
+        full_line, ref, line = parsed_line.group(0, "ref", "rest")
         if line == "Calling build()":
             self.screen.print(f"Building {ref}")
             self.log = self.parser.ref_log
             self.log.setdefault("build", [])
-            self.log.setdefault("stdout", []).append(line)
+            self.log.setdefault("stdout", []).append(full_line)
             self.buildmon = BuildMonitor(self.parser.process)
             self.buildmon.start()
             return True
         return False
 
-    def _process(self, ref: Optional[str], line: str) -> None:
+    def _process(self, parsed_line: Match) -> None:
+        line = parsed_line.group("rest")
         match = re.fullmatch(r"Package '\w+' built", line)
         if match:
             self.deactivate()
@@ -463,7 +473,7 @@ REF_REGEX = re.compile(
     re.VERBOSE,
 )
 LINE_REGEX = re.compile(
-    rf"(?:{compact_pattern(REF_REGEX)[0]}(?:: ?| ))?(?P<rest>[^\n]*)\n?"
+    rf"(?:{compact_pattern(REF_REGEX)[0]}(?:: ?| ))?(?P<rest>[^\r\n]*)"
 )
 
 
@@ -580,7 +590,7 @@ class ConanParser:
             CONAN_LOG.warning(line)
 
         for state in State.all_states():
-            state.process(self.ref, rest)
+            state.process(self.parsed_line)
 
         match_download = re.fullmatch(r"Downloading conan\w+\.[a-z]{2,3}", rest)
         if State.all_active():
