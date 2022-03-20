@@ -49,7 +49,8 @@ from .compilers import (
     filter_compiler_warnings,
 )
 
-LOG = logging.getLogger("CONMON")
+CONMON_LOG = logging.getLogger("CONMON")
+CONAN_LOG = logging.getLogger("CONAN")
 DECOLORIZE_REGEX = re.compile(r"[\u001b]\[\d{1,2}m", re.UNICODE)
 
 PARENT_PROCS = [parent.name() for parent in psutil.Process(os.getppid()).parents()]
@@ -107,7 +108,7 @@ class State:
 
     def _deactivate(self, final=False):
         if not self.is_active:
-            LOG.debug("%s already deactivated", self.__class__.__name__)
+            CONMON_LOG.debug("%s already deactivated", self.__class__.__name__)
             return
 
         self._ACTIVE.remove(self)
@@ -124,7 +125,7 @@ class State:
 
     def _activate(self):
         if self.is_active:
-            LOG.debug("%s already active", self.__class__.__name__)
+            CONMON_LOG.debug("%s already active", self.__class__.__name__)
             return
 
         self.deactivate_all()
@@ -435,7 +436,7 @@ class Build(State):
         res_msg = "\n---\n".join(("\n".join(lines) for lines in filtered))
         res_msg = "\n" + res_msg.strip("\n")
         if res_msg.strip():
-            LOG.warning("[STDERR] %s", res_msg)
+            CONMON_LOG.warning("[STDERR] %s", res_msg)
 
         super()._deactivate(final=False)
 
@@ -537,46 +538,46 @@ class ConanParser:
         groupdict = match.groupdict()
         return self.log["requirements"].setdefault(groupdict["name"], groupdict)
 
-    def handle_errors(self, lines, final=False):
-        processed = []
+    def process_errors(self, lines: Iterable[str], final=False):
+        def flush(level, _lines):
+            if not _lines:
+                return
+            self.screen.reset()
+            CONAN_LOG.log(level, "\n".join(_lines))
+
+        processed = logging.WARNING, []
         residue = []
-        loglevel = logging.WARNING
-
-        def flush():
-            if processed:
-                self.screen.reset()
-                LOG.log(loglevel, "\n".join(processed).strip("\n"))
-
         stderr = []
+
         for line in lines:
             line = line.rstrip()
             match = self.WARNING_REGEX.match(line)
             if match:
-                flush()
+                flush(*processed)
                 ref, severity, info = match.group("ref", "severity", "info")
                 loglevel = getattr(logging, severity, logging.WARNING)
                 prefix = f"{ref}: " if ref else ""
-                processed = [f"{prefix}{info}"]
+                processed = loglevel, [f"{prefix}{info}"]
                 stderr.append(line)
             elif processed or final:
-                processed.append(line)
+                processed[1].append(line)
                 stderr.append(line)
             else:
                 residue.append(line)
 
-        flush()
-        if stderr:
-            self.ref_log.setdefault("stderr", []).extend(stderr)
-        if residue:
-            self.ref_log.setdefault("stderr_lines", []).append(residue)
+        flush(*processed)
+        # if stderr:
+        #     self.ref_log.setdefault("stderr", []).extend(stderr)
+        # if residue:
+        #     self.ref_log.setdefault("stderr_lines", []).append(residue)
 
-    def process_line(self, line: str, error_lines: Iterable[str] = ()):
+    def process_line(self, line: str):
         line = line.rstrip()
         rest = self.parse_reference(line)
 
-        self.handle_errors(error_lines)
+        # self.handle_errors(error_lines)
         if self.ref and self.ref in line and "is locked" in line:
-            LOG.warning(line)
+            CONAN_LOG.warning(line)
 
         for state in State.all_states():
             state.process(self.ref, rest)
@@ -600,29 +601,28 @@ class ConanParser:
 
     def process_streams(self, raw_fh: TextIO):
         streams = ProcessStreamHandler(self.process)
+        marker = "{:-^80}\n"
+        stderr_marker = marker.format(" stderr ")
+        stdout_marker = marker.format(" stdout ")
 
         while not streams.exhausted:
             try:
                 stdout, stderr = streams.readboth()
             except KeyboardInterrupt:
                 self.screen.reset()
-                LOG.warning("Pressed Ctrl+C")
+                CONMON_LOG.warning("Pressed Ctrl+C")
                 break
 
-            if stderr and not stdout:
-                raw_fh.write("".join(stderr))
+            if stdout:
+                raw_fh.write("".join((stdout_marker, *stdout)))
                 raw_fh.flush()
-                self.process_line("", stderr)
+                for line in stdout:
+                    self.process_line(DECOLORIZE_REGEX.sub("", line))
 
-            for num, line in enumerate(stdout, 1):
-                raw_fh.write(line)
-                decolorized = DECOLORIZE_REGEX.sub("", line)
-                if num == len(stdout):
-                    raw_fh.write("".join(stderr))
-                    raw_fh.flush()
-                    self.process_line(decolorized, stderr)
-                else:
-                    self.process_line(decolorized, ())
+            if stderr:
+                raw_fh.write("".join((stderr_marker, *stderr)))
+                raw_fh.flush()
+                self.process_errors(stderr, final=False)
 
     def process_tracelog(self, trace_path: Path):
         self.log["conan"]["tracelog"] = tracelog = []
@@ -681,12 +681,12 @@ def check_conan() -> Tuple[List[str], str]:
             )
             return command, regex.findall(out)[0]
         except CalledProcessError as exc:
-            LOG.error("%s", exc.output)
+            CONMON_LOG.error("%s", exc.output)
             sys.exit(1)
         except (FileNotFoundError, IndexError):
             pass
 
-    LOG.error("The 'conan' command cannot be executed.")
+    CONMON_LOG.error("The 'conan' command cannot be executed.")
     sys.exit(1)
 
 
@@ -727,7 +727,7 @@ def monitor(args: List[str]) -> int:
         json.dump(parser.log, fh, indent=2)
 
     for hint in LOG_HINTS:
-        LOG.info(hint)
+        CONMON_LOG.info(hint)
 
     return process.wait()
 
@@ -749,9 +749,12 @@ def main() -> int:
         colorlog.ColoredFormatter("%(log_color)s[%(name)s:%(levelname)s] %(message)s")
     )
 
-    # general logger
-    LOG.addHandler(handler)
-    LOG.setLevel(logging.DEBUG)
+    # general conmon logger
+    CONMON_LOG.addHandler(handler)
+    CONMON_LOG.setLevel(logging.DEBUG)
+    # conan logger for warnings/errors
+    CONAN_LOG.addHandler(handler)
+    CONAN_LOG.setLevel(logging.WARNING)
     # conan build logger
     BLOG.addHandler(handler)
     BLOG.setLevel(logging.INFO)
@@ -760,7 +763,7 @@ def main() -> int:
     PLOG.setLevel(logging.INFO)
 
     if os.getenv("CI"):
-        LOG.info("Running in Gitlab CI")
+        CONMON_LOG.info("Running in Gitlab CI")
 
     return monitor(args.cmd)
 
