@@ -23,14 +23,20 @@ class WarningRegex:
         """
     )
     CLANG_CL = re.compile(
-        r"^(?P<context>(In\ file\ included\ from\ [^\n]+:\d+:\n)*)"
-        r"(?P<file>[^\n(]+)\((?P<line>\d+),(?P<column>\d+)\):\s"
-        r"(?P<severity>[a-z\s]+):\s"
-        r"(?P<info>.*?)"
-        r"(\s\[(?P<category>[^]]+)])?"
-        r"\n"
-        r"((?P<hint>[^\n]+\n[\s~]*\^[\s~]*)\n)?",
-        re.VERBOSE | re.MULTILINE,
+        r"""(?xm)
+            ^(?P<context>(In\ file\ included\ from\ [^\n]+:\d+:\n)*)
+            (?P<file>[^\n(]+)\((?P<line>\d+),(?P<column>\d+)\):\ #
+            (?P<severity>[a-z ]+):\ #
+            (?P<info>.*?)
+            (
+                \ \[ (?P<category>[^]]+) ]
+            )?
+            \n
+            (
+                (?P<hint>[^\n]+\n[\s~]*\^[\s~]*)
+                \n
+            )?
+        """
     )
     GNU = re.compile(
         r"""(?xm)
@@ -64,7 +70,9 @@ class WarningRegex:
             (?P<severity>[a-z\s]+)  \ #
             (?P<category>[A-Z]+\d+):\ #
             (?P<info>.+?)
-            (\ \[ (?P<project>[^]]+) ])?
+            (
+                \ \[ (?P<project>[^]]+) ]
+            )?
             \n
         """
     )

@@ -606,10 +606,12 @@ class ConanParser:
                 stdout, stderr = streams.readboth()
             except KeyboardInterrupt:
                 self.screen.reset()
-                LOG.error("Pressed Ctrl+C")
+                LOG.warning("Pressed Ctrl+C")
                 break
 
             if stderr and not stdout:
+                raw_fh.write("".join(stderr))
+                raw_fh.flush()
                 self.process_line("", stderr)
 
             for num, line in enumerate(stdout, 1):
