@@ -1,8 +1,9 @@
+from textwrap import dedent
+
 import pytest
 
-from conmon.__main__ import ConanParser
+from conmon.__main__ import REF_REGEX
 from conmon.compilers import WarningRegex
-from textwrap import dedent
 
 valid_refs = [
     dict(name="my-package", version="version", user="user", channel="channel"),
@@ -23,7 +24,7 @@ def test_ref_regex_ok(expected):
     if expected["channel"]:
         ref = ref + "/" + expected["channel"]
     expected["ref"] = ref
-    match = ConanParser.REF_REGEX.fullmatch(expected["ref"])
+    match = REF_REGEX.fullmatch(expected["ref"])
     assert match is not None
     assert match.groupdict() == expected
 
@@ -33,7 +34,7 @@ def test_ref_regex_nok(expected):
     expected[
         "ref"
     ] = f"{expected['name']}/{expected['version']}@{expected['user']}/{expected['channel']}"
-    match = ConanParser.REF_REGEX.fullmatch(expected["ref"])
+    match = REF_REGEX.fullmatch(expected["ref"])
     assert match is None
 
 

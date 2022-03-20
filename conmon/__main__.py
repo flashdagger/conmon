@@ -26,6 +26,7 @@ from typing import (
     Type,
     Tuple,
     TextIO,
+    Match,
 )
 
 import colorama  # type: ignore
@@ -154,10 +155,10 @@ class Default(State):
 class Requirements(State):
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
-        self.log = parser.log["requirements"]
-        pattern, flags = compact_pattern(parser.REF_REGEX)
+        self.log = parser.log.setdefault("requirements", defaultdict(dict))
+        pattern, flags = compact_pattern(REF_REGEX)
         self.regex = re.compile(
-            rf" +{pattern} from '(?P<remote>[\w-]+)' +- +(?P<status>\w+)", flags
+            rf" +{pattern} from '(?P<remote>[\w-]+)' +- +(?P<recipe_from>\w+)", flags
         )
 
     def _activated(self, ref: Optional[str], line: str) -> bool:
@@ -173,15 +174,18 @@ class Requirements(State):
             return
 
         self.screen.print(line)
-        name, remote, status = match.group("name", "remote", "status")
-        self.log.setdefault(name, {}).update(dict(remote=remote, recipe_from=status))
+        mapping = {
+            key: value for key, value in match.groupdict().items() if key not in {"ref"}
+        }
+        name = mapping.pop("name")
+        self.log.setdefault(name, {}).update(mapping)
 
 
 class Packages(State):
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
-        self.log = parser.log["requirements"]
-        pattern, flags = compact_pattern(parser.REF_REGEX)
+        self.log = parser.log.setdefault("requirements", defaultdict(dict))
+        pattern, flags = compact_pattern(REF_REGEX)
         self.regex = re.compile(
             rf" +{pattern}:(?P<package_id>[a-z0-9]+) +- +(?P<status>\w+)", flags
         )
@@ -441,28 +445,33 @@ class Build(State):
         super()._deactivate(final=False)
 
 
+REF_PART_PATTERN = r"\w[\w\+\.\-]{1,50}"
+REF_REGEX = re.compile(
+    rf"""
+        (?P<ref>
+        (?P<name>{REF_PART_PATTERN})/
+        (?P<version>{REF_PART_PATTERN})
+        (?:
+            @
+            (?:
+                (?P<user>{REF_PART_PATTERN})/
+                (?P<channel>{REF_PART_PATTERN})
+            )?
+         )?
+     )
+    """,
+    re.VERBOSE,
+)
+LINE_REGEX = re.compile(
+    rf"(?:{compact_pattern(REF_REGEX)[0]}(?:: ?| ))?(?P<rest>[^\n]*)\n?"
+)
+
+
 class ConanParser:
     CONAN_VERSION = "<undefined>"
-    REF_PART_PATTERN = r"\w[\w\+\.\-]{1,50}"
-    REF_REGEX = re.compile(
-        rf"""
-            (?P<ref>
-            (?P<name>{REF_PART_PATTERN})/
-            (?P<version>{REF_PART_PATTERN})
-            (?:
-                @
-                (?:
-                    (?P<user>{REF_PART_PATTERN})/
-                    (?P<channel>{REF_PART_PATTERN})
-                )?
-             )?
-         )
-        """,
-        re.VERBOSE,
-    )
     WARNING_REGEX = re.compile(
         rf"""(?xm)
-        ^(?:{REF_REGEX.pattern}:\ +)?
+        ^(?:{compact_pattern(REF_REGEX)[0]}:\ +)?
         (?P<severity>ERROR|WARN):\ ?
         (?P<info>.*)
         """
@@ -470,6 +479,7 @@ class ConanParser:
     SEVERITY_REGEX = re.compile(r"(?xm).+?:\ (?P<severity>warning|error):?\ [a-zA-Z]")
 
     def __init__(self, process: psutil.Popen):
+        self.parsed_line: Match = self.parse_line("")
         self.process = process
         self.log: Dict[str, Any] = defaultdict(dict)
         self.ref = ""
@@ -510,33 +520,23 @@ class ConanParser:
 
         return compiler_type
 
-    def parse_reference(self, line) -> str:
-        ref_match = re.fullmatch(
-            rf"(?x)\.*{self.REF_REGEX.pattern}[\s:]{{1,2}}(?P<rest>.*)",
-            line,
-        )
+    def parse_line(self, line) -> Match:
+        match = LINE_REGEX.match(line)
+        assert match
 
-        if ref_match:
-            ref, rest = ref_match.group("ref"), ref_match.group("rest")
-            self.ref = ref
-            self.last_ref = ref
-        elif State.all_active():
-            rest = line
-        else:
-            rest = line
-            self.ref = ""
+        self.ref = match.group("ref") or ""
+        if self.ref:
+            self.last_ref = self.ref
 
-        return rest
+        return match
 
     @property
     def ref_log(self) -> Dict[str, Any]:
-        if not self.ref:
+        name = self.parsed_line.group("name")
+        if not name:
             return self.log
 
-        match = self.REF_REGEX.fullmatch(self.ref)
-        assert match
-        groupdict = match.groupdict()
-        return self.log["requirements"].setdefault(groupdict["name"], groupdict)
+        return self.log["requirements"][name]
 
     def process_errors(self, lines: Iterable[str], final=False):
         def flush(level, _lines):
@@ -545,9 +545,9 @@ class ConanParser:
             self.screen.reset()
             CONAN_LOG.log(level, "\n".join(_lines))
 
-        processed = logging.WARNING, []
-        residue = []
-        stderr = []
+        processed: Tuple[int, List[str]] = logging.WARNING, []
+        residue: List[str] = []
+        stderr: List[str] = []
 
         for line in lines:
             line = line.rstrip()
@@ -573,10 +573,10 @@ class ConanParser:
 
     def process_line(self, line: str):
         line = line.rstrip()
-        rest = self.parse_reference(line)
+        self.parsed_line = self.parse_line(line)
+        rest = self.parsed_line.group("rest")
 
-        # self.handle_errors(error_lines)
-        if self.ref and self.ref in line and "is locked" in line:
+        if self.ref and "is locked" in rest:
             CONAN_LOG.warning(line)
 
         for state in State.all_states():
@@ -586,8 +586,7 @@ class ConanParser:
         if State.all_active():
             pass
         elif self.ref:
-            # key = self.current_state or "stdout"
-            # self.ref_log.setdefault(key, []).append(rest)
+            self.ref_log.setdefault("stdout", []).append(line)
             self.screen.print(f"{line} ", overwrite=True)
         elif match_download and self.last_ref:
             self.screen.print(
@@ -636,7 +635,7 @@ class ConanParser:
                 continue
             name, *_ = ref_id.split("/", maxsplit=1)
             pkg_id = ref_id.split(":", maxsplit=1)
-            requirement = self.log["requirements"].setdefault(name, {})
+            requirement = self.log["requirements"][name]
             if len(pkg_id) == 2:
                 requirement["package_id"] = pkg_id[1]
             actions = requirement.setdefault("actions", [])
