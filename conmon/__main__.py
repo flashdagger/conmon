@@ -153,16 +153,15 @@ class StateMachine:
     def process_hooks(self, parsed_line: Match) -> None:
         activated = []
 
+        for state in tuple(self._active):
+            if not state.finished:
+                state.process(parsed_line)
+            if state.finished:
+                self.deactivate(state)
+
         for state in tuple(self._running):
-            if state in self._active:
-                if not state.finished:
-                    state.process(parsed_line)
-                if state.finished:
-                    self.deactivate(state)
-            elif state.activated(parsed_line):
+            if state.activated(parsed_line):
                 activated.append(state)
-            if state in self._running and state.stopped:
-                self._running.remove(state)
 
         if activated:
             if len(activated) > 1:
@@ -221,6 +220,7 @@ class Requirements(State):
             rf" +{pattern} from '(?P<remote>[\w-]+)' +- +(?P<status>\w+)", flags
         )
         self.req: List[Dict[str, Optional[str]]] = []
+        self.indent_ref = 0
 
     def activated(self, parsed_line: Match) -> bool:
         full_line, line = parsed_line.group(0, "rest")
@@ -248,11 +248,11 @@ class Requirements(State):
         self.log.setdefault(name, {}).update(mapping)
 
     def _deactivate(self, final=False):
-        indent_ref = max(len(item["ref"]) for item in self.req)
+        self.indent_ref = max(self.indent_ref, *(len(item["ref"]) for item in self.req))
         indent_remote = max(len(item["remote"]) for item in self.req)
         for item in sorted(self.req, key=itemgetter("status", "remote", "ref")):
             self.screen.print(
-                f"    {item['ref']:{indent_ref}} from "
+                f"    {item['ref']:{self.indent_ref}} from "
                 f"{repr(item['remote']):{indent_remote}} - {item['status']}"
             )
         self.req.clear()
@@ -269,6 +269,7 @@ class Packages(State):
             rf" +{pattern}:(?P<package_id>[a-z0-9]+) +- +(?P<status>\w+)", flags
         )
         self.pkg: List[Dict[str, Optional[str]]] = []
+        self.indent_ref = 0
 
     def activated(self, parsed_line: Match) -> bool:
         full_line, line = parsed_line.group(0, "rest")
@@ -293,10 +294,10 @@ class Packages(State):
         )
 
     def _deactivate(self, final=False):
-        indent_ref = max(len(item["ref"]) for item in self.pkg)
+        self.indent_ref = max(self.indent_ref, *(len(item["ref"]) for item in self.pkg))
         for item in sorted(self.pkg, key=itemgetter("status", "ref")):
             self.screen.print(
-                f"    {item['ref']:{indent_ref}} {item['package_id']} - {item['status']}"
+                f"    {item['ref']:{self.indent_ref}} {item['package_id']} - {item['status']}"
             )
         self.pkg.clear()
         super()._deactivate(final=False)
