@@ -481,6 +481,19 @@ class Build(State):
 
         return parsed_warnings, residue
 
+    @staticmethod
+    def emit_warnings(lines):
+        more = len(lines) - 10
+        if more > 0:
+            lines = [
+                *lines[:10],
+                [f"... {more} more lines emitted ..."],
+            ]
+        filtered = unique(tuple(lines) for lines in lines)
+        res_msg = "\n[...]\n".join(("\n".join(lines) for lines in filtered))
+        if res_msg.strip():
+            CONMON_LOG.warning("STDERR: %s", res_msg.strip("\n"))
+
     def _deactivate(self, final=False):
         self.parser.screen.reset()
         ref_log = self.parser.defaultlog
@@ -527,17 +540,7 @@ class Build(State):
             stderr_lines, parse_cmake_warnings
         )
         warnings.extend(cmake_warnings)
-
-        more = len(stderr_lines) - 10
-        if more > 0:
-            stderr_lines = [
-                *stderr_lines[:10],
-                *[[f"... {more} more lines emitted ..."]],
-            ]
-        filtered = unique(tuple(lines) for lines in stderr_lines)
-        res_msg = "\n[...]\n".join(("\n".join(lines) for lines in filtered))
-        if res_msg.strip():
-            CONMON_LOG.warning("STDERR: %s", res_msg.strip("\n"))
+        self.emit_warnings(stderr_lines)
 
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
