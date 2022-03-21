@@ -42,7 +42,7 @@ from conmon.utils import (
     ProcessStreamHandler,
 )
 from . import __version__
-from .buildmon import BuildMonitor, LOG as PLOG
+from .buildmon import BuildMonitor, LOG as PLOG, identify_compiler
 from .compilers import (
     LOG as BLOG,
     parse_compiler_warnings,
@@ -274,7 +274,9 @@ class Packages(State):
         self.screen.print(line)
         self.stdout.append(line)
         name, package_id = match.group("name", "package_id")
-        self.log.setdefault(name, {}).update(dict(package_id=package_id))
+        self.log.setdefault(name, {}).update(
+            dict(package_id=package_id, package_revision=None)
+        )
 
 
 class Config(State):
@@ -481,40 +483,50 @@ class Build(State):
 
     def _deactivate(self, final=False):
         self.parser.screen.reset()
-        compiler_type = self.parser.compiler_type
         ref_log = self.parser.defaultlog
         ref_log["translation_units"] = self.translation_units()
-
         warnings = ref_log.setdefault("warnings", [])
         build_stdout = "\n".join(ref_log["build"])
-        warnings.extend(
-            parse_compiler_warnings(
-                build_stdout,
-                compiler=compiler_type,
-            ),
-        )
-        # NASM compiler is type GNU
-        if compiler_type == "msvc":
+
+        compiler_names = {
+            Path(tu["compiler"]).stem for tu in ref_log["translation_units"]
+        }
+        compiler_mapping = {name: identify_compiler(name) for name in compiler_names}
+        compiler_types = {self.parser.compiler_type, *compiler_mapping.values()}
+        compiler_types.discard(None)
+
+        if compiler_mapping:
+            CONMON_LOG.info(
+                "Used compilers: %s",
+                ", ".join(
+                    f"{key} ({value})" for key, value in compiler_mapping.items() if key
+                ),
+            )
+
+        for compiler_type in compiler_types:
             warnings.extend(
                 parse_compiler_warnings(
                     build_stdout,
-                    compiler="gnu",
+                    compiler=compiler_type,
                 ),
             )
 
         stderr_lines = ref_log.pop("stderr_lines", ())
         ref_log.setdefault("stderr", []).extend(chain(*stderr_lines))
 
-        warning_output, stderr_lines = filter_compiler_warnings(
-            stderr_lines, compiler=compiler_type
-        )
-        compiler_warnings = parse_compiler_warnings(
-            warning_output, compiler=compiler_type
-        )
+        for compiler_type in compiler_types:
+            warning_output, stderr_lines = filter_compiler_warnings(
+                stderr_lines, compiler=compiler_type
+            )
+            compiler_warnings = parse_compiler_warnings(
+                warning_output, compiler=compiler_type
+            )
+            warnings.extend(compiler_warnings)
+
         cmake_warnings, stderr_lines = self._popwarnings(
             stderr_lines, parse_cmake_warnings
         )
-        warnings.extend((*compiler_warnings, *cmake_warnings))
+        warnings.extend(cmake_warnings)
 
         filtered = unique(tuple(lines) for lines in stderr_lines)
         res_msg = "\n---\n".join(("\n".join(lines) for lines in filtered))
@@ -619,7 +631,7 @@ class ConanParser:
         self.defaultlog = log
         return log
 
-    def process_errors(self, lines: Iterable[str], final=False):
+    def process_errors(self, lines: Iterable[str]):
         processed: List[str] = []
         loglevel: int = logging.WARNING
         residue: List[str] = []
@@ -643,7 +655,7 @@ class ConanParser:
                 prefix = f"{ref}: " if ref else ""
                 processed = [f"{prefix}{info}"]
                 stderr = [line]
-            elif processed or final:
+            elif processed or self.defaultlog == self.log:
                 processed.append(line)
                 stderr.append(line)
             else:
@@ -681,13 +693,15 @@ class ConanParser:
                 raw_fh.write(stdout_marker)
                 for line in stdout:
                     self.process_line(DECOLORIZE_REGEX.sub("", line))
-                    raw_fh.write(line)
+                    state = self.states.active_instance()
+                    name = state and type(state).__name__
+                    raw_fh.write(f"[{name}] {line}")
                 raw_fh.flush()
 
             if stderr:
                 raw_fh.write("".join((stderr_marker, *stderr)))
                 raw_fh.flush()
-                self.process_errors(stderr, final=False)
+                self.process_errors(stderr)
 
     def process_tracelog(self, trace_path: Path):
         self.log["conan"]["tracelog"] = tracelog = []

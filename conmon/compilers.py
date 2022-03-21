@@ -52,7 +52,7 @@ class WarningRegex:
              (?:(?P<column>\d+):)?\ #
              (?P<severity>[a-z\s]+):\ #
              (?P<info>.*?)
-             (\ \[(?P<category>[\w+-=]+)])?
+             (\ \[(?P<category>[\w=+\-]+)])?
              \n
              (
                 (?P<hint>[^\n]+\n[\s|~]*\^[\s~]*)
