@@ -214,15 +214,17 @@ class Requirements(State):
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
         self.log = parser.log.setdefault("requirements", defaultdict(dict))
+        self.stdout = parser.log.setdefault("stdout", [])
         pattern, flags = compact_pattern(REF_REGEX)
         self.regex = re.compile(
             rf" +{pattern} from '(?P<remote>[\w-]+)' +- +(?P<status>\w+)", flags
         )
 
     def activated(self, parsed_line: Match) -> bool:
-        line = parsed_line.group("rest")
+        full_line, line = parsed_line.group(0, "rest")
         if line in {"Requirements", "Build requirements"}:
             self.screen.print(line)
+            self.stdout.append(full_line)
             return True
         return False
 
@@ -234,6 +236,7 @@ class Requirements(State):
             return
 
         self.screen.print(line)
+        self.stdout.append(line)
         mapping = {
             key: value
             for key, value in match.groupdict().items()
@@ -247,15 +250,17 @@ class Packages(State):
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
         self.log = parser.log.setdefault("requirements", defaultdict(dict))
+        self.stdout = parser.log.setdefault("stdout", [])
         pattern, flags = compact_pattern(REF_REGEX)
         self.regex = re.compile(
             rf" +{pattern}:(?P<package_id>[a-z0-9]+) +- +(?P<status>\w+)", flags
         )
 
     def activated(self, parsed_line: Match) -> bool:
-        line = parsed_line.group("rest")
+        full_line, line = parsed_line.group(0, "rest")
         if line in {"Packages", "Build requirements packages"}:
             self.screen.print(line)
+            self.stdout.append(full_line)
             return True
         return False
 
@@ -267,6 +272,7 @@ class Packages(State):
             return
 
         self.screen.print(line)
+        self.stdout.append(line)
         name, package_id = match.group("name", "package_id")
         self.log.setdefault(name, {}).update(dict(package_id=package_id))
 
