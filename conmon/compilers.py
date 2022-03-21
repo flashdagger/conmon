@@ -2,6 +2,7 @@ import logging
 import re
 from collections import Counter
 from itertools import groupby
+from operator import itemgetter
 from typing import Any, Dict, List, Optional, Tuple, Pattern
 
 from conmon.utils import shorten
@@ -183,7 +184,9 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
             sum(key[-1] for key in stat_list),
             severity,
         )
-        for _, key, value in stat_list:
+        if severity != "warning":
+            continue
+        for _, key, value in sorted(stat_list, key=itemgetter(2), reverse=True):
             if key is None:
                 continue
             LOG.info("  %s: %s", key, value)

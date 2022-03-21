@@ -528,11 +528,16 @@ class Build(State):
         )
         warnings.extend(cmake_warnings)
 
+        more = len(stderr_lines) - 10
+        if more > 0:
+            stderr_lines = [
+                *stderr_lines[:10],
+                *[[f"... {more} more lines emitted ..."]],
+            ]
         filtered = unique(tuple(lines) for lines in stderr_lines)
-        res_msg = "\n---\n".join(("\n".join(lines) for lines in filtered))
-        res_msg = "\n" + res_msg.strip("\n")
+        res_msg = "\n[...]\n".join(("\n".join(lines) for lines in filtered))
         if res_msg.strip():
-            CONMON_LOG.warning("[STDERR] %s", res_msg)
+            CONMON_LOG.warning("STDERR: %s", res_msg.strip("\n"))
 
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
@@ -677,9 +682,10 @@ class ConanParser:
 
     def process_streams(self, raw_fh: TextIO):
         streams = ProcessStreamHandler(self.process)
-        marker = "{:-^80}\n"
-        stderr_marker = marker.format(" stderr ")
-        stdout_marker = marker.format(" stdout ")
+        marker = "{:-^120}\n"
+        stderr_marker_start = marker.format(" <stderr> ")
+        stdout_marker_start = marker.format(" <stdout> ")
+        stderr_written = False
 
         while not streams.exhausted:
             try:
@@ -690,7 +696,10 @@ class ConanParser:
                 break
 
             if stdout:
-                raw_fh.write(stdout_marker)
+                if stderr_written:
+                    raw_fh.write(stdout_marker_start)
+                    stderr_written = False
+
                 for line in stdout:
                     self.process_line(DECOLORIZE_REGEX.sub("", line))
                     state = self.states.active_instance()
@@ -699,8 +708,11 @@ class ConanParser:
                 raw_fh.flush()
 
             if stderr:
-                raw_fh.write("".join((stderr_marker, *stderr)))
+                raw_fh.write(
+                    "".join(("" if stderr_written else stderr_marker_start, *stderr))
+                )
                 raw_fh.flush()
+                stderr_written = True
                 self.process_errors(stderr)
 
     def process_tracelog(self, trace_path: Path):
