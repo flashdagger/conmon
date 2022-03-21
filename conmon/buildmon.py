@@ -126,6 +126,7 @@ def identify_compiler(name: str) -> Optional[str]:
 
 
 class BuildMonitor(Thread):
+    CYCLE_TIME_S = 0.025
     PARSER = CompilerParser(prog=Path(__file__).stem, add_help=False)
     ERRORS: Set[str] = set()
 
@@ -289,7 +290,7 @@ class BuildMonitor(Thread):
         while not self.finish.is_set():
             start = time.monotonic()
             self.scan()
-            sleep_time_s = 0.025 - (time.monotonic() - start)
+            sleep_time_s = self.CYCLE_TIME_S - (time.monotonic() - start)
             if sleep_time_s > 0.0:
                 time.sleep(sleep_time_s)
 
