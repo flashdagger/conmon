@@ -88,7 +88,9 @@ class State:
         self.screen = parser.screen
 
     def deactivate(self):
+        assert self.finished is False
         self._deactivate(final=False)
+        assert self.finished is True
 
     def _deactivate(self, final=False):
         self.finished = True
@@ -137,7 +139,8 @@ class StateMachine:
         self._active.add(state)
 
     def deactivate(self, state: State):
-        state.finished = True
+        if not state.finished:
+            state.deactivate()
         self._active.remove(state)
         if state.stopped:
             self._running.remove(state)
@@ -186,7 +189,6 @@ class Default(State):
         return False
 
     def process(self, parsed_line: Match) -> None:
-        self.finished = True
         line, ref, rest = parsed_line.group(0, "ref", "rest")
         match = re.fullmatch(r"Downloading conan\w+\.[a-z]{2,3}", line)
 
@@ -205,6 +207,7 @@ class Default(State):
             self.screen.print(f"{line} ", overwrite=self.overwrite)
 
         log.setdefault("stdout", []).append(line)
+        self.deactivate()
 
 
 class Requirements(State):
