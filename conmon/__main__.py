@@ -14,6 +14,7 @@ from importlib import import_module
 from importlib.util import find_spec
 from io import StringIO
 from itertools import chain
+from operator import itemgetter
 from pathlib import Path
 from subprocess import PIPE, check_output, CalledProcessError
 from typing import (
@@ -219,6 +220,7 @@ class Requirements(State):
         self.regex = re.compile(
             rf" +{pattern} from '(?P<remote>[\w-]+)' +- +(?P<status>\w+)", flags
         )
+        self.req: List[Dict[str, Optional[str]]] = []
 
     def activated(self, parsed_line: Match) -> bool:
         full_line, line = parsed_line.group(0, "rest")
@@ -235,7 +237,7 @@ class Requirements(State):
             self.deactivate()
             return
 
-        self.screen.print(line)
+        self.req.append(match.groupdict())
         self.stdout.append(line)
         mapping = {
             key: value
@@ -244,6 +246,17 @@ class Requirements(State):
         }
         name = mapping.pop("name")
         self.log.setdefault(name, {}).update(mapping)
+
+    def _deactivate(self, final=False):
+        indent_ref = max(len(item["ref"]) for item in self.req)
+        indent_remote = max(len(item["remote"]) for item in self.req)
+        for item in sorted(self.req, key=itemgetter("status", "remote", "ref")):
+            self.screen.print(
+                f"    {item['ref']:{indent_ref}} from "
+                f"{repr(item['remote']):{indent_remote}} - {item['status']}"
+            )
+        self.req.clear()
+        super()._deactivate(final=False)
 
 
 class Packages(State):
@@ -255,6 +268,7 @@ class Packages(State):
         self.regex = re.compile(
             rf" +{pattern}:(?P<package_id>[a-z0-9]+) +- +(?P<status>\w+)", flags
         )
+        self.pkg: List[Dict[str, Optional[str]]] = []
 
     def activated(self, parsed_line: Match) -> bool:
         full_line, line = parsed_line.group(0, "rest")
@@ -271,12 +285,21 @@ class Packages(State):
             self.deactivate()
             return
 
-        self.screen.print(line)
+        self.pkg.append(match.groupdict())
         self.stdout.append(line)
         name, package_id = match.group("name", "package_id")
         self.log.setdefault(name, {}).update(
             dict(package_id=package_id, package_revision=None)
         )
+
+    def _deactivate(self, final=False):
+        indent_ref = max(len(item["ref"]) for item in self.pkg)
+        for item in sorted(self.pkg, key=itemgetter("status", "ref")):
+            self.screen.print(
+                f"    {item['ref']:{indent_ref}} {item['package_id']} - {item['status']}"
+            )
+        self.pkg.clear()
+        super()._deactivate(final=False)
 
 
 class Config(State):
