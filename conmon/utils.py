@@ -78,12 +78,13 @@ class ScreenWriter:
 
     def __init__(self):
         self._last_line = ""
+        self.skip_overwrite = not sys.stdout.isatty()
 
     @staticmethod
     def fit_width(line: str):
         size = columns = len(line)
         with suppress(OSError):
-            (columns, _lines), _ = os.get_terminal_size(), columns
+            (columns, _), _ = os.get_terminal_size(), columns
         return line[: min(size, columns - 1)]
 
     def reset(self):
@@ -92,13 +93,20 @@ class ScreenWriter:
             self._last_line = ""
 
     def print(self, line: str, overwrite=False, indent=-1):
+        if overwrite and self.skip_overwrite:
+            self._last_line = line
+            return
+
         append = indent >= 0
         spaces = " " * max(0, indent - len(self._last_line)) if append else ""
+
         if overwrite:
             line = self.fit_width(line)
 
         if self._last_line and not append:
             printed_line = self.CLEAR_LINE + self.RESET_LINE + line
+        elif self.skip_overwrite:
+            printed_line = self._last_line + spaces + line
         else:
             printed_line = spaces + line
 
