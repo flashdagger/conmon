@@ -4,6 +4,7 @@ import pytest
 
 from conmon.__main__ import REF_REGEX
 from conmon.compilers import WarningRegex
+from conmon.regex import shorten_conan_path
 
 valid_refs = [
     dict(name="my-package", version="version", user="user", channel="channel"),
@@ -100,3 +101,40 @@ def test_cmake_warning_regex_multiline():
         key: match[0].group(key) for key in set(expected) & set(regex.groupindex)
     }
     assert expected == err_match
+
+
+paths = [
+    ("", ""),
+    (
+        "/home/user/.conan/data/libmysqlclient/8.0.25/_/_/build/"
+        "3b926ebe4e4bf1b03a5d7d9151eabdcd92583a12/libmysql/api_test.c",
+        ".../libmysql/api_test.c",
+    ),
+    (
+        "C:/home/user/.conan/data/libmysqlclient/8.0.25/_/_/package/"
+        "3b926ebe4e4bf1b03a5d7d9151eabdcd92583a12/libmysql/api_test.c",
+        ".../libmysql/api_test.c",
+    ),
+    (
+        r"c:\home\user\.conan\data\libmysqlclient\8.0.25\_\_\package"
+        r"\3b926ebe4e4bf1b03a5d7d9151eabdcd92583a12\libmysql\api_test.c",
+        r"...\libmysql\api_test.c",
+    ),
+    (
+        "path is too short /libmysqlclient/8.0.25/_/_/build/"
+        "3b926ebe4e4bf1b03a5d7d9151eabdcd92583a12/libmysql/api_test.c",
+        "path is too short /libmysqlclient/8.0.25/_/_/build/"
+        "3b926ebe4e4bf1b03a5d7d9151eabdcd92583a12/libmysql/api_test.c",
+    ),
+    (
+        "[ 99%] Linking CXX static library /home/user/.conan/data/libmysqlclient/8.0.25/_/_/"
+        "build/3b926ebe4e4bf1b03a5d7d9151eabdcd92583a12/libmysql/api_test.c",
+        "[ 99%] Linking CXX static library .../libmysql/api_test.c",
+    ),
+]
+
+
+@pytest.mark.parametrize("path_pair", paths)
+def test_shorten_conan_data_path(path_pair):
+    path, expected = path_pair
+    assert shorten_conan_path(path) == expected

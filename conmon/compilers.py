@@ -5,6 +5,7 @@ from itertools import groupby
 from operator import itemgetter
 from typing import Any, Dict, List, Optional, Tuple, Pattern
 
+from conmon.regex import shorten_conan_path
 from conmon.utils import shorten
 
 LOG = logging.getLogger("BUILD")
@@ -173,7 +174,7 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
 
         if key not in keyset:
             output = shorten(match.group().rstrip(), width=500)
-            LOG.log(log_level(severity), output)
+            LOG.log(log_level(severity), shorten_conan_path(output))
             keyset.add(key)
 
     total_stats = ((key[0], key[1], stats[key]) for key in sorted(stats))
