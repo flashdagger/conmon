@@ -51,6 +51,7 @@ from .compilers import (
     parse_compiler_warnings,
     parse_cmake_warnings,
     filter_compiler_warnings,
+    parse_bison_warnings,
 )
 
 CONMON_LOG = logging.getLogger("CONMON")
@@ -400,6 +401,7 @@ class Build(State):
         self.parser = parser
         self.warnings = 0
         self.compiler_types: Set[str] = set()
+        self.tools: Set[str] = set()
         self.buildmon: Optional[BuildMonitor] = None
 
     def activated(self, parsed_line: Match) -> bool:
@@ -491,6 +493,7 @@ class Build(State):
         self.compiler_types.update(
             value for value in self.buildmon.compiler.values() if value is not None
         )
+        self.tools.update(self.buildmon.executables)
         self.buildmon = None
         return tu_list
 
@@ -537,6 +540,10 @@ class Build(State):
                 ),
             )
 
+        if self.tools & {"bison", "win_bison"}:
+            bison_warnings = parse_bison_warnings(build_stdout)
+            warnings.extend(bison_warnings)
+
         stderr_lines = ref_log.pop("stderr_lines", ())
         ref_log.setdefault("stderr", []).extend(chain(*stderr_lines))
 
@@ -549,12 +556,13 @@ class Build(State):
             )
             warnings.extend(compiler_warnings)
 
-        cmake_warnings, stderr_lines = self._popwarnings(
-            stderr_lines, parse_cmake_warnings
-        )
-        warnings.extend(cmake_warnings)
-        self.emit_warnings(stderr_lines)
+        if "cmake" in self.tools:
+            cmake_warnings, stderr_lines = self._popwarnings(
+                stderr_lines, parse_cmake_warnings
+            )
+            warnings.extend(cmake_warnings)
 
+        self.emit_warnings(stderr_lines)
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
 
@@ -710,9 +718,10 @@ class ConanParser:
 
                 for line in stdout:
                     self.process_line(DECOLORIZE_REGEX.sub("", line))
-                    state = self.states.active_instance()
-                    name = state and type(state).__name__
-                    raw_fh.write(f"[{name}] {line}")
+                    # state = self.states.active_instance()
+                    # name = state and type(state).__name__
+                    # raw_fh.write(f"[{name}] {line}")
+                    raw_fh.write(line)
                 raw_fh.flush()
 
             if stderr:

@@ -320,7 +320,7 @@ class BuildMonitor(Thread):
         if executables:
             LOG.info("Detected compiler: %s", executables)
         if self.executables:
-            LOG.info("Detected executables: %s", ", ".join(self.executables))
+            LOG.info("Detected executables: %s", ", ".join(sorted(self.executables)))
 
         num_tus = sum(len(unit["sources"]) for unit in translation_units)
         if num_tus:

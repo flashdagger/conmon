@@ -12,6 +12,23 @@ LOG = logging.getLogger("BUILD")
 
 
 class WarningRegex:
+    BISON = re.compile(
+        r"""(?xm)
+            ^(?P<file>(?:[a-zA-Z]:)?[^:\n]+):
+            (?:
+                (?P<line>\d+)[\d.-]*:
+            )?\ #
+            (?P<severity>[a-z]+):\ 
+            (?P<info>.+?)
+            (?:
+                \ \[ (?P<category>[\w-]+) ]
+            )?
+            \n
+            (?P<hint>
+                (?:[ \d]+\|[^\n]+\n)+
+            )?
+        """
+    )
     CMAKE = re.compile(
         r"""(?xm)
             ^CMake\ (?P<severity>\w+)
@@ -117,6 +134,28 @@ def parse_cmake_warnings(output: str) -> List[Dict[str, Any]]:
             LOG.error(match.group().rstrip())
         elif groupdict["severity"] == "warning" and groupdict["file"]:
             LOG.warning(match.group().rstrip())
+
+    return warnings
+
+
+def parse_bison_warnings(output: str) -> List[Dict[str, Any]]:
+    groupdict: Dict[str, Any]
+    warnings = []
+    seen = set()
+
+    for match in WarningRegex.BISON.finditer(output):
+        full_message = shorten_conan_path(match.group().rstrip())
+        if full_message in seen:
+            continue
+        seen.add(full_message)
+        groupdict = match.groupdict()
+        to_int(groupdict, "line")
+        groupdict["from"] = "bison"
+        warnings.append(groupdict)
+        if groupdict["severity"] == "error":
+            LOG.error(full_message)
+        elif groupdict["severity"] == "warning":
+            LOG.warning(full_message)
 
     return warnings
 
