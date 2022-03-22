@@ -371,7 +371,7 @@ class Package(State):
 
 
 class Build(State):
-    WIDTH = 60
+    MAX_WIDTH = 65
     BUILD_STATUS_REGEX = re.compile(
         r"""(?x)
             (?:
@@ -440,14 +440,14 @@ class Build(State):
             prefix = f"{status.strip()} " if status else ""
             output = shorten(
                 file,
-                width=self.WIDTH,
+                width=self.MAX_WIDTH,
                 template=f"{prefix}{{}} ",
                 strip="left",
                 placeholder="...",
             )
             # shorten at path separator
             output = re.sub(r"\.{3}[^/\\]+(?=[/\\])", "...", output)
-            self.screen.print(f"{output:{self.WIDTH}}", overwrite=True)
+            self.screen.print(f"{output:{self.MAX_WIDTH}}", overwrite=True)
         elif line.startswith("--") or line.startswith("checking"):
             self.screen.print(line, overwrite=True)
         else:
