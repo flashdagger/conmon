@@ -41,6 +41,7 @@ from conmon.utils import (
     unique,
     compact_pattern,
     ProcessStreamHandler,
+    get_terminal_width,
 )
 from . import __version__
 from .buildmon import BuildMonitor, LOG as PLOG, identify_compiler
@@ -668,12 +669,26 @@ class ConanParser:
         residue: List[str] = []
         stderr: List[str] = []
         ref: Optional[str] = None
+        is_defaultlog = self.defaultlog == self.log
+        max_width = -1 if is_defaultlog else (get_terminal_width() or 140) - 20
 
         def flush():
             if not processed:
                 return
+
             self.screen.reset()
-            CONAN_LOG.log(loglevel, "\n".join(processed))
+            preq = -1 if ref or is_defaultlog else None
+
+            if len(processed) == 1:
+                CONAN_LOG.log(
+                    loglevel,
+                    shorten(processed[0], width=preq or max_width, strip="right"),
+                )
+            else:
+                CONAN_LOG.log(
+                    loglevel,
+                    shorten("\n".join(processed), width=preq or 300, strip="middle"),
+                )
             self.getdefaultlog(ref).setdefault("stderr", []).extend(stderr)
 
         for line in lines:
@@ -686,7 +701,7 @@ class ConanParser:
                 prefix = f"{ref}: " if ref else ""
                 processed = [f"{prefix}{info}"]
                 stderr = [line]
-            elif processed or self.defaultlog == self.log:
+            elif processed or is_defaultlog:
                 processed.append(line)
                 stderr.append(line)
             else:

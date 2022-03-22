@@ -72,6 +72,13 @@ class StrictConfigParser(ConfigParser):
         return optionstr
 
 
+def get_terminal_width():
+    try:
+        return os.get_terminal_size()[0]
+    except suppress(OSError):
+        return None
+
+
 class ScreenWriter:
     CLEAR_LINE = colorama.ansi.clear_line(2)
     RESET_LINE = "\r" if os.name == "nt" else colorama.ansi.CSI + "1G"
@@ -82,10 +89,9 @@ class ScreenWriter:
 
     @staticmethod
     def fit_width(line: str):
-        size = columns = len(line)
-        with suppress(OSError):
-            (columns, _), _ = os.get_terminal_size(), columns
-        return line[: min(size, columns - 1)]
+        size = len(line)
+        columns = get_terminal_width() or size
+        return line[: min(size, columns) - 1]
 
     def reset(self):
         if self._last_line:
@@ -230,7 +236,7 @@ def shorten(
     assert strip in {"left", "right", "middle"}
     full_text = template.format(string)
     diff_size = width - len(full_text)
-    if diff_size >= 0:
+    if diff_size >= 0 or width < 0:
         return full_text
     diff_size -= len(placeholder)
     if strip == "right":
@@ -238,7 +244,11 @@ def shorten(
     elif strip == "middle":
         diff_size += len(string)
         div, res = divmod(diff_size, 2)
-        stripped_string = f"{string[:div+res]}{placeholder}{string[len(string)-div:]}"
+        stripped_string = (
+            f"{string[:div+res]}{placeholder}{string[len(string)-div:]}"
+            if diff_size > 0
+            else placeholder
+        )
     else:
         stripped_string = f"{placeholder}{string[-diff_size:]}"
 
