@@ -250,11 +250,10 @@ class Requirements(State):
 
     def _deactivate(self, final=False):
         self.indent_ref = max(self.indent_ref, *(len(item["ref"]) for item in self.req))
-        indent_remote = max(len(item["remote"]) for item in self.req)
         for item in sorted(self.req, key=itemgetter("status", "remote", "ref")):
             self.screen.print(
-                f"    {item['ref']:{self.indent_ref}} from "
-                f"{repr(item['remote']):{indent_remote}} - {item['status']}"
+                f"    [{item['status']:^10}] {item['ref']:{self.indent_ref}} from "
+                f"{repr(item['remote'])}"
             )
         self.req.clear()
         super()._deactivate(final=False)
@@ -298,7 +297,7 @@ class Packages(State):
         self.indent_ref = max(self.indent_ref, *(len(item["ref"]) for item in self.pkg))
         for item in sorted(self.pkg, key=itemgetter("status", "ref")):
             self.screen.print(
-                f"    {item['ref']:{self.indent_ref}} {item['package_id']} - {item['status']}"
+                f"    [{item['status']:^10}] {item['ref']:{self.indent_ref}} {item['package_id']}"
             )
         self.pkg.clear()
         super()._deactivate(final=False)
