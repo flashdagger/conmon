@@ -381,7 +381,7 @@ class Build(State):
                 .*? # msbuild prints only the filename
             )?
             (?P<file>
-                [\-.\w/\\]+ (?(status) $ | \.(?:asm|cpp|c)$ )
+                [\-.\w/\\]+\.[a-z]+ (?(status) $ | \.(?:asm|cpp|c)$ )
             )
     """
     )
