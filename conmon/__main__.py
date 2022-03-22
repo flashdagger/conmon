@@ -34,6 +34,7 @@ import colorama  # type: ignore
 import colorlog  # type: ignore
 import psutil  # type: ignore
 
+from conmon.regex import DECOLORIZE_REGEX, REF_REGEX, WARNING_REGEX
 from conmon.utils import (
     StrictConfigParser,
     ScreenWriter,
@@ -54,7 +55,6 @@ from .compilers import (
 
 CONMON_LOG = logging.getLogger("CONMON")
 CONAN_LOG = logging.getLogger("CONAN")
-DECOLORIZE_REGEX = re.compile(r"[\u001b]\[\d{1,2}m", re.UNICODE)
 
 PARENT_PROCS = [parent.name() for parent in psutil.Process(os.getppid()).parents()]
 LOG_HINTS: Dict[str, None] = {}
@@ -559,38 +559,12 @@ class Build(State):
         super()._deactivate(final=False)
 
 
-REF_PART_PATTERN = r"\w[\w\+\.\-]{1,50}"
-REF_REGEX = re.compile(
-    rf"""
-        (?P<ref>
-        (?P<name>{REF_PART_PATTERN})/
-        (?P<version>{REF_PART_PATTERN})
-        (?:
-            @
-            (?:
-                (?P<user>{REF_PART_PATTERN})/
-                (?P<channel>{REF_PART_PATTERN})
-            )?
-         )?
-     )
-    """,
-    re.VERBOSE,
-)
-LINE_REGEX = re.compile(
-    rf"(?:{compact_pattern(REF_REGEX)[0]}(?:: ?| ))?(?P<rest>[^\r\n]*)"
-)
-
-
 class ConanParser:
     CONAN_VERSION = "<undefined>"
-    WARNING_REGEX = re.compile(
-        rf"""(?xm)
-        ^(?:{compact_pattern(REF_REGEX)[0]}:\ +)?
-        (?P<severity>ERROR|WARN):\ ?
-        (?P<info>.*)
-        """
-    )
     SEVERITY_REGEX = re.compile(r"(?xm).+?:\ (?P<severity>warning|error):?\ [a-zA-Z]")
+    LINE_REGEX = re.compile(
+        rf"(?:{compact_pattern(REF_REGEX)[0]}(?:: ?| ))?(?P<rest>[^\r\n]*)"
+    )
 
     def __init__(self, process: psutil.Popen):
         self.process = process
@@ -632,9 +606,8 @@ class ConanParser:
 
         return compiler_type
 
-    @staticmethod
-    def parse_line(line) -> Match:
-        match = LINE_REGEX.match(line)
+    def parse_line(self, line) -> Match:
+        match = self.LINE_REGEX.match(line)
         assert match
         return match
 
@@ -682,10 +655,13 @@ class ConanParser:
 
         for line in lines:
             line = line.rstrip()
-            match = self.WARNING_REGEX.match(line)
+            match = WARNING_REGEX.match(line)
             if match:
                 flush()
-                ref, severity, info = match.group("ref", "severity", "info")
+                ref, severity_l, severity_r, info = match.group(
+                    "ref", "severity_l", "severity", "info"
+                )
+                severity = severity_l or severity_r
                 loglevel = getattr(logging, severity, logging.WARNING)
                 prefix = f"{ref}: " if ref else ""
                 processed = [f"{prefix}{info}"]

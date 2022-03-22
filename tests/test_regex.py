@@ -2,9 +2,8 @@ from textwrap import dedent
 
 import pytest
 
-from conmon.__main__ import REF_REGEX
 from conmon.compilers import WarningRegex
-from conmon.regex import shorten_conan_path
+from conmon.regex import shorten_conan_path, REF_REGEX
 
 valid_refs = [
     dict(name="my-package", version="version", user="user", channel="channel"),
