@@ -489,7 +489,7 @@ class Build(State):
             )
 
         self.compiler_types.update(
-            value for value in self.buildmon.executables.values() if value is not None
+            value for value in self.buildmon.compiler.values() if value is not None
         )
         self.buildmon = None
         return tu_list

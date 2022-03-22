@@ -115,7 +115,7 @@ class CompilerParser(argparse.ArgumentParser):
 
 
 def identify_compiler(name: str) -> Optional[str]:
-    parts = set(name.replace("+", "").replace(".exe", "").split("-"))
+    parts = set(name.replace("+", "").split("-"))
     if parts == {"cl"}:
         return "msvc"
     elif {"clang", "cl"}.issubset(parts):
@@ -137,10 +137,11 @@ class BuildMonitor(Thread):
         self.proc = proc
         self.proc_cache: Dict = {}
         self.rsp_cache: Dict = {}
-        self.executables: Dict[str, Optional[str]] = {}
+        self.compiler: Dict[str, Optional[str]] = {}
         self._translation_units: Dict[Hashable, Set] = {}
         self.finish = Event()
         self.timing: List[float] = []
+        self.executables: Set[str] = set()
 
     @property
     def translation_units(self):
@@ -203,7 +204,7 @@ class BuildMonitor(Thread):
 
     def check_process(self, process_map: Dict[str, Any]):
         compiler_type = identify_compiler(process_map["name"])
-        self.executables[Path(process_map["name"]).stem] = compiler_type
+        self.compiler[process_map["name"]] = compiler_type
         if (
             compiler_type is None
             or process_map["cwd"] is None
@@ -278,7 +279,7 @@ class BuildMonitor(Thread):
                 info = child.as_dict(attrs=["exe", "cmdline", "cwd"])
                 if not (info["cmdline"] and info["cwd"]):
                     continue
-                info["name"] = Path(info["cmdline"][0]).name.lower()
+                info["name"] = Path(info["cmdline"][0]).stem.lower()
                 if identify_compiler(info["name"]):
                     if info["exe"] == "/bin/dash":
                         LOG.warning(
@@ -290,6 +291,8 @@ class BuildMonitor(Thread):
                         continue
                     self.proc_cache[child_id] = info
                     self.cache_responsefile(info)
+                else:
+                    self.executables.add(info["name"])
         self.timing.append(time.monotonic() - t_start)
 
     def run(self):
@@ -310,12 +313,14 @@ class BuildMonitor(Thread):
                     LOG.error(errmsg)
 
         translation_units = self.translation_units
-        compilers = ", ".join(
-            f"{key} ({value})" for key, value in self.executables.items()
+        executables = ", ".join(
+            f"{key} ({value})" for key, value in self.compiler.items()
         )
 
-        if compilers:
-            LOG.info("Detected executables: %s", compilers)
+        if executables:
+            LOG.info("Detected compiler: %s", executables)
+        if self.executables:
+            LOG.info("Detected executables: %s", ", ".join(self.executables))
 
         num_tus = sum(len(unit["sources"]) for unit in translation_units)
         if num_tus:
