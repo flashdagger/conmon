@@ -173,8 +173,8 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
         stats[key] += 1
 
         if key not in keyset:
-            output = shorten(match.group().rstrip(), width=500)
-            LOG.log(log_level(severity), shorten_conan_path(output))
+            output = shorten(shorten_conan_path(match.group()), width=500)
+            LOG.log(log_level(severity), output.rstrip())
             keyset.add(key)
 
     total_stats = ((key[0], key[1], stats[key]) for key in sorted(stats))

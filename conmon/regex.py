@@ -20,8 +20,8 @@ CONAN_DATA_PATH = re.compile(
 )
 REF_PART_PATTERN = r"\w[\w\+\.\-]{1,50}"
 REF_REGEX = re.compile(
-    rf"""
-        (?P<ref>
+    rf"""(?x)
+    (?P<ref>
         (?P<name>{REF_PART_PATTERN})/
         (?P<version>{REF_PART_PATTERN})
         (?:
@@ -32,15 +32,13 @@ REF_REGEX = re.compile(
             )?
          )?
      )
-    """,
-    re.VERBOSE,
+    """
 )
 WARNING_REGEX = re.compile(
     rf"""(?xm)
     (?:(?P<severity_l>ERROR|WARN):\ )?    
     (?:{compact_pattern(REF_REGEX)[0]}:\ +)?
-    (?(severity_l)
-    | (?P<severity>ERROR|WARN):\ ?)
+    (?(severity_l) | (?P<severity>ERROR|WARN):\ ?)
     (?P<info>.*)
     """
 )

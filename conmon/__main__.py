@@ -448,7 +448,7 @@ class Build(State):
             # shorten at path separator
             output = re.sub(r"\.{3}[^/\\]+(?=[/\\])", "...", output)
             self.screen.print(f"{output:{self.MAX_WIDTH}}", overwrite=True)
-        elif line.startswith("--") or line.startswith("checking"):
+        elif line.startswith("-- ") or line.startswith("checking "):
             self.screen.print(line, overwrite=True)
         else:
             match = self.parser.SEVERITY_REGEX.match(line)
@@ -561,7 +561,9 @@ class Build(State):
 
 class ConanParser:
     CONAN_VERSION = "<undefined>"
-    SEVERITY_REGEX = re.compile(r"(?xm).+?:\ (?P<severity>warning|error):?\ [a-zA-Z]")
+    SEVERITY_REGEX = re.compile(
+        r"(?xm).+?:\ (?P<severity>warning|error)(?::\ |\ [a-zA-Z])"
+    )
     LINE_REGEX = re.compile(
         rf"(?:{compact_pattern(REF_REGEX)[0]}(?:: ?| ))?(?P<rest>[^\r\n]*)"
     )
