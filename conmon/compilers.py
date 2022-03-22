@@ -132,7 +132,7 @@ def filter_compiler_warnings(
         return "", output
 
     for lines in output:
-        text = "\n".join(lines)
+        text = "\n".join((*lines, "\n"))
         if compiler_regex.search(text):
             parsed_output.append(text)
         else:
