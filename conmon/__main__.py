@@ -376,7 +376,7 @@ class Build(State):
         r"""(?x)
             (?:
                 (?P<status>
-                    \[[0-9\s/%]+] | \ +CC(?:LD)?(?=\ )
+                    \[\ {0,2}\d+(?:%|/\d+) ] | \ +CC(?:LD)?(?=\ )
                 )?  # ninja, cmake or automake
                 .*? # msbuild prints only the filename
             )?
@@ -441,12 +441,11 @@ class Build(State):
                 file,
                 width=self.WIDTH,
                 template=f"{prefix}{{}} ",
-                strip_left=True,
+                strip="left",
                 placeholder="...",
             )
-            output = re.sub(
-                r"\.\.\.[^/\\]+(?=[/\\])", "...", output
-            )  # shorten at path separator
+            # shorten at path separator
+            output = re.sub(r"\.{3}[^/\\]+(?=[/\\])", "...", output)
             self.screen.print(f"{output:{self.WIDTH}}", overwrite=True)
         elif line.startswith("--") or line.startswith("checking"):
             self.screen.print(line, overwrite=True)
