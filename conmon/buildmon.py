@@ -7,13 +7,13 @@ import time
 from contextlib import suppress
 from pathlib import Path
 from statistics import mean, median
-from textwrap import shorten
 from threading import Event, Thread
 from typing import Any, Dict, List, Optional, Set, Hashable
 
 import psutil  # type: ignore
 
 from conmon.utils import append_to_set, merge_mapping, WinShlex
+from .utils import shorten
 
 LOG = logging.getLogger("BUILDMON")
 
@@ -116,8 +116,10 @@ class CompilerParser(argparse.ArgumentParser):
 
 def identify_compiler(name: str) -> Optional[str]:
     parts = set(name.replace("+", "").replace(".exe", "").split("-"))
-    if "cl" in parts:
+    if parts == {"cl"}:
         return "msvc"
+    elif {"clang", "cl"}.issubset(parts):
+        return "clang-cl"
 
     if parts & {"gcc", "g", "cc", "c", "clang", "nasm"}:
         return "gnu"
@@ -135,6 +137,7 @@ class BuildMonitor(Thread):
         self.proc = proc
         self.proc_cache: Dict = {}
         self.rsp_cache: Dict = {}
+        self.executables: Dict[str, Optional[str]] = {}
         self._translation_units: Dict[Hashable, Set] = {}
         self.finish = Event()
         self.timing: List[float] = []
@@ -200,6 +203,7 @@ class BuildMonitor(Thread):
 
     def check_process(self, process_map: Dict[str, Any]):
         compiler_type = identify_compiler(process_map["name"])
+        self.executables[Path(process_map["name"]).stem] = compiler_type
         if (
             compiler_type is None
             or process_map["cwd"] is None
@@ -212,7 +216,7 @@ class BuildMonitor(Thread):
         if Path(exe).is_absolute():
             process_map["exe"] = exe
 
-        if compiler_type == "msvc":
+        if compiler_type in {"msvc", "clang-cl"}:
             process_map["cmdline"] = [
                 self.canonical_option(option)
                 for option in self.parse_responsefile(
@@ -277,9 +281,11 @@ class BuildMonitor(Thread):
                 info["name"] = Path(info["cmdline"][0]).name.lower()
                 if identify_compiler(info["name"]):
                     if info["exe"] == "/bin/dash":
-                        LOG.debug("\n")
                         LOG.warning(
-                            "Async capture (%r)", shorten(info["cmdline"][-1], 60)
+                            "Async capture (%r)",
+                            shorten(
+                                " ".join(info["cmdline"]), width=60, strip="middle"
+                            ),
                         )
                         continue
                     self.proc_cache[child_id] = info
@@ -304,6 +310,13 @@ class BuildMonitor(Thread):
                     LOG.error(errmsg)
 
         translation_units = self.translation_units
+        compilers = ", ".join(
+            f"{key} ({value})" for key, value in self.executables.items()
+        )
+
+        if compilers:
+            LOG.info("Detected executables: %s", compilers)
+
         num_tus = sum(len(unit["sources"]) for unit in translation_units)
         if num_tus:
             LOG.info(

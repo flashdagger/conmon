@@ -75,7 +75,7 @@ class StrictConfigParser(ConfigParser):
 def get_terminal_width():
     try:
         return os.get_terminal_size()[0]
-    except suppress(OSError):
+    except OSError:
         return None
 
 
@@ -90,8 +90,8 @@ class ScreenWriter:
     @staticmethod
     def fit_width(line: str):
         size = len(line)
-        columns = get_terminal_width() or size
-        return line[: min(size, columns) - 1]
+        columns = get_terminal_width() or size + 1
+        return line[: min(size, columns - 1)]
 
     def reset(self):
         if self._last_line:

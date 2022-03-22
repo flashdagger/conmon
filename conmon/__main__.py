@@ -44,7 +44,7 @@ from conmon.utils import (
     get_terminal_width,
 )
 from . import __version__
-from .buildmon import BuildMonitor, LOG as PLOG, identify_compiler
+from .buildmon import BuildMonitor, LOG as PLOG
 from .compilers import (
     LOG as BLOG,
     parse_compiler_warnings,
@@ -399,6 +399,7 @@ class Build(State):
         super().__init__(parser)
         self.parser = parser
         self.warnings = 0
+        self.compiler_types: Set[str] = set()
         self.buildmon: Optional[BuildMonitor] = None
 
     def activated(self, parsed_line: Match) -> bool:
@@ -487,6 +488,9 @@ class Build(State):
                 indent=2,
             )
 
+        self.compiler_types.update(
+            value for value in self.buildmon.executables.values() if value is not None
+        )
         self.buildmon = None
         return tu_list
 
@@ -523,23 +527,9 @@ class Build(State):
         ref_log["translation_units"] = self.translation_units()
         warnings = ref_log.setdefault("warnings", [])
         build_stdout = "\n".join(ref_log["build"])
+        self.compiler_types.add(self.parser.compiler_type)
 
-        compiler_names = {
-            Path(tu["compiler"]).stem for tu in ref_log["translation_units"]
-        }
-        compiler_mapping = {name: identify_compiler(name) for name in compiler_names}
-        compiler_types = {self.parser.compiler_type, *compiler_mapping.values()}
-        compiler_types.discard(None)
-
-        if compiler_mapping:
-            CONMON_LOG.info(
-                "Used compilers: %s",
-                ", ".join(
-                    f"{key} ({value})" for key, value in compiler_mapping.items() if key
-                ),
-            )
-
-        for compiler_type in compiler_types:
+        for compiler_type in self.compiler_types:
             warnings.extend(
                 parse_compiler_warnings(
                     build_stdout,
@@ -550,7 +540,7 @@ class Build(State):
         stderr_lines = ref_log.pop("stderr_lines", ())
         ref_log.setdefault("stderr", []).extend(chain(*stderr_lines))
 
-        for compiler_type in compiler_types:
+        for compiler_type in self.compiler_types:
             warning_output, stderr_lines = filter_compiler_warnings(
                 stderr_lines, compiler=compiler_type
             )
