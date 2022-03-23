@@ -167,7 +167,7 @@ class BuildMonitor(Thread):
     @staticmethod
     def is_valid_tu(file: str) -> bool:
         path = Path(file)
-        return path.suffix.lower() in {".c", ".cpp", ".cxx", ".cc", ".asm"}
+        return path.suffix.lower() in {".c", ".cpp", ".cxx", ".cc", ".asm", ".s"}
 
     def cache_responsefile(self, info: Dict):
         for arg in info["cmdline"]:
