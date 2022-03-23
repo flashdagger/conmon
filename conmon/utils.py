@@ -6,6 +6,7 @@ import time
 from configparser import ConfigParser
 from contextlib import suppress
 from io import TextIOBase
+from pathlib import Path
 from queue import Queue
 from threading import Thread
 from typing import (
@@ -19,6 +20,8 @@ from typing import (
     Iterator,
     Tuple,
     Pattern,
+    Optional,
+    Union,
 )
 
 import colorama  # type: ignore
@@ -277,3 +280,19 @@ def compact_pattern(regex: Pattern) -> Tuple[str, int]:
         flags -= re.VERBOSE
 
     return pattern, flags
+
+
+def common_parent(*paths: Union[str, os.PathLike]) -> Optional[Path]:
+    def iter_parts(_path):
+        ppath = Path(_path)
+        yield from reversed(ppath.parents)
+        yield ppath
+
+    last_parent = None
+    for parents in zip(*(iter_parts(path) for path in paths)):
+        p_set = set(parents)
+        if len(p_set) > 1:
+            return last_parent
+        last_parent = p_set.pop()
+
+    return last_parent
