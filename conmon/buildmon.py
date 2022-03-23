@@ -213,7 +213,7 @@ class BuildMonitor(Thread):
         exe = process_map["cmdline"][0]
         process_map["cmdline"] = process_map["cmdline"][1:]
         if Path(exe).is_absolute():
-            process_map["exe"] = exe
+            process_map["exe"] = Path(exe)
 
         if compiler_type in {"msvc", "clang-cl"}:
             process_map["cmdline"] = [

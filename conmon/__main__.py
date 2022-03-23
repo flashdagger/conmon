@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 import argparse
-import json
+from . import json
 import logging
 import os
 import platform
@@ -383,7 +383,7 @@ class Build(State):
                 .*? # msbuild prints only the filename
             )?
             (?P<file>
-                [\-.\w/\\]+\.[a-z]+ (?(status) $ | \.(?:asm|cpp|c)$ )
+                [\-.\w/\\]+ (?(status) \.[a-z]{1,3}$ | \.(?:asm|cpp|c)$ )
             )
     """
     )
@@ -504,6 +504,7 @@ class Build(State):
         set_counter = 0
 
         for unit in self.filter_tus(tu_list):
+            unit["compiler"] = unit["compiler"]
             src_match = package_re.match(unit["sources"][0])
             includes, unit["includes"] = unit.get("includes", []), []
             for include in sorted(includes):
