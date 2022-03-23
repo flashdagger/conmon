@@ -1,3 +1,4 @@
+import os
 from collections.abc import Hashable
 from pathlib import Path
 
@@ -45,7 +46,7 @@ cases = [
             "name": "clang++",
         },
         "translation_unit": {
-            "compiler": "clang",
+            "compiler": Path("clang"),
             "flags": [
                 "-O0",
                 "-Wall",
@@ -143,6 +144,28 @@ def test_group_and_merge_json_with_set():
     result = merge_mapping(mapping, value_key="baz")
     assert len(result) == 2
     assert result[0] == dict(foo=["x", "y", "z"], bar=["a", "b", "c"], baz=[4, 5, 6])
+
+
+def test_group_and_merge_json_with_path():
+    mapping = {}
+    append_to_set(
+        dict(foo=Path("Foo.exe"), baz={4, 5, 6}),
+        mapping,
+        value_key="baz",
+    )
+    append_to_set(
+        dict(foo=Path("foo.EXE"), baz={1, 2, 3, 4}),
+        mapping,
+        value_key="baz",
+    )
+    result = merge_mapping(mapping, value_key="baz")
+    if os.name == "nt":
+        assert len(result) == 1
+        assert result[0] == dict(foo=Path("foo.exe"), baz=[1, 2, 3, 4, 5, 6])
+    else:
+        assert len(result) == 2
+        assert result[0] == dict(foo=Path("Foo.exe"), baz=[4, 5, 6])
+        assert result[1] == dict(foo=Path("foo.EXE"), baz=[1, 2, 3, 4])
 
 
 def test_compiler_arg_parsing():

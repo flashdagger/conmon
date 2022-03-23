@@ -2,7 +2,6 @@
 # -*- coding: UTF-8 -*-
 
 import argparse
-from . import json
 import logging
 import os
 import platform
@@ -46,6 +45,7 @@ from conmon.utils import (
     get_terminal_width,
 )
 from . import __version__
+from . import json
 from .buildmon import BuildMonitor, LOG as PLOG
 from .compilers import (
     LOG as BLOG,
@@ -504,7 +504,6 @@ class Build(State):
         set_counter = 0
 
         for unit in self.filter_tus(tu_list):
-            unit["compiler"] = unit["compiler"]
             src_match = package_re.match(unit["sources"][0])
             includes, unit["includes"] = unit.get("includes", []), []
             for include in sorted(includes):
