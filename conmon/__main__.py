@@ -491,7 +491,7 @@ class Build(State):
                 yield unit
 
         if src_counter:
-            CONMON_LOG.info(
+            CONMON_LOG.debug(
                 "Discarding %s sources from %s translation unit sets (%s)",
                 src_counter,
                 set_counter,
@@ -906,7 +906,10 @@ def main() -> int:
 
     handler = logging.StreamHandler()
     handler.setFormatter(
-        colorlog.ColoredFormatter("%(log_color)s[%(name)s:%(levelname)s] %(message)s")
+        colorlog.ColoredFormatter(
+            "%(log_color)s[%(name)s:%(levelname)s] %(message)s",
+            log_colors={**colorlog.default_log_colors, **dict(DEBUG="light_black")},
+        )
     )
 
     # general conmon logger
