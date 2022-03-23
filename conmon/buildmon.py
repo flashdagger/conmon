@@ -93,7 +93,10 @@ class CompilerParser(argparse.ArgumentParser):
             if arg in self.IGNORED_FLAGS:
                 continue
             for option in sorted_options:
-                if arg.startswith(option) and arg != option:
+                if arg == option:
+                    clean_args.append(arg)
+                    break
+                if arg.startswith(option):
                     if option[1].isupper():
                         k = len(option)
                         clean_args.extend((arg[:k], arg[k:]))
@@ -162,14 +165,7 @@ class BuildMonitor(Thread):
     @staticmethod
     def is_valid_tu(file: str) -> bool:
         path = Path(file)
-        if (
-            path.suffix not in {".c", ".cpp", ".cxx", ".cc", ".asm"}
-            or set(path.parts) & {"CMakeFiles", "cmake.tmp"}
-            or re.match(r".*/cmake-[23].\d+/Modules/(CMake|Check)", path.as_posix())
-        ):
-            return False
-
-        return True
+        return path.suffix.lower() in {".c", ".cpp", ".cxx", ".cc", ".asm"}
 
     def cache_responsefile(self, info: Dict):
         for arg in info["cmdline"]:
@@ -237,7 +233,7 @@ class BuildMonitor(Thread):
     def parse_tus(self, proc: Dict) -> None:
         args, unknown_args = self.PARSER.parse_known_args(proc["cmdline"])
 
-        if args.cc_frontend or not (args.compile_not_link or args.nasm_output):
+        if args.cc_frontend:
             return
 
         data = dict(compiler=proc["exe"])

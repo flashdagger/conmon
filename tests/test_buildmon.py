@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from psutil import Process
 
-from conmon.buildmon import BuildMonitor
+from conmon.buildmon import BuildMonitor, CompilerParser
 from conmon.utils import (
     freeze_json_object,
     unfreeze_json_object,
@@ -143,3 +143,17 @@ def test_group_and_merge_json_with_set():
     result = merge_mapping(mapping, value_key="baz")
     assert len(result) == 2
     assert result[0] == dict(foo=["x", "y", "z"], bar=["a", "b", "c"], baz=[4, 5, 6])
+
+
+def test_compiler_arg_parsing():
+    parser = CompilerParser()
+    args, unknown_args = parser.parse_known_args(
+        "-cc1 -Iinclude -Ddefine -include-pch -diagnostics".split()
+    )
+    assert args.includes == ["include"]
+    assert args.defines == ["define"]
+    assert "-include-pch" in unknown_args
+    assert "-diagnostics" not in unknown_args
+    assert "-cc1" not in unknown_args
+    assert not args.compile_not_link
+    assert args.cc_frontend
