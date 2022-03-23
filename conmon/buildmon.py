@@ -249,7 +249,9 @@ class BuildMonitor(Thread):
             if not value:
                 continue
             if key in {"includes", "system_includes"}:
-                data[key] = {self.make_absolute(path, proc["cwd"]) for path in value}
+                data[key] = {
+                    Path(self.make_absolute(path, proc["cwd"])) for path in value
+                }
             elif key not in {"cc_frontend", "compile_not_link"}:
                 data[key] = set(value) if isinstance(value, list) else value
 
@@ -258,7 +260,7 @@ class BuildMonitor(Thread):
                 continue
             abs_file = self.make_absolute(file, proc["cwd"])
             if self.is_valid_tu(abs_file):
-                data.setdefault("sources", set()).add(abs_file)
+                data.setdefault("sources", set()).add(Path(abs_file))
 
         if not data.get("sources"):
             return

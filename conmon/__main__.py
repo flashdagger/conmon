@@ -501,18 +501,18 @@ class Build(State):
             )
 
     def cleanup_tus(self, tu_list: List[Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
-        package_re = re.compile(r".*?[a-f0-9]{40}")
+        package_re = re.compile(r"^.*?(?P<sep>[\\/])[a-f0-9]{40}(?P=sep)")
         src_counter = 0
         set_counter = 0
 
         for unit in self.filter_tus(tu_list):
-            src_match = package_re.match(unit["sources"][0])
+            src_match = package_re.match(str(unit["sources"][0]))
             includes, unit["includes"] = unit.get("includes", []), []
             for include in sorted(includes):
-                inc_match = package_re.match(include)
+                inc_match = package_re.match(str(include))
                 if (
                     src_match
-                    and include.startswith(src_match.group())
+                    and str(include).startswith(src_match.group())
                     or inc_match is None
                 ):
                     unit["includes"].append(include)
