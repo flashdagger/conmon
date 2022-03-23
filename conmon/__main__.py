@@ -34,7 +34,7 @@ import colorama  # type: ignore
 import colorlog  # type: ignore
 import psutil  # type: ignore
 
-from conmon.regex import DECOLORIZE_REGEX, REF_REGEX, WARNING_REGEX
+from conmon.regex import DECOLORIZE_REGEX, REF_REGEX, WARNING_REGEX, shorten_conan_path
 from conmon.utils import (
     StrictConfigParser,
     ScreenWriter,
@@ -521,6 +521,7 @@ class Build(State):
             ]
         filtered = unique(tuple(lines) for lines in lines)
         res_msg = "\n[...]\n".join(("\n".join(lines) for lines in filtered))
+        res_msg = shorten_conan_path(res_msg)
         if res_msg.strip():
             CONMON_LOG.warning("STDERR: %s", res_msg.strip("\n"))
 
