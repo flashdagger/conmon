@@ -465,9 +465,11 @@ class Build(State):
 
     def filter_tus(self, tu_list: Iterable[Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
         src_filter = {
-            "cmake": lambda path: set(path.parts) & {"CMakeFiles", "cmake.tmp"}
+            "cmake": lambda path: set(path.parts) & {"CMake", "CMakeFiles", "cmake.tmp"}
             or re.match(r".*/cmake-[23].\d+/Modules/(CMake|Check)", path.as_posix()),
             "conftest": lambda path: path.name == "conftest.c",
+            "make": lambda path: path.name == "conftest.c"
+            and path.with_name("config.log").exists(),
         }
         active_filters = {
             key: value for key, value in src_filter.items() if key in self.tools
@@ -522,11 +524,12 @@ class Build(State):
 
             yield unit
 
-        CONMON_LOG.info(
-            "Processed %s translation units in %s sets",
-            src_counter,
-            set_counter,
-        )
+        if set_counter:
+            CONMON_LOG.info(
+                "Processed %s translation units in %s sets",
+                src_counter,
+                set_counter,
+            )
 
     def translation_units(self) -> List[Dict[str, Any]]:
         assert self.buildmon
