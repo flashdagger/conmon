@@ -18,7 +18,7 @@ class WarningRegex:
             (?:
                 (?P<line>\d+)[\d.-]*:
             )?\ #
-            (?P<severity>[a-z]+):\ 
+            (?P<severity>[a-z]+):\ #
             (?P<info>.+?)
             (?:
                 \ \[ (?P<category>[\w-]+) ]

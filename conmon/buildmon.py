@@ -119,9 +119,11 @@ class CompilerParser(argparse.ArgumentParser):
 
 def identify_compiler(name: str) -> Optional[str]:
     parts = set(name.replace("+", "").split("-"))
+
     if parts == {"cl"}:
         return "msvc"
-    elif {"clang", "cl"}.issubset(parts):
+
+    if {"clang", "cl"}.issubset(parts):
         return "clang-cl"
 
     if parts & {"gcc", "g", "cc", "c", "clang", "nasm"}:
@@ -308,7 +310,6 @@ class BuildMonitor(Thread):
                     self.ERRORS.add(errmsg)
                     LOG.error(errmsg)
 
-        translation_units = self.translation_units
         executables = ", ".join(
             f"{key} ({value})" for key, value in self.compiler.items()
         )
@@ -318,13 +319,6 @@ class BuildMonitor(Thread):
         if self.executables:
             LOG.info("Detected executables: %s", ", ".join(sorted(self.executables)))
 
-        num_tus = sum(len(unit["sources"]) for unit in translation_units)
-        if num_tus:
-            LOG.info(
-                "Detected %s translation units in %s sets",
-                num_tus,
-                len(translation_units),
-            )
         LOG.debug(
             "Timings: max=%.3e min=%.3e mean=%.3e median=%.3e",
             max(self.timing),

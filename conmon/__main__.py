@@ -28,6 +28,7 @@ from typing import (
     Tuple,
     TextIO,
     Match,
+    Iterator,
 )
 
 import colorama  # type: ignore
@@ -462,14 +463,47 @@ class Build(State):
             elif info:
                 self.screen.print(info, indent=0)
 
-    def translation_units(self) -> List[Dict[str, Any]]:
-        assert self.buildmon
-        self.buildmon.finish.set()
-        self.buildmon.join()
-        tu_list = self.buildmon.translation_units
+    def filter_tus(self, tu_list: Iterable[Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
+        src_filter = {
+            "cmake": lambda path: set(path.parts) & {"CMakeFiles", "cmake.tmp"}
+            or re.match(r".*/cmake-[23].\d+/Modules/(CMake|Check)", path.as_posix()),
+            "conftest": lambda path: path.name == "conftest.c",
+        }
+        active_filters = {
+            key: value for key, value in src_filter.items() if key in self.tools
+        }
 
-        package_re = re.compile(r".*?[a-f0-9]{40}")
+        src_counter = 0
+        set_counter = 0
+        used_tests = set()
+
         for unit in tu_list:
+            discarded = False
+            for test_id, test in active_filters.items():
+                sources = unit["sources"]
+                if any(test(Path(src)) for src in sources):
+                    src_counter += len(sources)
+                    set_counter += 1
+                    used_tests.add(test_id)
+                    discarded = True
+                    break
+            if not discarded:
+                yield unit
+
+        if src_counter:
+            CONMON_LOG.info(
+                "Discarding %s sources from %s translation unit sets (%s)",
+                src_counter,
+                set_counter,
+                ", ".join(used_tests),
+            )
+
+    def cleanup_tus(self, tu_list: List[Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
+        package_re = re.compile(r".*?[a-f0-9]{40}")
+        src_counter = 0
+        set_counter = 0
+
+        for unit in self.filter_tus(tu_list):
             src_match = package_re.match(unit["sources"][0])
             includes, unit["includes"] = unit.get("includes", []), []
             for include in sorted(includes):
@@ -483,6 +517,27 @@ class Build(State):
                 else:
                     unit.setdefault("system_includes", []).append(include)
 
+            src_counter += len(unit["sources"])
+            set_counter += 1
+
+            yield unit
+
+        CONMON_LOG.info(
+            "Processed %s translation units in %s sets",
+            src_counter,
+            set_counter,
+        )
+
+    def translation_units(self) -> List[Dict[str, Any]]:
+        assert self.buildmon
+        self.buildmon.finish.set()
+        self.buildmon.join()
+        self.compiler_types.update(
+            value for value in self.buildmon.compiler.values() if value is not None
+        )
+        self.tools.update(self.buildmon.executables)
+        tu_list = self.cleanup_tus(self.buildmon.translation_units)
+
         with filehandler("CONMON_PROC_JSON", hint="process debug json") as proc_fh:
             json.dump(
                 list(self.buildmon.proc_cache.values()),
@@ -490,12 +545,8 @@ class Build(State):
                 indent=2,
             )
 
-        self.compiler_types.update(
-            value for value in self.buildmon.compiler.values() if value is not None
-        )
-        self.tools.update(self.buildmon.executables)
         self.buildmon = None
-        return tu_list
+        return list(tu_list)
 
     @staticmethod
     def _popwarnings(error_lines, parse_func):

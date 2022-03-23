@@ -36,7 +36,7 @@ REF_REGEX = re.compile(
 )
 WARNING_REGEX = re.compile(
     rf"""(?xm)
-    (?:(?P<severity_l>ERROR|WARN):\ )?    
+    (?:(?P<severity_l>ERROR|WARN):\ )?
     (?:{compact_pattern(REF_REGEX)[0]}:\ +)?
     (?(severity_l) | (?P<severity>ERROR|WARN):\ ?)
     (?P<info>.*)
