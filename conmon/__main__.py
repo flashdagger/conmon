@@ -463,7 +463,9 @@ class Build(State):
             elif info:
                 self.screen.print(info, indent=0)
 
-    def filter_tus(self, tu_list: Iterable[Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
+    def filtered_tus(
+        self, tu_list: Iterable[Dict[str, Any]]
+    ) -> Iterator[Dict[str, Any]]:
         src_filter = {
             "cmake": lambda path: set(path.parts) & {"CMake", "CMakeFiles", "cmake.tmp"}
             or re.match(r".*/cmake-[23].\d+/Modules/(CMake|Check)", path.as_posix()),
@@ -500,28 +502,27 @@ class Build(State):
                 ", ".join(used_tests),
             )
 
-    def cleanup_tus(self, tu_list: List[Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
-        package_re = re.compile(r"^.*?(?P<sep>[\\/])[a-f0-9]{40}(?P=sep)")
+    def processed_tus(self, tu_list: List[Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
+        def package_dir(path: Path) -> Optional[Path]:
+            match = re.match(r"^.*?/(?:build|package)/[a-f0-9]{40}/", path.as_posix())
+            return Path(match.group()) if match else None
+
         src_counter = 0
         set_counter = 0
 
-        for unit in self.filter_tus(tu_list):
-            src_match = package_re.match(str(unit["sources"][0]))
-            includes, unit["includes"] = unit.get("includes", []), []
-            for include in sorted(includes):
-                inc_match = package_re.match(str(include))
-                if (
-                    src_match
-                    and str(include).startswith(src_match.group())
-                    or inc_match is None
-                ):
-                    unit["includes"].append(include)
+        for unit in self.filtered_tus(tu_list):
+            sources = unit.pop("sources", [])
+            src_package_dir = package_dir(sources[0])
+            for include in sorted(unit.pop("includes", [])):
+                include_package_dir = package_dir(include)
+                if include_package_dir is None or src_package_dir in include.parents:
+                    unit.setdefault("includes", []).append(include)
                 else:
                     unit.setdefault("system_includes", []).append(include)
 
+            unit["sources"] = sources
             src_counter += len(unit["sources"])
             set_counter += 1
-
             yield unit
 
         if set_counter:
@@ -539,7 +540,7 @@ class Build(State):
             value for value in self.buildmon.compiler.values() if value is not None
         )
         self.tools.update(self.buildmon.executables)
-        tu_list = self.cleanup_tus(self.buildmon.translation_units)
+        tu_list = self.processed_tus(self.buildmon.translation_units)
 
         with filehandler("CONMON_PROC_JSON", hint="process debug json") as proc_fh:
             json.dump(
