@@ -378,7 +378,7 @@ class Build(State):
         r"""(?x)
             (?:
                 (?P<status>
-                    \[\ {0,2}\d+(?:%|/\d+) ] | \ +CC(?:LD)?(?=\ )
+                    \[\ {0,2}\d+(?:%|/\d+) ] | \ +(?:CC|CCLD|CPPAS)(?=\ )
                 )?  # ninja, cmake or automake
                 .*? # msbuild prints only the filename
             )?
@@ -470,8 +470,7 @@ class Build(State):
             "cmake": lambda path: set(path.parts) & {"CMake", "CMakeFiles", "cmake.tmp"}
             or re.match(r".*/cmake-[23].\d+/Modules/(CMake|Check)", path.as_posix()),
             "conftest": lambda path: path.name == "conftest.c",
-            "make": lambda path: path.name == "conftest.c"
-            and path.with_name("config.log").exists(),
+            "make": lambda path: path.name == "conftest.c",
         }
         active_filters = {
             key: value for key, value in src_filter.items() if key in self.tools

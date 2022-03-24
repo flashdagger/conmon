@@ -23,6 +23,7 @@ class CompilerParser(argparse.ArgumentParser):
         "-diagnostics",
         "-nologo",
         "-showIncludes",
+        "-c",
         "-s",
         "-TP",
         "-TC",
@@ -54,12 +55,6 @@ class CompilerParser(argparse.ArgumentParser):
             default=[],
         )
         self.add_argument(
-            "-c",
-            help="compile sources but do not link",
-            dest="compile_not_link",
-            action="store_true",
-        )
-        self.add_argument(
             "-f",
             help="specifying the output file format (nasm specific)",
             dest="nasm_output",
@@ -74,6 +69,12 @@ class CompilerParser(argparse.ArgumentParser):
         )
         self.add_argument(
             "-cc1", help="compiler frontend", dest="cc_frontend", action="store_true"
+        )
+        self.add_argument(
+            "-cc1as",
+            help="assembly frontend",
+            dest="ccas_frontend",
+            action="store_true",
         )
 
     def cleanup_args(self, args):
@@ -236,7 +237,7 @@ class BuildMonitor(Thread):
     def parse_tus(self, proc: Dict) -> None:
         args, unknown_args = self.PARSER.parse_known_args(proc["cmdline"])
 
-        if args.cc_frontend:
+        if args.cc_frontend or args.ccas_frontend:
             return
 
         data = dict(compiler=proc["exe"])
@@ -252,7 +253,7 @@ class BuildMonitor(Thread):
                 data[key] = {
                     Path(self.make_absolute(path, proc["cwd"])) for path in value
                 }
-            elif key not in {"cc_frontend", "compile_not_link"}:
+            elif key not in {"cc_frontend", "ccas_frontend"}:
                 data[key] = set(value) if isinstance(value, list) else value
 
         for file in reversed(unknown_args):

@@ -171,12 +171,12 @@ def test_group_and_merge_json_with_path():
 def test_compiler_arg_parsing():
     parser = CompilerParser()
     args, unknown_args = parser.parse_known_args(
-        "-cc1 -Iinclude -Ddefine -include-pch -diagnostics".split()
+        "-cc1 -Iinclude -Ddefine -cc1as -include-pch -diagnostics".split()
     )
     assert args.includes == ["include"]
     assert args.defines == ["define"]
     assert "-include-pch" in unknown_args
     assert "-diagnostics" not in unknown_args
     assert "-cc1" not in unknown_args
-    assert not args.compile_not_link
     assert args.cc_frontend
+    assert args.ccas_frontend
