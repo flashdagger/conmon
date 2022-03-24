@@ -254,7 +254,7 @@ class Requirements(State):
         self.indent_ref = max(self.indent_ref, *(len(item["ref"]) for item in self.req))
         for item in sorted(self.req, key=itemgetter("status", "remote", "ref")):
             self.screen.print(
-                f"    [{item['status']:^10}] {item['ref']:{self.indent_ref}} from "
+                f"    {item['status']:^10} {item['ref']:{self.indent_ref}} from "
                 f"{repr(item['remote'])}"
             )
         self.req.clear()
@@ -299,7 +299,7 @@ class Packages(State):
         self.indent_ref = max(self.indent_ref, *(len(item["ref"]) for item in self.pkg))
         for item in sorted(self.pkg, key=itemgetter("status", "ref")):
             self.screen.print(
-                f"    [{item['status']:^10}] {item['ref']:{self.indent_ref}} {item['package_id']}"
+                f"    {item['status']:^10} {item['ref']:{self.indent_ref}} {item['package_id']}"
             )
         self.pkg.clear()
         super()._deactivate(final=False)
@@ -470,7 +470,7 @@ class Build(State):
             "cmake": lambda path: set(path.parts) & {"CMake", "CMakeFiles", "cmake.tmp"}
             or re.match(r".*/cmake-[23].\d+/Modules/(CMake|Check)", path.as_posix()),
             "conftest": lambda path: path.stem == "conftest",
-            "make": lambda path: path.stem == "conftest",
+            "make": lambda path: path.stem in {"conftest", "dummy"},
         }
         active_filters = {
             key: value for key, value in src_filter.items() if key in self.tools
@@ -495,7 +495,7 @@ class Build(State):
 
         if src_counter:
             CONMON_LOG.debug(
-                "Discarding %s source files and %s translation units (%s)",
+                "Discarded %s source files and %s translation sets (%s)",
                 src_counter,
                 set_counter,
                 ", ".join(discarded_files),
@@ -507,6 +507,7 @@ class Build(State):
             return Path(match.group()) if match else None
 
         src_set = set()
+        src_counter = 0
         set_counter = 0
 
         for unit in self.filtered_tus(tu_list):
@@ -520,15 +521,17 @@ class Build(State):
                     unit.setdefault("system_includes", []).append(include)
 
             unit["sources"] = sources
-            src_set.update(unit["sources"])
+            src_set.update(sources)
+            src_counter += len(sources)
             set_counter += 1
             yield unit
 
         if set_counter:
             CONMON_LOG.info(
-                "Detected %s unique source file%s in %s translation unit%s",
-                len(src_set),
+                "Detected %s source file%s (%s unique) in %s translation set%s",
+                src_counter,
                 "s" if len(src_set) > 1 else "",
+                len(src_set),
                 set_counter,
                 "s" if set_counter > 1 else "",
             )
@@ -928,7 +931,7 @@ def main() -> int:
     BLOG.setLevel(logging.INFO)
     # buildmon process logger
     PLOG.addHandler(handler)
-    PLOG.setLevel(logging.INFO)
+    PLOG.setLevel(logging.DEBUG)
 
     if os.getenv("CI"):
         CONMON_LOG.info("Running in Gitlab CI")

@@ -149,6 +149,13 @@ class BuildMonitor(Thread):
         self.timing: List[float] = []
         self.executables: Set[str] = set()
 
+    @classmethod
+    def log_once(cls, level, msg, *args):
+        if msg in cls.ERRORS:
+            return
+        cls.ERRORS.add(msg)
+        LOG.log(level, msg, *args)
+
     @property
     def translation_units(self):
         return merge_mapping(self._translation_units, value_key="sources")
@@ -229,7 +236,7 @@ class BuildMonitor(Thread):
                 process_map["cmdline"], cwd=process_map["cwd"]
             )
         else:
-            LOG.error("Unknown compiler type %s", compiler_type)
+            self.log_once(logging.ERROR, f"Unknown compiler type {compiler_type}")
             return
 
         self.parse_tus(process_map)
@@ -269,11 +276,10 @@ class BuildMonitor(Thread):
         append_to_set(data, self._translation_units, value_key="sources")
 
     def scan(self) -> None:
-        t_start = time.monotonic()
         try:
-            children = self.proc.children(recursive=True)
+            children: List[psutil.Process] = self.proc.children(recursive=True)
         except psutil.NoSuchProcess as exc:
-            LOG.error(str(exc))
+            self.log_once(logging.ERROR, str(exc))
             return
         for child in children:
             child_id = hash(child)
@@ -281,27 +287,28 @@ class BuildMonitor(Thread):
                 info = child.as_dict(attrs=["exe", "cmdline", "cwd"])
                 if not (info["cmdline"] and info["cwd"]):
                     continue
-                info["name"] = Path(info["cmdline"][0]).stem.lower()
-                if identify_compiler(info["name"]):
-                    if info["exe"] == "/bin/dash":
-                        LOG.warning(
-                            "Async capture (%r)",
-                            shorten(
-                                " ".join(info["cmdline"]), width=60, strip="middle"
-                            ),
-                        )
-                        continue
-                    self.proc_cache[child_id] = info
-                    self.cache_responsefile(info)
-                else:
-                    self.executables.add(info["name"])
-        self.timing.append(time.monotonic() - t_start)
+
+                name = info["name"] = Path(info["cmdline"][0]).stem.lower()
+                if not identify_compiler(name):
+                    self.executables.add(name)
+                    continue
+
+                if info["exe"] == "/bin/dash":
+                    LOG.warning(
+                        "Async capture (%r)",
+                        shorten(" ".join(info["cmdline"]), width=60, strip="middle"),
+                    )
+                    continue
+                self.proc_cache[child_id] = info
+                self.cache_responsefile(info)
 
     def run(self):
         while self.proc.is_running() and not self.finish.is_set():
-            start = time.monotonic()
+            t_start = time.monotonic()
             self.scan()
-            sleep_time_s = self.CYCLE_TIME_S - (time.monotonic() - start)
+            t_end = time.monotonic()
+            self.timing.append(t_end - t_start)
+            sleep_time_s = self.CYCLE_TIME_S - (t_end - t_start)
             if sleep_time_s > 0.0:
                 time.sleep(sleep_time_s)
 
@@ -309,10 +316,7 @@ class BuildMonitor(Thread):
             try:
                 self.check_process(info_map)
             except BaseException as exc:
-                errmsg = repr(exc)
-                if errmsg not in self.ERRORS:
-                    self.ERRORS.add(errmsg)
-                    LOG.error(errmsg)
+                self.log_once(logging.ERROR, repr(exc))
 
         executables = ", ".join(
             f"{key} ({value})" for key, value in self.compiler.items()
