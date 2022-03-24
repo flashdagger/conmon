@@ -478,16 +478,16 @@ class Build(State):
 
         src_counter = 0
         set_counter = 0
-        used_tests = set()
+        discarded_files = set()
 
         for unit in tu_list:
             discarded = False
-            for test_id, test in active_filters.items():
+            for test in active_filters.values():
                 sources = unit["sources"]
                 if any(test(Path(src)) for src in sources):
                     src_counter += len(sources)
                     set_counter += 1
-                    used_tests.add(test_id)
+                    discarded_files.update(src.name for src in sources)
                     discarded = True
                     break
             if not discarded:
@@ -498,7 +498,7 @@ class Build(State):
                 "Discarding %s sources from %s translation unit sets (%s)",
                 src_counter,
                 set_counter,
-                ", ".join(used_tests),
+                ", ".join(discarded_files),
             )
 
     def processed_tus(self, tu_list: List[Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
