@@ -298,7 +298,7 @@ class BuildMonitor(Thread):
         self.timing.append(time.monotonic() - t_start)
 
     def run(self):
-        while not self.finish.is_set():
+        while self.proc.is_running() and not self.finish.is_set():
             start = time.monotonic()
             self.scan()
             sleep_time_s = self.CYCLE_TIME_S - (time.monotonic() - start)

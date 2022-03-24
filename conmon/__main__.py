@@ -469,8 +469,8 @@ class Build(State):
         src_filter = {
             "cmake": lambda path: set(path.parts) & {"CMake", "CMakeFiles", "cmake.tmp"}
             or re.match(r".*/cmake-[23].\d+/Modules/(CMake|Check)", path.as_posix()),
-            "conftest": lambda path: path.name == "conftest.c",
-            "make": lambda path: path.name == "conftest.c",
+            "conftest": lambda path: path.stem == "conftest",
+            "make": lambda path: path.stem == "conftest",
         }
         active_filters = {
             key: value for key, value in src_filter.items() if key in self.tools
@@ -478,7 +478,7 @@ class Build(State):
 
         src_counter = 0
         set_counter = 0
-        discarded_files = set()
+        discarded_files: Set[str] = set()
 
         for unit in tu_list:
             discarded = False
@@ -495,7 +495,7 @@ class Build(State):
 
         if src_counter:
             CONMON_LOG.debug(
-                "Discarding %s sources from %s translation unit sets (%s)",
+                "Discarding %s source files and %s translation units (%s)",
                 src_counter,
                 set_counter,
                 ", ".join(discarded_files),
@@ -506,7 +506,7 @@ class Build(State):
             match = re.match(r"^.*?/(?:build|package)/[a-f0-9]{40}/", path.as_posix())
             return Path(match.group()) if match else None
 
-        src_counter = 0
+        src_set = set()
         set_counter = 0
 
         for unit in self.filtered_tus(tu_list):
@@ -520,15 +520,17 @@ class Build(State):
                     unit.setdefault("system_includes", []).append(include)
 
             unit["sources"] = sources
-            src_counter += len(unit["sources"])
+            src_set.update(unit["sources"])
             set_counter += 1
             yield unit
 
         if set_counter:
             CONMON_LOG.info(
-                "Processed %s translation units in %s sets",
-                src_counter,
+                "Detected %s unique source file%s in %s translation unit%s",
+                len(src_set),
+                "s" if len(src_set) > 1 else "",
                 set_counter,
+                "s" if set_counter > 1 else "",
             )
 
     def translation_units(self) -> List[Dict[str, Any]]:
