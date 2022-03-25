@@ -6,6 +6,7 @@ import logging
 import os
 import platform
 import re
+import shlex
 import sys
 import tempfile
 from collections import defaultdict
@@ -527,11 +528,14 @@ class Build(State):
             yield unit
 
         if set_counter:
+            unique_msg = (
+                "" if len(src_set) == src_counter else f"({len(src_set)} unique) "
+            )
             CONMON_LOG.info(
-                "Detected %s source file%s (%s unique) in %s translation set%s",
+                "Detected %s source file%s %sin %s translation set%s",
                 src_counter,
                 "s" if len(src_set) > 1 else "",
-                len(src_set),
+                unique_msg,
                 set_counter,
                 "s" if set_counter > 1 else "",
             )
@@ -841,20 +845,22 @@ def check_conan() -> Tuple[List[str], str]:
         pass
 
     # use the conan executable or python calling the module
-    for command in [["conan"], conan_command]:
-        try:
-            out = check_output(
-                [*command, "--version"],
-                universal_newlines=True,
-            )
-            return command, regex.findall(out)[0]
-        except CalledProcessError as exc:
+    command = os.getenv("CONMON_CONAN_CMD", "conan")
+    try:
+        CONMON_LOG.debug("calling conan via %r", command)
+        conan_cmd = shlex.split(command)
+        out = check_output(
+            [*conan_cmd, "--version"],
+            universal_newlines=True,
+        )
+        return conan_cmd, regex.findall(out)[0]
+    except CalledProcessError as exc:
+        if exc.output:
             CONMON_LOG.error("%s", exc.output)
-            sys.exit(1)
-        except (FileNotFoundError, IndexError):
-            pass
+    except (FileNotFoundError, IndexError):
+        pass
 
-    CONMON_LOG.error("The 'conan' command cannot be executed.")
+    CONMON_LOG.error("The %r command cannot be executed.", command)
     sys.exit(1)
 
 
