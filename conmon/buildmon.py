@@ -283,7 +283,9 @@ class BuildMonitor(Thread):
             return
         for child in children:
             child_id = hash(child)
-            with suppress(psutil.NoSuchProcess, psutil.AccessDenied, FileNotFoundError):
+            with suppress(
+                psutil.NoSuchProcess, psutil.AccessDenied, OSError, FileNotFoundError
+            ):
                 info = child.as_dict(attrs=["exe", "cmdline", "cwd"])
                 if not (info["cmdline"] and info["cwd"]):
                     continue
