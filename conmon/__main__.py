@@ -765,7 +765,7 @@ class ConanParser:
         marker = "{:-^120}\n"
         stderr_marker_start = marker.format(" <stderr> ")
         stdout_marker_start = marker.format(" <stdout> ")
-        stderr_written = False
+        stderr_written = True
 
         while not streams.exhausted:
             try:
@@ -937,7 +937,7 @@ def main() -> int:
     BLOG.setLevel(logging.INFO)
     # buildmon process logger
     PLOG.addHandler(handler)
-    PLOG.setLevel(logging.DEBUG)
+    PLOG.setLevel(logging.INFO)
 
     if os.getenv("CI"):
         CONMON_LOG.info("Running in Gitlab CI")
