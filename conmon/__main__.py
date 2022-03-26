@@ -252,7 +252,9 @@ class Requirements(State):
         self.log.setdefault(name, {}).update(mapping)
 
     def _deactivate(self, final=False):
-        self.indent_ref = max(self.indent_ref, *(len(item["ref"]) for item in self.req))
+        self.indent_ref = max(
+            [self.indent_ref, *(len(item["ref"]) for item in self.req)]
+        )
         for item in sorted(self.req, key=itemgetter("status", "remote", "ref")):
             self.screen.print(
                 f"    {item['status']:^10} {item['ref']:{self.indent_ref}} from "
@@ -297,7 +299,9 @@ class Packages(State):
         )
 
     def _deactivate(self, final=False):
-        self.indent_ref = max(self.indent_ref, *(len(item["ref"]) for item in self.pkg))
+        self.indent_ref = max(
+            [self.indent_ref, *(len(item["ref"]) for item in self.pkg)]
+        )
         for item in sorted(self.pkg, key=itemgetter("status", "ref")):
             self.screen.print(
                 f"    {item['status']:^10} {item['ref']:{self.indent_ref}} {item['package_id']}"
