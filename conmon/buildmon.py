@@ -11,7 +11,7 @@ from subprocess import check_output, CalledProcessError
 from threading import Event, Thread
 from typing import Any, Dict, List, Optional, Set, Hashable, Iterator, Union, Tuple
 
-import psutil  # type: ignore
+from psutil import AccessDenied, Process, NoSuchProcess
 
 from conmon.utils import append_to_set, merge_mapping, WinShlex
 from .utils import shorten
@@ -150,7 +150,7 @@ class BuildMonitor(Thread):
     PARSER = CompilerParser(prog=Path(__file__).stem, add_help=False)
     ERRORS: Set[str] = set()
 
-    def __init__(self, proc: psutil.Process):
+    def __init__(self, proc: Process):
         super().__init__(daemon=True)
         self.proc = proc
         self.proc_cache: Dict = {}
@@ -290,8 +290,8 @@ class BuildMonitor(Thread):
 
     def scan(self) -> None:
         try:
-            children: Set[psutil.Process] = set(self.proc.children(recursive=True))
-        except psutil.NoSuchProcess as exc:
+            children: Set[Process] = set(self.proc.children(recursive=True))
+        except NoSuchProcess as exc:
             self.log_once(logging.ERROR, str(exc))
             return
 
@@ -301,9 +301,7 @@ class BuildMonitor(Thread):
 
         for child in children:
             child_id = hash(child)
-            with suppress(
-                psutil.NoSuchProcess, psutil.AccessDenied, OSError, FileNotFoundError
-            ):
+            with suppress(NoSuchProcess, AccessDenied, OSError, FileNotFoundError):
                 info = child.as_dict(attrs=["exe", "cmdline", "cwd"])
                 if not (info["cmdline"] and info["cwd"]):
                     continue
@@ -365,7 +363,7 @@ class BuildMonitor(Thread):
         )
 
     def scan_msys(self):
-        procs: Dict[psutil.Process, Set[psutil.Process]] = {}
+        procs: Dict[Process, Set[Process]] = {}
         if not isinstance(self.msys_bin, Path):
             return procs
 
@@ -385,10 +383,10 @@ class BuildMonitor(Thread):
         # mapping pid -> ppid, winpid
         ppid_map: Dict[int, Tuple[int, int]] = {}
 
-        def root_process(child_pid: int) -> psutil.Process:
+        def root_process(child_pid: int) -> Process:
             parent_pid, win_pid = ppid_map[child_pid]
             if parent_pid == 1:
-                return psutil.Process(win_pid)
+                return Process(win_pid)
             return root_process(parent_pid)
 
         for info in parse_ps(output):
@@ -397,8 +395,8 @@ class BuildMonitor(Thread):
             ppid_map[int(info["PID"])] = int(info["PPID"]), int(info["WINPID"])
 
         for pid, (_, winpid) in ppid_map.items():
-            with suppress(psutil.NoSuchProcess, KeyError):
+            with suppress(NoSuchProcess, KeyError):
                 root_proc = root_process(pid)
-                procs.setdefault(root_proc, set()).add(psutil.Process(winpid))
+                procs.setdefault(root_proc, set()).add(Process(winpid))
 
         return procs

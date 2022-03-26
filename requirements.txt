@@ -129,6 +129,8 @@ tomli==2.0.1
     #   pytest
 tqdm==4.63.1
     # via conan
+types-psutil==5.8.20 ; platform_python_implementation != "PyPy"
+    # via -r requirements.in
 typing-extensions==4.1.1
     # via
     #   astroid

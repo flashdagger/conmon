@@ -10,6 +10,7 @@ pre-commit; platform_python_implementation != 'PyPy'
 pyflakes
 pylint; platform_python_implementation != 'PyPy'
 pytest; platform_python_implementation != 'PyPy'
+types-psutil; platform_python_implementation != 'PyPy'
 wheel
 
 # on PyPy some newer versions are not available

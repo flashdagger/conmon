@@ -25,7 +25,7 @@ from typing import (
 )
 
 import colorama  # type: ignore
-import psutil  # type: ignore
+from psutil import Popen
 
 
 class StopWatch:
@@ -169,7 +169,7 @@ class AsyncPipeReader:
 
 
 class ProcessStreamHandler:
-    def __init__(self, proc: psutil.Popen):
+    def __init__(self, proc: Popen):
         self.stdout = AsyncPipeReader(proc.stdout)
         self.stderr = AsyncPipeReader(proc.stderr)
 

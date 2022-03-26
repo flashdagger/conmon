@@ -33,7 +33,7 @@ from typing import (
 
 import colorama  # type: ignore
 import colorlog  # type: ignore
-import psutil  # type: ignore
+from psutil import Popen, Process
 
 from conmon.regex import DECOLORIZE_REGEX, REF_REGEX, WARNING_REGEX, shorten_conan_path
 from conmon.utils import (
@@ -59,7 +59,7 @@ from .compilers import (
 CONMON_LOG = logging.getLogger("CONMON")
 CONAN_LOG = logging.getLogger("CONAN")
 
-PARENT_PROCS = [parent.name() for parent in psutil.Process(os.getppid()).parents()]
+PARENT_PROCS = [parent.name() for parent in Process(os.getppid()).parents()]
 LOG_HINTS: Dict[str, None] = {}
 
 
@@ -644,7 +644,7 @@ class ConanParser:
         rf"(?:{compact_pattern(REF_REGEX)[0]}(?:: ?| ))?(?P<rest>[^\r\n]*)"
     )
 
-    def __init__(self, process: psutil.Popen):
+    def __init__(self, process: Popen):
         self.process = process
         self.log: Dict[str, Any] = defaultdict(dict)
         self.defaultlog: Dict[str, Any] = self.log
@@ -886,7 +886,7 @@ def monitor(args: List[str]) -> int:
 
     conan_command, ConanParser.CONAN_VERSION = check_conan()
     conan_command.extend(args)
-    process = psutil.Popen(
+    process = Popen(
         conan_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
     )
     parser = ConanParser(process)
