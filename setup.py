@@ -18,8 +18,8 @@ setup(
     packages=[project],
     entry_points={
         "console_scripts": [
-            f"conmon=conmon.__main__:main",
-            "check-tus=conmon.check_tus:main",
+            "conmon=conmon.__main__:main",
+            "conmon-clean-cache=conmon.cleanup:main",
         ]
     },
     include_package_data=True,
