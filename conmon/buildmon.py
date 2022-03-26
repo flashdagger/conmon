@@ -7,8 +7,9 @@ import time
 from contextlib import suppress
 from pathlib import Path
 from statistics import mean, median
+from subprocess import check_output, CalledProcessError
 from threading import Event, Thread
-from typing import Any, Dict, List, Optional, Set, Hashable
+from typing import Any, Dict, List, Optional, Set, Hashable, Iterator, Union
 
 import psutil  # type: ignore
 
@@ -16,6 +17,17 @@ from conmon.utils import append_to_set, merge_mapping, WinShlex
 from .utils import shorten
 
 LOG = logging.getLogger("BUILDMON")
+
+
+def parse_ps(output: str) -> Iterator[Dict[str, str]]:
+    lines = output.splitlines(keepends=False)
+    header = lines[0].split()
+
+    for line in lines[1:]:
+        if not line.startswith(" "):
+            continue
+        entries = line.split(maxsplit=len(header) - 1)
+        yield dict(zip(header, entries))
 
 
 class CompilerParser(argparse.ArgumentParser):
@@ -148,6 +160,7 @@ class BuildMonitor(Thread):
         self.finish = Event()
         self.timing: List[float] = []
         self.executables: Set[str] = set()
+        self.msys_bin: Union[None, bool, Path] = None
 
     @classmethod
     def log_once(cls, level, msg, *args):
@@ -277,10 +290,13 @@ class BuildMonitor(Thread):
 
     def scan(self) -> None:
         try:
-            children: List[psutil.Process] = self.proc.children(recursive=True)
+            children: Set[psutil.Process] = set(self.proc.children(recursive=True))
         except psutil.NoSuchProcess as exc:
             self.log_once(logging.ERROR, str(exc))
             return
+
+        children.update(self.scan_msys())
+
         for child in children:
             child_id = hash(child)
             with suppress(
@@ -290,7 +306,11 @@ class BuildMonitor(Thread):
                 if not (info["cmdline"] and info["cwd"]):
                     continue
 
-                name = info["name"] = Path(info["cmdline"][0]).stem.lower()
+                path = Path(info["cmdline"][0])
+                if path.name in {"bash.exe", "sh.exe"} and self.msys_bin is not False:
+                    self.log_once(logging.DEBUG, "Using bash on Windows")
+                    self.msys_bin = path.parent
+                name = info["name"] = path.stem.lower()
                 if not identify_compiler(name):
                     self.executables.add(name)
                     continue
@@ -319,6 +339,7 @@ class BuildMonitor(Thread):
                 self.check_process(info_map)
             except BaseException as exc:
                 self.log_once(logging.ERROR, repr(exc))
+                continue
 
         executables = ", ".join(
             f"{key} ({value})" for key, value in self.compiler.items()
@@ -336,3 +357,33 @@ class BuildMonitor(Thread):
             mean(self.timing),
             median(self.timing),
         )
+
+    def scan_msys(self) -> List[psutil.Process]:
+        procs: List[psutil.Process] = []
+        if not isinstance(self.msys_bin, Path):
+            return procs
+
+        ps_path = self.msys_bin / "ps.exe"
+        if not ps_path.is_file():
+            LOG.warning("Cannot execute ps.exe to scan for MSYS executables.")
+            self.msys_bin = False
+            return procs
+
+        try:
+            output = check_output([str(ps_path)], encoding="utf8")
+        except CalledProcessError as exc:
+            LOG.error("call to ps.exe failed (%s)", exc.returncode)
+            self.msys_bin = False
+            return []
+
+        for info in parse_ps(output):
+            if (
+                info["PPID"] == "1"
+                or info["COMMAND"].endswith(">")
+                or set(info["COMMAND"].split("/")) & {"ps", "bash", "sh"}
+            ):
+                continue
+            with suppress(psutil.NoSuchProcess):
+                procs.append(psutil.Process(int(info["WINPID"])))
+
+        return procs

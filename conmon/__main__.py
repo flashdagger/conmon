@@ -937,7 +937,7 @@ def main() -> int:
     BLOG.setLevel(logging.INFO)
     # buildmon process logger
     PLOG.addHandler(handler)
-    PLOG.setLevel(logging.INFO)
+    PLOG.setLevel(logging.DEBUG)
 
     if os.getenv("CI"):
         CONMON_LOG.info("Running in Gitlab CI")
