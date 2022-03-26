@@ -6,9 +6,11 @@ conan
 black; platform_python_implementation != 'PyPy'
 bump2version; platform_python_implementation != 'PyPy'
 mypy; platform_python_implementation != 'PyPy'
+jinja2<3.1.1; platform_python_implementation == 'PyPy'
 pre-commit; platform_python_implementation != 'PyPy'
 pyflakes
 pylint; platform_python_implementation != 'PyPy'
+pytest<7.1; platform_python_implementation == 'PyPy'
 pytest; platform_python_implementation != 'PyPy'
 types-psutil; platform_python_implementation != 'PyPy'
 wheel
