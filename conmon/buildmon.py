@@ -9,7 +9,7 @@ from pathlib import Path
 from statistics import mean, median
 from subprocess import check_output, CalledProcessError
 from threading import Event, Thread
-from typing import Any, Dict, List, Optional, Set, Hashable, Iterator, Union
+from typing import Any, Dict, List, Optional, Set, Hashable, Iterator, Union, Tuple
 
 import psutil  # type: ignore
 
@@ -295,7 +295,9 @@ class BuildMonitor(Thread):
             self.log_once(logging.ERROR, str(exc))
             return
 
-        children.update(self.scan_msys())
+        for parent, procs in self.scan_msys().items():
+            if parent in children:
+                children.update(procs)
 
         for child in children:
             child_id = hash(child)
@@ -307,8 +309,12 @@ class BuildMonitor(Thread):
                     continue
 
                 path = Path(info["cmdline"][0])
-                if path.name in {"bash.exe", "sh.exe"} and self.msys_bin is not False:
-                    self.log_once(logging.DEBUG, "Using bash on Windows")
+                if (
+                    path.name.lower() in {"bash.exe", "sh.exe"}
+                    and self.msys_bin is not False
+                ):
+                    if self.msys_bin is None:
+                        LOG.debug("Detected %s on Windows", path.stem)
                     self.msys_bin = path.parent
                 name = info["name"] = path.stem.lower()
                 if not identify_compiler(name):
@@ -358,8 +364,8 @@ class BuildMonitor(Thread):
             median(self.timing),
         )
 
-    def scan_msys(self) -> List[psutil.Process]:
-        procs: List[psutil.Process] = []
+    def scan_msys(self):
+        procs: Dict[psutil.Process, Set[psutil.Process]] = {}
         if not isinstance(self.msys_bin, Path):
             return procs
 
@@ -374,16 +380,25 @@ class BuildMonitor(Thread):
         except CalledProcessError as exc:
             LOG.error("call to ps.exe failed (%s)", exc.returncode)
             self.msys_bin = False
-            return []
+            return procs
+
+        # mapping pid -> ppid, winpid
+        ppid_map: Dict[int, Tuple[int, int]] = {}
+
+        def root_process(child_pid: int) -> psutil.Process:
+            parent_pid, win_pid = ppid_map[child_pid]
+            if parent_pid == 1:
+                return psutil.Process(win_pid)
+            return root_process(parent_pid)
 
         for info in parse_ps(output):
-            if (
-                info["PPID"] == "1"
-                or info["COMMAND"].endswith(">")
-                or set(info["COMMAND"].split("/")) & {"ps", "bash", "sh"}
-            ):
+            if info["COMMAND"].endswith("/ps"):
                 continue
-            with suppress(psutil.NoSuchProcess):
-                procs.append(psutil.Process(int(info["WINPID"])))
+            ppid_map[int(info["PID"])] = int(info["PPID"]), int(info["WINPID"])
+
+        for pid, (_, winpid) in ppid_map.items():
+            with suppress(psutil.NoSuchProcess, KeyError):
+                root_proc = root_process(pid)
+                procs.setdefault(root_proc, set()).add(psutil.Process(winpid))
 
         return procs
