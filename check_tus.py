@@ -4,32 +4,41 @@ from collections import defaultdict
 from difflib import ndiff
 from pathlib import Path
 from pprint import pformat
+from typing import List
+
+from conmon.utils import shorten
 
 
-def show_diff(key, a, b):
-    print(f"* {key}:")
-    text_a = pformat(a, width=120, indent=1, compact=False)
-    text_b = pformat(b, width=120, indent=1, compact=False)
+def show_diff(key, obj_a, obj_b) -> List[str]:
+    lines = [f">>> {key}:"]
+    text_a = pformat(obj_a, width=120, indent=1, compact=False)
+    text_b = pformat(obj_b, width=120, indent=1, compact=False)
     for line in ndiff(text_a.splitlines(), text_b.splitlines()):
         if not line or line.startswith(" "):
             continue
-        print(line.rstrip())
+        lines.append(line.rstrip())
+
+    return lines
 
 
-def show_changes(*tu):
+def show_changes(*tu) -> str:
     assert len(tu) > 1
 
+    lines = []
     for key in tu[0]:
-        a = tu[0][key]
+        obj_a = tu[0][key]
 
         for idx in range(1, len(tu)):
-            b = tu[idx].get(key, type(a)())
-            if a != b:
-                show_diff(f"{key} 0<>{idx}", a, b)
-    print()
+            obj_b = tu[idx].get(key, type(obj_a)())
+            if obj_a != obj_b:
+                lines.extend(show_diff(f"{key} 0<>{idx}", obj_a, obj_b))
+
+    return "\n".join(lines)
 
 
 def assert_uninque(lib, check_data):
+    diffs = {}
+
     for source, tus in check_data.items():
         assert tus
         if len(tus) == 1:
@@ -37,17 +46,23 @@ def assert_uninque(lib, check_data):
         if tus[0] == tus[1]:
             continue
 
-        msg = f"{lib}: {Path(*source.parts[-3:])} x{len(tus)}"
-        if __name__ == "__main__":
-            print(msg)
-            show_changes(*tus)
-        else:
-            assert tus[0] == tus[1], msg
+        diffs.setdefault(show_changes(*tus), []).append(
+            Path(*source.parts[-3:]).as_posix()
+        )
+
+    print("lib:", lib)
+    for key, value in diffs.items():
+        files = ", ".join(sorted(value))
+        print(
+            shorten(files, width=250, template=f"{{}} (x{len(value)})", strip="middle")
+        )
+        print(key)
+        print()
 
 
 def test_main(path="./report.json"):
-    with open(path) as fd:
-        info = json.load(fd)
+    with open(path, encoding="utf8") as fp:
+        info = json.load(fp)
 
     for lib, data in info["requirements"].items():
         tus = data.get("translation_units")
@@ -55,9 +70,9 @@ def test_main(path="./report.json"):
             continue
 
         check_data = {}
-        for tu in tus:
-            for source in tu.pop("sources", ()):
-                check_data.setdefault(Path(source), []).append(tu)
+        for unit in tus:
+            for source in unit.pop("sources", ()):
+                check_data.setdefault(Path(source), []).append(unit)
 
         assert_uninque(lib, check_data)
         count_map = defaultdict(int)
@@ -71,9 +86,8 @@ def test_main(path="./report.json"):
             ),
         )
 
-        if __name__ == "__main__":
-            with Path(path).with_suffix(".src.json").open("w") as fd:
-                json.dump(list(str(p) for p in sorted(check_data.keys())), fd, indent=4)
+        with Path(path).with_suffix(".src.json").open("w", encoding="utf8") as fp:
+            json.dump(list(str(p) for p in sorted(check_data.keys())), fp, indent=4)
 
 
 if __name__ == "__main__":
