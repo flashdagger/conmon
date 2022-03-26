@@ -11,11 +11,17 @@ from conmon.utils import shorten
 
 def show_diff(key, obj_a, obj_b) -> List[str]:
     lines = [f">>> {key}:"]
-    text_a = pformat(obj_a, width=120, indent=1, compact=False)
-    text_b = pformat(obj_b, width=120, indent=1, compact=False)
+    width = 1 if any(len(str(obj)) for obj in (obj_a, obj_b)) else 120
+    indent = 2
+    text_a = pformat(obj_a, width=width, indent=indent, compact=False)
+    text_b = pformat(obj_b, width=width, indent=indent, compact=False)
+    if len(text_a) > 1:
+        for find, replace in (("[", "[\n "), ("]", ",\n ]")):
+            text_a = text_a.replace(find, replace)
+            text_b = text_b.replace(find, replace)
     for line in ndiff(text_a.splitlines(), text_b.splitlines()):
-        if not line or line.startswith(" "):
-            continue
+        # if not line or line.startswith(" "):
+        #    continue
         lines.append(line.rstrip())
 
     return lines
@@ -64,6 +70,7 @@ def test_main(path="./report.json"):
     with open(path, encoding="utf8") as fp:
         info = json.load(fp)
 
+    json_map = {}
     for lib, data in info["requirements"].items():
         tus = data.get("translation_units")
         if not tus:
@@ -85,9 +92,10 @@ def test_main(path="./report.json"):
                 for key, value in sorted(count_map.items())
             ),
         )
+        json_map[lib] = list(str(p) for p in sorted(check_data.keys()))
 
-        with Path(path).with_suffix(".src.json").open("w", encoding="utf8") as fp:
-            json.dump(list(str(p) for p in sorted(check_data.keys())), fp, indent=4)
+    with Path(path).with_suffix(".src.json").open("w", encoding="utf8") as fp:
+        json.dump(json_map, fp, indent=4)
 
 
 if __name__ == "__main__":
