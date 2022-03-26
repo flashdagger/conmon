@@ -13,10 +13,11 @@ from typing import Any, Dict, List, Optional, Set, Hashable, Iterator, Union, Tu
 
 from psutil import AccessDenied, Process, NoSuchProcess
 
-from conmon.utils import append_to_set, merge_mapping, WinShlex
+from conmon.utils import append_to_set, merge_mapping, WinShlex, UniqueLogger
 from .utils import shorten
 
 LOG = logging.getLogger("BUILDMON")
+LOG_ONCE = UniqueLogger(LOG)
 
 
 def parse_ps(output: str) -> Iterator[Dict[str, str]]:
@@ -148,7 +149,6 @@ def identify_compiler(name: str) -> Optional[str]:
 class BuildMonitor(Thread):
     CYCLE_TIME_S = 0.025
     PARSER = CompilerParser(prog=Path(__file__).stem, add_help=False)
-    ERRORS: Set[str] = set()
 
     def __init__(self, proc: Process):
         super().__init__(daemon=True)
@@ -161,13 +161,6 @@ class BuildMonitor(Thread):
         self.timing: List[float] = []
         self.executables: Set[str] = set()
         self.msys_bin: Union[None, bool, Path] = None
-
-    @classmethod
-    def log_once(cls, level, msg, *args):
-        if msg in cls.ERRORS:
-            return
-        cls.ERRORS.add(msg)
-        LOG.log(level, msg, *args)
 
     @property
     def translation_units(self):
@@ -249,7 +242,7 @@ class BuildMonitor(Thread):
                 process_map["cmdline"], cwd=process_map["cwd"]
             )
         else:
-            self.log_once(logging.ERROR, f"Unknown compiler type {compiler_type}")
+            LOG_ONCE.error("Unknown compiler type %s", compiler_type)
             return
 
         self.parse_tus(process_map)
@@ -292,7 +285,7 @@ class BuildMonitor(Thread):
         try:
             children: Set[Process] = set(self.proc.children(recursive=True))
         except NoSuchProcess as exc:
-            self.log_once(logging.ERROR, str(exc))
+            LOG_ONCE.error(str(exc))
             return
 
         for parent, procs in self.scan_msys().items():
@@ -342,7 +335,7 @@ class BuildMonitor(Thread):
             try:
                 self.check_process(info_map)
             except BaseException as exc:
-                self.log_once(logging.ERROR, repr(exc))
+                LOG_ONCE.error(repr(exc))
                 continue
 
         executables = ", ".join(
