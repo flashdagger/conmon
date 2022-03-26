@@ -8,8 +8,8 @@ from pprint import pformat
 
 def show_diff(key, a, b):
     print(f"* {key}:")
-    text_a = pformat(a, width=80, indent=1, compact=False)
-    text_b = pformat(b, width=80, indent=1, compact=False)
+    text_a = pformat(a, width=120, indent=1, compact=False)
+    text_b = pformat(b, width=120, indent=1, compact=False)
     for line in ndiff(text_a.splitlines(), text_b.splitlines()):
         if not line or line.startswith(" "):
             continue
@@ -70,6 +70,10 @@ def test_main(path="./report.json"):
                 for key, value in sorted(count_map.items())
             ),
         )
+
+        if __name__ == "__main__":
+            with Path(path).with_suffix(".src.json").open("w") as fd:
+                json.dump(list(str(p) for p in sorted(check_data.keys())), fd, indent=4)
 
 
 if __name__ == "__main__":
