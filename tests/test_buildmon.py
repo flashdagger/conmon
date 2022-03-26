@@ -46,7 +46,7 @@ cases = [
             "name": "clang++",
         },
         "translation_unit": {
-            "compiler": Path("clang"),
+            "compiler": Path.cwd() / "source/clang",
             "flags": [
                 "-O0",
                 "-Wall",
