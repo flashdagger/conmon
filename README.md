@@ -4,7 +4,7 @@
 
 # conmon
 
-An alternative frontend for [conan](https://github.com/conan-io/conan) with build introspespection capabilities.
+An alternative frontend for [conan C/C++ package manager](https://github.com/conan-io/conan) with build introspespection capabilities.
 
 ## features
 
