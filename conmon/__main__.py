@@ -31,8 +31,8 @@ from typing import (
     Iterator,
 )
 
-import colorama  # type: ignore
-import colorlog  # type: ignore
+import colorama
+import colorlog
 from psutil import Popen, Process
 
 from conmon.regex import DECOLORIZE_REGEX, REF_REGEX, WARNING_REGEX, shorten_conan_path

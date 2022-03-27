@@ -12,8 +12,8 @@ from pathlib import Path
 from subprocess import CalledProcessError, PIPE, check_output
 from typing import Callable, List, Optional
 
-import colorama  # type: ignore
-import colorlog  # type: ignore
+import colorama
+import colorlog
 
 LOG = logging.getLogger("CLEANUP")
 
@@ -203,7 +203,8 @@ def cleanup_conan_dlcache(args) -> int:
                 path.unlink()
                 total_size += size
                 lockfile = path.with_name("locks") / path.name
-                lockfile.unlink(missing_ok=True)  # type: ignore
+                if lockfile.exists():
+                    lockfile.unlink()
 
     if total_size == 0:
         LOG.info("Nothing to delete.")
@@ -218,8 +219,8 @@ def cleanup_conan_dlcache(args) -> int:
         if not path.is_file():
             continue
         if not (cache / path.name).exists():
-            with suppress(OSError):
-                path.unlink(missing_ok=True)  # type: ignore
+            with suppress(OSError, FileNotFoundError):
+                path.unlink()
 
     return 0
 

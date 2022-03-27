@@ -25,7 +25,7 @@ from typing import (
     Union,
 )
 
-import colorama  # type: ignore
+import colorama
 from psutil import Popen
 
 
@@ -303,7 +303,7 @@ class UniqueLogger(logging.Logger):
     def __init__(self, logger: logging.Logger):
         super().__init__(logger.name, logger.level)
         self._logger = logger
-        self.seen = set()
+        self.seen: Set[Tuple[str]] = set()
 
     # pylint: disable=arguments-differ
     def _log(self, level, msg, args, **kwargs):
