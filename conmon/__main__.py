@@ -26,6 +26,7 @@ from typing import (
     TextIO,
     Match,
     Iterator,
+    Callable,
 )
 
 import colorama
@@ -82,6 +83,34 @@ def filehandler(env, mode="w", hint="report"):
         LOG_HINTS.setdefault(template.format(env, hint_path, hint))
 
     return open(path or os.devnull, mode, encoding="utf-8")
+
+
+def popwarnings(error_lines: List[List[str]], parse_func: Callable[[str], List[Dict]]):
+    residue = []
+    parsed_warnings = []
+
+    for lines in error_lines:
+        warnings_found = parse_func("\n".join(lines))
+        if warnings_found:
+            parsed_warnings.extend(warnings_found)
+        else:
+            residue.append(lines)
+
+    return parsed_warnings, residue
+
+
+def emit_warnings(lines: List[List[str]]):
+    more = len(lines) - 10
+    if more > 0:
+        lines = [
+            *lines[:10],
+            [f"... {more} more lines emitted ..."],
+        ]
+    filtered = unique(tuple(lines) for lines in lines)
+    res_msg = "\n[...]\n".join(("\n".join(lines) for lines in filtered))
+    res_msg = shorten_conan_path(res_msg)
+    if res_msg.strip():
+        CONMON_LOG.warning("STDERR: %s", res_msg.strip("\n"))
 
 
 class State:
@@ -162,7 +191,7 @@ class StateMachine:
                 self.deactivate(state)
 
         for state in tuple(self._running):
-            if state.activated(parsed_line):
+            if state not in self._active and state.activated(parsed_line):
                 activated.append(state)
 
         if activated:
@@ -219,7 +248,7 @@ class Requirements(State):
         self.stdout = parser.log.setdefault("stdout", [])
         pattern, flags = compact_pattern(REF_REGEX)
         self.regex = re.compile(
-            rf" +{pattern} from '(?P<remote>[\w-]+)' +- +(?P<status>\w+)", flags
+            rf" +{pattern} from '?(?P<remote>[\w\- ]+)'? +- +(?P<status>\w+)", flags
         )
         self.req: List[Dict[str, Optional[str]]] = []
         self.indent_ref = 0
@@ -371,6 +400,41 @@ class Package(State):
         log["package_id"] = match.group("id")
 
     def _deactivate(self, final=False):
+        self.parser.setdefaultlog()
+        super()._deactivate(final=False)
+
+
+class TestPackage(State):
+    def __init__(self, parser: "ConanParser"):
+        super().__init__(parser)
+        self.parser = parser
+        self.log = parser.defaultlog
+
+    def activated(self, parsed_line: Match) -> bool:
+        ref, rest = parsed_line.group("ref", "rest")
+        if rest == "(test package): Calling build()":
+            self.screen.print(f"Testing {ref}")
+            self.log = self.parser.setdefaultlog(ref)
+            return True
+        return False
+
+    def process(self, parsed_line: Match) -> None:
+        line, ref = parsed_line.group(0, "ref")
+
+        if ref:
+            self.deactivate()
+            return
+
+        self.parser.screen.print(line, overwrite=True)
+        self.log.setdefault("test_package", []).append(line)
+
+    def _deactivate(self, final=False):
+        self.screen.reset()
+        stderr_lines = self.parser.defaultlog.pop("stderr_lines", ())
+        _, stderr_lines = popwarnings(stderr_lines, parse_cmake_warnings)
+        self.log.setdefault("stderr", []).extend(chain(*stderr_lines))
+        emit_warnings(stderr_lines)
+
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
 
@@ -562,34 +626,6 @@ class Build(State):
         self.buildmon = None
         return list(tu_list)
 
-    @staticmethod
-    def _popwarnings(error_lines, parse_func):
-        residue = []
-        parsed_warnings = []
-
-        for lines in error_lines:
-            warnings_found = parse_func("\n".join(lines))
-            if warnings_found:
-                parsed_warnings.extend(warnings_found)
-            else:
-                residue.append(lines)
-
-        return parsed_warnings, residue
-
-    @staticmethod
-    def emit_warnings(lines):
-        more = len(lines) - 10
-        if more > 0:
-            lines = [
-                *lines[:10],
-                [f"... {more} more lines emitted ..."],
-            ]
-        filtered = unique(tuple(lines) for lines in lines)
-        res_msg = "\n[...]\n".join(("\n".join(lines) for lines in filtered))
-        res_msg = shorten_conan_path(res_msg)
-        if res_msg.strip():
-            CONMON_LOG.warning("STDERR: %s", res_msg.strip("\n"))
-
     def _deactivate(self, final=False):
         self.parser.screen.reset()
         ref_log = self.parser.defaultlog
@@ -623,12 +659,12 @@ class Build(State):
             warnings.extend(compiler_warnings)
 
         if "cmake" in self.tools:
-            cmake_warnings, stderr_lines = self._popwarnings(
+            cmake_warnings, stderr_lines = popwarnings(
                 stderr_lines, parse_cmake_warnings
             )
             warnings.extend(cmake_warnings)
 
-        self.emit_warnings(stderr_lines)
+        emit_warnings(stderr_lines)
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
 
@@ -663,6 +699,7 @@ class ConanParser:
         self.states.add(Packages(self))
         self.states.add(Build(self))
         self.states.add(Package(self))
+        self.states.add(TestPackage(self))
 
     @property
     def compiler_type(self) -> str:
