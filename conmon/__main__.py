@@ -388,7 +388,7 @@ class Build(State):
                 .*? # msbuild prints only the filename
             )?
             (?P<file>
-                [\-.\w/\\]+ (?(status) \.[a-z]{1,3}$ | \.(?:asm|cpp|c)$ )
+                [\-.\w/\\]+ (?(status) \.[a-z]{1,3}$ | \.(?:asm|cpp|cxx|cc?)$ )
             )
     """
     )
@@ -397,7 +397,7 @@ class Build(State):
             (?P<status>$)?    # should never match
             .*\ -c\           # compile but don't link
             (?P<file>
-                [\-.\w/\\]+ \. (?:cpp|c) (?=\ )
+                [\-.\w/\\]+ \. (?:asm|cpp|cxx|cc?) (?=\ )
             )
         """
     )
