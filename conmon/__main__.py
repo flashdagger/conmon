@@ -404,6 +404,34 @@ class Package(State):
         super()._deactivate(final=False)
 
 
+class Export(State):
+    def __init__(self, parser: "ConanParser"):
+        super().__init__(parser)
+        self.parser = parser
+
+    def activated(self, parsed_line: Match) -> bool:
+        rest = parsed_line.group("rest")
+        if rest == "Exporting package recipe":
+            return True
+        return False
+
+    def process(self, parsed_line: Match) -> None:
+        line, ref, rest = parsed_line.group(0, "ref", "rest")
+        match = re.match("Exported revision: (?P<recipe_revision>[a-f0-9]{32})", rest)
+        log = self.parser.getdefaultlog(ref)
+
+        if match:
+            log.update(match.groupdict())
+            self.deactivate()
+        else:
+            log.setdefault("export", []).append(line)
+
+    def _deactivate(self, final=False):
+        self.parser.setdefaultlog()
+        self.stopped = True
+        super()._deactivate(final=False)
+
+
 class TestPackage(State):
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
@@ -694,6 +722,7 @@ class ConanParser:
 
         self.states = StateMachine(self)
         self.states.setdefault(Default(self))
+        self.states.add(Export(self))
         self.states.add(Config(self))
         self.states.add(Requirements(self))
         self.states.add(Packages(self))
