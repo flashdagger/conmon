@@ -6,17 +6,14 @@ import logging
 import os
 import platform
 import re
-import shlex
 import sys
 import tempfile
 from collections import defaultdict
-from importlib import import_module
-from importlib.util import find_spec
 from io import StringIO
 from itertools import chain
 from operator import itemgetter
 from pathlib import Path
-from subprocess import PIPE, check_output, CalledProcessError
+from subprocess import PIPE
 from typing import (
     Any,
     Dict,
@@ -35,17 +32,8 @@ import colorama
 import colorlog
 from psutil import Popen, Process
 
-from conmon.regex import DECOLORIZE_REGEX, REF_REGEX, WARNING_REGEX, shorten_conan_path
-from conmon.utils import (
-    StrictConfigParser,
-    ScreenWriter,
-    shorten,
-    unique,
-    compact_pattern,
-    ProcessStreamHandler,
-    get_terminal_width,
-)
 from . import __version__
+from . import conan
 from . import json
 from .buildmon import BuildMonitor, LOG as PLOG
 from .compilers import (
@@ -55,9 +43,19 @@ from .compilers import (
     filter_compiler_warnings,
     parse_bison_warnings,
 )
+from .conan import LOG as CONAN_LOG
+from .regex import DECOLORIZE_REGEX, REF_REGEX, WARNING_REGEX, shorten_conan_path
+from .utils import (
+    StrictConfigParser,
+    ScreenWriter,
+    shorten,
+    unique,
+    compact_pattern,
+    ProcessStreamHandler,
+    get_terminal_width,
+)
 
 CONMON_LOG = logging.getLogger("CONMON")
-CONAN_LOG = logging.getLogger("CONAN")
 
 PARENT_PROCS = [parent.name() for parent in Process(os.getppid()).parents()]
 LOG_HINTS: Dict[str, None] = {}
@@ -825,49 +823,6 @@ class ConanParser:
         self.log["conan"]["returncode"] = self.process.wait()
 
 
-def check_conan() -> Tuple[List[str], str]:
-    """determines the fastest method to get the version of conan"""
-
-    regex = re.compile(r"[12](?:\.\d+){2}")
-    conan_command = [sys.executable, "-m", "conans.conan"]
-
-    try:
-        # parse the sourcefile without importing it
-        if not sys.modules.get("conans"):
-            spec: Any = find_spec("conans")
-            out = Path(spec.origin).read_text(encoding="utf-8") if spec else ""
-            return conan_command, regex.findall(out)[0]
-    except (ImportError, FileNotFoundError, IndexError):
-        pass
-
-    try:
-        # import the conan module and get the version string
-        module = import_module("conans")
-        version = getattr(module, "__version__")
-        return conan_command, version
-    except (ModuleNotFoundError, AttributeError):
-        pass
-
-    # use the conan executable or python calling the module
-    command = os.getenv("CONMON_CONAN_CMD", "conan")
-    try:
-        CONMON_LOG.debug("calling conan via %r", command)
-        conan_cmd = shlex.split(command)
-        out = check_output(
-            [*conan_cmd, "--version"],
-            universal_newlines=True,
-        )
-        return conan_cmd, regex.findall(out)[0]
-    except CalledProcessError as exc:
-        if exc.output:
-            CONMON_LOG.error("%s", exc.output)
-    except (FileNotFoundError, IndexError):
-        pass
-
-    CONMON_LOG.error("The %r command cannot be executed.", command)
-    sys.exit(1)
-
-
 def monitor(args: List[str]) -> int:
     # prevent MsBuild from allocating workers
     # which are not children of the parent process
@@ -884,7 +839,7 @@ def monitor(args: List[str]) -> int:
     elif not trace_path.is_absolute():
         os.environ["CONAN_TRACE_FILE"] = str(trace_path.absolute())
 
-    conan_command, ConanParser.CONAN_VERSION = check_conan()
+    conan_command, ConanParser.CONAN_VERSION = conan.call_cmd_and_version()
     conan_command.extend(args)
     process = Popen(
         conan_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0

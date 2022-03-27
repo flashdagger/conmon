@@ -1,19 +1,19 @@
 import argparse
+import fnmatch
 import logging
 import os
 import re
-import shlex
 import shutil
 import sys
 from contextlib import suppress
 from datetime import datetime
-import fnmatch
 from pathlib import Path
-from subprocess import CalledProcessError, PIPE, check_output
-from typing import Callable, List, Optional
+from typing import Callable, List
 
 import colorama
 import colorlog
+
+from . import conan
 
 LOG = logging.getLogger("CLEANUP")
 
@@ -39,17 +39,6 @@ def human_readable_size(size: int, precision: int = 1) -> str:
 
     fsize = f"{ssize:.{precision}f}".rstrip("0").rstrip(".")
     return f"{fsize} {dim}"
-
-
-def conan(cmd: str) -> Optional[str]:
-    try:
-        output = check_output(
-            ["conan", *shlex.split(cmd)], stderr=PIPE, universal_newlines=True
-        )
-    except CalledProcessError as exc:
-        LOG.warning(exc.stderr.rstrip())
-        return None
-    return output.rstrip()
 
 
 def ref_from_path(path: Path) -> str:
@@ -122,14 +111,7 @@ def cleanup_env(args) -> int:
 
 
 def cleanup_conan_cache(args) -> int:
-    config_cache = conan("config get storage.path")
-    if config_cache is None:
-        return 1
-
-    if config_cache == "None":
-        config_cache = str(conan("config home")) + "/data"
-
-    cache = Path(config_cache)
+    cache = conan.storage_path()
     total_size = 0
     return_status = 0
 
@@ -160,7 +142,7 @@ def cleanup_conan_cache(args) -> int:
             total_size += fsize
         else:
             LOG.info("Deleting %r (%s)", ref, info)
-            if conan(f"remove --force {ref}") is None:
+            if conan.command(f"remove --force {ref}") is None:
                 return_status = 1
             else:
                 total_size += fsize
@@ -175,7 +157,7 @@ def cleanup_conan_cache(args) -> int:
 
 
 def cleanup_conan_dlcache(args) -> int:
-    output = conan("config get storage.download_cache")
+    output = conan.download_cache()
     if output is None:
         return 1
 
@@ -252,6 +234,7 @@ def main() -> int:
     )
 
     LOG.addHandler(handler)
+    conan.LOG.addHandler(handler)
     LOG.setLevel(logging.DEBUG)
 
     if os.getenv("CI"):
