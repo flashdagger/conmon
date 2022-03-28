@@ -455,6 +455,7 @@ class Build(State):
             )
         """
     )
+    REF_LOG_KEY = "build"
 
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
@@ -469,7 +470,6 @@ class Build(State):
         line, ref = parsed_line.group("rest", "ref")
         if line == "Calling build()":
             self.screen.print(f"Building {ref}")
-            self.log = self.parser.defaultlog = self.parser.setdefaultlog(ref)
             return True
         return False
 
@@ -482,8 +482,12 @@ class Build(State):
     def activated(self, parsed_line: Match) -> bool:
         full_line, ref = parsed_line.group(0, "ref")
         if self._activated(parsed_line):
-            self.log.setdefault("build", [])
-            self.parser.getdefaultlog(ref).setdefault("stdout", []).append(full_line)
+            defaultlog = self.parser.getdefaultlog(ref)
+            defaultlog.setdefault("stdout", []).append(full_line)
+            self.log = self.parser.defaultlog = defaultlog.setdefault(
+                self.REF_LOG_KEY, {}
+            )
+            self.log.setdefault("stdout", [])
             self.buildmon = BuildMonitor(self.parser.process)
             self.buildmon.start()
             return True
@@ -498,7 +502,7 @@ class Build(State):
         if not line:
             return
 
-        self.log["build"].append(line)
+        self.log["stdout"].append(line)
         match = self.BUILD_STATUS_REGEX.fullmatch(
             line
         ) or self.BUILD_STATUS_REGEX2.match(line)
@@ -634,7 +638,7 @@ class Build(State):
         self.parser.screen.reset()
         self.log["translation_units"] = self.translation_units()
         warnings = self.log.setdefault("warnings", [])
-        build_stdout = "\n".join(self.log["build"])
+        build_stdout = "\n".join(self.log["stdout"])
         self.compiler_types.add(self.parser.compiler_type)
 
         for compiler_type in self.compiler_types:
@@ -673,13 +677,12 @@ class Build(State):
 
 
 class BuildTest(Build):
+    REF_LOG_KEY = "test_build"
+
     def _activated(self, parsed_line: Match) -> bool:
         line, ref = parsed_line.group("rest", "ref")
         if line == "(test package): Calling build()":
             self.screen.print(f"Building test for {ref}")
-            self.log = self.parser.defaultlog = self.parser.setdefaultlog(
-                ref
-            ).setdefault("test_build", {})
             return True
         return False
 
@@ -695,12 +698,12 @@ class RunTest(State):
         self.log = parser.defaultlog
 
     def activated(self, parsed_line: Match) -> bool:
-        ref, line = parsed_line.group("ref", "rest")
+        full_line, ref, line = parsed_line.group(0, "ref", "rest")
         if line == "(test package): Running test()":
             self.screen.print(f"Running test for {ref}")
-            self.log = self.parser.defaultlog = self.parser.setdefaultlog(
-                ref
-            ).setdefault("test_run", {})
+            defaultlog = self.parser.getdefaultlog(ref)
+            defaultlog.setdefault("stdout", []).append(full_line)
+            self.log = self.parser.defaultlog = defaultlog.setdefault("test_run", {})
             return True
         return False
 
