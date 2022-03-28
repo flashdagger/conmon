@@ -189,13 +189,10 @@ class BuildMonitor(Thread):
                 continue
 
             response_file = Path(self.make_absolute(arg[1:], info["cwd"]))
-
             if response_file.exists():
                 self.rsp_cache[response_file] = response_file.read_bytes()
 
-    def parse_responsefile(
-        self, cmdline: List[str], *, cwd="", posix=True
-    ) -> List[str]:
+    def parse_responsefile(self, cmdline: List[str], *, cwd, posix=True) -> List[str]:
         split: Any = shlex.split if posix else WinShlex.split
         encoding = "utf-8" if posix else "utf-16"
         new_cmdline = []
@@ -209,9 +206,9 @@ class BuildMonitor(Thread):
 
             if rsp_txt is None:
                 LOG.warning("Missing response file %s", response_file)
-                continue
-
-            new_cmdline.extend(split(rsp_txt.decode(encoding=encoding)))
+                new_cmdline.append(arg)
+            else:
+                new_cmdline.extend(split(rsp_txt.decode(encoding=encoding)))
         return new_cmdline
 
     def check_process(self, process_map: Dict[str, Any]):
@@ -230,20 +227,18 @@ class BuildMonitor(Thread):
             exe = Path(self.make_absolute(process_map["exe"], process_map["cwd"]))
         process_map["exe"] = exe
 
-        if compiler_type in {"msvc", "clang-cl"}:
-            process_map["cmdline"] = [
-                self.canonical_option(option)
-                for option in self.parse_responsefile(
-                    process_map["cmdline"], posix=False
-                )
-            ]
-        elif compiler_type == "gnu":
-            process_map["cmdline"] = self.parse_responsefile(
-                process_map["cmdline"], cwd=process_map["cwd"]
-            )
-        else:
+        if compiler_type not in {"msvc", "clang-cl", "gnu"}:
             LOG_ONCE.error("Unknown compiler type %s", compiler_type)
             return
+
+        process_map["cmdline"] = [
+            self.canonical_option(option)
+            for option in self.parse_responsefile(
+                process_map["cmdline"],
+                cwd=process_map["cwd"],
+                posix=compiler_type == "gnu",
+            )
+        ]
 
         self.parse_tus(process_map)
 
