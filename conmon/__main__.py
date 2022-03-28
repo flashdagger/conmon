@@ -43,6 +43,7 @@ from .compilers import (
     parse_cmake_warnings,
     filter_compiler_warnings,
     parse_bison_warnings,
+    parse_autotools_warnings,
 )
 from .conan import LOG as CONAN_LOG
 from .regex import DECOLORIZE_REGEX, REF_REGEX, WARNING_REGEX, shorten_conan_path
@@ -671,6 +672,12 @@ class Build(State):
             )
             warnings.extend(cmake_warnings)
 
+        if "make" in self.tools:
+            cmake_warnings, stderr_lines = popwarnings(
+                stderr_lines, parse_autotools_warnings
+            )
+            warnings.extend(cmake_warnings)
+
         emit_warnings(stderr_lines)
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
@@ -688,7 +695,7 @@ class BuildTest(Build):
 
     @staticmethod
     def _deactivated(parsed_line: Match) -> bool:
-        return bool(parsed_line.group("ref"))
+        return parsed_line.group("rest") == "(test package): Running test()"
 
 
 class RunTest(State):
@@ -871,10 +878,10 @@ class ConanParser:
 
                 for line in stdout:
                     self.process_line(DECOLORIZE_REGEX.sub("", line))
-                    # state = self.states.active_instance()
-                    # name = state and type(state).__name__
-                    # raw_fh.write(f"[{name}] {line}")
-                    raw_fh.write(line)
+                    state = self.states.active_instance()
+                    name = state and type(state).__name__
+                    raw_fh.write(f"[{name}] {line}")
+                    # raw_fh.write(line)
                 raw_fh.flush()
 
             if stderr:

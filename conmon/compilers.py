@@ -6,9 +6,10 @@ from operator import itemgetter
 from typing import Any, Dict, List, Optional, Tuple, Pattern
 
 from conmon.regex import shorten_conan_path
-from conmon.utils import shorten
+from conmon.utils import shorten, UniqueLogger
 
 LOG = logging.getLogger("BUILD")
+LOG_ONCE = UniqueLogger(LOG)
 
 
 class WarningRegex:
@@ -156,6 +157,37 @@ def parse_bison_warnings(output: str) -> List[Dict[str, Any]]:
             LOG.error(full_message)
         elif groupdict["severity"] == "warning":
             LOG.warning(full_message)
+
+    return warnings
+
+
+def parse_autotools_warnings(output: str) -> List[Dict[str, Any]]:
+    groupdict: Dict[str, Any]
+    warnings = []
+    regex = re.compile(
+        r"""(?x)
+        (?P<from>
+            ar | autoreconf | aclocal | configure(?:\.ac)? | Makefile(?:\.am)?
+        )
+        (
+            :(?P<line>\d+)
+        )?
+        (
+            :\ (?P<severity>warning|error)
+        )?
+        :\ #
+        (?P<info>.*)
+        """
+    )
+
+    for match in regex.finditer(output):
+        groupdict = match.groupdict()
+        to_int(groupdict, "line")
+        severity = match.group("severity")
+        groupdict["severity"] = severity or "note"
+        if severity:
+            LOG_ONCE.warning(match.group())
+        warnings.append(groupdict)
 
     return warnings
 
