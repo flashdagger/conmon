@@ -205,6 +205,8 @@ def filter_compiler_warnings(
 
     for lines in output:
         text = "\n".join((*lines, "\n"))
+        if all(re.fullmatch(r"\d+ warnings? generated\.", line) for line in lines):
+            continue
         if compiler_regex.search(text):
             parsed_output.append(text)
         else:
