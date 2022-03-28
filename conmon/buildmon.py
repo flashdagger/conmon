@@ -5,6 +5,7 @@ import re
 import shlex
 import time
 from contextlib import suppress
+from functools import partial
 from pathlib import Path
 from statistics import mean, median
 from subprocess import check_output, CalledProcessError
@@ -167,12 +168,6 @@ class BuildMonitor(Thread):
         return merge_mapping(self._translation_units, value_key="sources")
 
     @staticmethod
-    def canonical_option(option: str) -> str:
-        if option.startswith("/"):
-            return "-" + option[1:]
-        return option
-
-    @staticmethod
     def make_absolute(path: str, cwd: str) -> str:
         if not os.path.isabs(path):
             path = os.path.join(cwd, path)
@@ -231,12 +226,20 @@ class BuildMonitor(Thread):
             LOG_ONCE.error("Unknown compiler type %s", compiler_type)
             return
 
+        if compiler_type == "gnu":
+            convert = str
+            posix = True
+        else:
+            # replace '/' with '-' for windows style args
+            convert = partial(re.sub, r"^/(.*)", r"-\1")
+            posix = False
+
         process_map["cmdline"] = [
-            self.canonical_option(option)
+            convert(option)
             for option in self.parse_responsefile(
                 process_map["cmdline"],
                 cwd=process_map["cwd"],
-                posix=compiler_type == "gnu",
+                posix=posix,
             )
         ]
 
