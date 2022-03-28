@@ -1,6 +1,5 @@
 import argparse
 import logging
-import os
 import re
 import shlex
 import time
@@ -168,22 +167,22 @@ class BuildMonitor(Thread):
         return merge_mapping(self._translation_units, value_key="sources")
 
     @staticmethod
-    def make_absolute(path: str, cwd: str) -> str:
-        if not os.path.isabs(path):
-            path = os.path.join(cwd, path)
-        return os.path.abspath(path)
+    def make_absolute(path: str, cwd: str) -> Path:
+        ppath = Path(path)
+        if not ppath.is_absolute():
+            ppath = Path(cwd, path)
+        return ppath.absolute()
 
     @staticmethod
-    def is_valid_tu(file: str) -> bool:
-        path = Path(file)
-        return path.suffix.lower() in {".c", ".cpp", ".cxx", ".cc", ".asm", ".s"}
+    def is_valid_tu(file: Path) -> bool:
+        return file.suffix.lower() in {".c", ".cpp", ".cxx", ".cc", ".asm", ".s"}
 
     def cache_responsefile(self, info: Dict):
         for arg in info["cmdline"]:
             if not arg.startswith("@"):
                 continue
 
-            response_file = Path(self.make_absolute(arg[1:], info["cwd"]))
+            response_file = self.make_absolute(arg[1:], info["cwd"])
             if response_file.exists():
                 self.rsp_cache[response_file] = response_file.read_bytes()
 
@@ -196,7 +195,7 @@ class BuildMonitor(Thread):
                 new_cmdline.append(arg)
                 continue
 
-            response_file = Path(self.make_absolute(arg[1:], cwd))
+            response_file = self.make_absolute(arg[1:], cwd)
             rsp_txt = self.rsp_cache.get(response_file)
 
             if rsp_txt is None:
@@ -219,7 +218,7 @@ class BuildMonitor(Thread):
         exe = Path(process_map["cmdline"][0])
         process_map["cmdline"] = process_map["cmdline"][1:]
         if not exe.is_absolute():
-            exe = Path(self.make_absolute(process_map["exe"], process_map["cwd"]))
+            exe = self.make_absolute(process_map["exe"], process_map["cwd"])
         process_map["exe"] = exe
 
         if compiler_type not in {"msvc", "clang-cl", "gnu"}:
@@ -261,9 +260,7 @@ class BuildMonitor(Thread):
             if not value:
                 continue
             if key in {"includes", "system_includes"}:
-                data[key] = {
-                    Path(self.make_absolute(path, proc["cwd"])) for path in value
-                }
+                data[key] = {self.make_absolute(path, proc["cwd"]) for path in value}
             elif key not in {"cc_frontend", "ccas_frontend"}:
                 data[key] = set(value) if isinstance(value, list) else value
 

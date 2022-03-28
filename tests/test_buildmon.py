@@ -185,13 +185,13 @@ def test_compiler_arg_parsing():
 @pytest.mark.skipif(os.name != "nt", reason="Windows only")
 def test_make_absolute():
     relative_path = r".libs\testlib-0.dll.exp"
-    cwd = r"D:\build\\bin_autotools"
+    cwd = r"D:\build\bin_autotools"
 
-    assert Path(BuildMonitor.make_absolute(relative_path, cwd)) == Path(
-        r"D:\build\\bin_autotools\.libs\testlib-0.dll.exp"
+    assert BuildMonitor.make_absolute(relative_path, cwd) == Path(
+        r"D:\build\bin_autotools\.libs\testlib-0.dll.exp"
     )
 
     absolute_path = r"C:\.libs\testlib-0.dll.exp"
-    assert Path(BuildMonitor.make_absolute(absolute_path, cwd)) == Path(
+    assert BuildMonitor.make_absolute(absolute_path, cwd) == Path(
         r"C:\.libs\testlib-0.dll.exp"
     )
