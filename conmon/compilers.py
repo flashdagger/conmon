@@ -96,6 +96,19 @@ class WarningRegex:
             \n
         """
     )
+    AUTOTOOLS = re.compile(
+        r"""(?x)
+        (?P<from>
+            ar | autoreconf | aclocal | configure(?:\.ac)? | Makefile(?:\.am)?
+        )
+        ( :(?P<line>\d+) )?
+        (
+            :\ (?P<severity>warning|error)
+        )?
+        :\ #
+        (?P<info>.*)
+        """
+    )
 
     @classmethod
     def get(cls, key: str, default=None) -> Optional[Pattern]:
@@ -164,23 +177,8 @@ def parse_bison_warnings(output: str) -> List[Dict[str, Any]]:
 def parse_autotools_warnings(output: str) -> List[Dict[str, Any]]:
     groupdict: Dict[str, Any]
     warnings = []
-    regex = re.compile(
-        r"""(?x)
-        (?P<from>
-            ar | autoreconf | aclocal | configure(?:\.ac)? | Makefile(?:\.am)?
-        )
-        (
-            :(?P<line>\d+)
-        )?
-        (
-            :\ (?P<severity>warning|error)
-        )?
-        :\ #
-        (?P<info>.*)
-        """
-    )
 
-    for match in regex.finditer(output):
+    for match in WarningRegex.AUTOTOOLS.finditer(output):
         groupdict = match.groupdict()
         to_int(groupdict, "line")
         severity = match.group("severity")
