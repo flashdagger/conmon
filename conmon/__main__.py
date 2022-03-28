@@ -688,6 +688,32 @@ class BuildTest(Build):
         return bool(parsed_line.group("ref"))
 
 
+class RunTest(State):
+    def __init__(self, parser: "ConanParser"):
+        super().__init__(parser)
+        self.parser = parser
+        self.log = parser.defaultlog
+
+    def activated(self, parsed_line: Match) -> bool:
+        ref, line = parsed_line.group("ref", "rest")
+        if line == "(test package): Running test()":
+            self.screen.print(f"Running test for {ref}")
+            self.log = self.parser.defaultlog = self.parser.setdefaultlog(
+                ref
+            ).setdefault("test_run", {})
+            return True
+        return False
+
+    def process(self, parsed_line: Match) -> None:
+        self.log.setdefault("stdout", []).append(parsed_line.group(0))
+
+    def _deactivate(self, final=False):
+        stderr_lines = self.log.pop("stderr_lines", ())
+        self.log.setdefault("stderr", []).extend(chain(*stderr_lines))
+        self.parser.setdefaultlog()
+        super()._deactivate(final=True)
+
+
 class ConanParser:
     CONAN_VERSION = "<undefined>"
     SEVERITY_REGEX = re.compile(
@@ -720,6 +746,7 @@ class ConanParser:
         self.states.add(Build(self))
         self.states.add(Package(self))
         self.states.add(BuildTest(self))
+        self.states.add(RunTest(self))
 
     @property
     def compiler_type(self) -> str:
