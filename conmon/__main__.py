@@ -428,43 +428,7 @@ class Export(State):
 
     def _deactivate(self, final=False):
         self.parser.setdefaultlog()
-        self.stopped = True
-        super()._deactivate(final=False)
-
-
-class TestPackage(State):
-    def __init__(self, parser: "ConanParser"):
-        super().__init__(parser)
-        self.parser = parser
-        self.log = parser.defaultlog
-
-    def activated(self, parsed_line: Match) -> bool:
-        ref, rest = parsed_line.group("ref", "rest")
-        if rest == "(test package): Calling build()":
-            self.screen.print(f"Testing {ref}")
-            self.log = self.parser.setdefaultlog(ref)
-            return True
-        return False
-
-    def process(self, parsed_line: Match) -> None:
-        line, ref = parsed_line.group(0, "ref")
-
-        if ref:
-            self.deactivate()
-            return
-
-        self.parser.screen.print(line, overwrite=True)
-        self.log.setdefault("test_package", []).append(line)
-
-    def _deactivate(self, final=False):
-        self.screen.reset()
-        stderr_lines = self.parser.defaultlog.pop("stderr_lines", ())
-        _, stderr_lines = popwarnings(stderr_lines, parse_cmake_warnings)
-        self.log.setdefault("stderr", []).extend(chain(*stderr_lines))
-        emit_warnings(stderr_lines)
-
-        self.parser.setdefaultlog()
-        super()._deactivate(final=False)
+        super()._deactivate(final=True)
 
 
 class Build(State):
@@ -499,30 +463,42 @@ class Build(State):
         self.compiler_types: Set[str] = set()
         self.tools: Set[str] = set()
         self.buildmon: Optional[BuildMonitor] = None
+        self.log = parser.defaultlog
 
-    def activated(self, parsed_line: Match) -> bool:
-        full_line, ref, line = parsed_line.group(0, "ref", "rest")
+    def _activated(self, parsed_line: Match) -> bool:
+        line, ref = parsed_line.group("rest", "ref")
         if line == "Calling build()":
             self.screen.print(f"Building {ref}")
-            log = self.parser.setdefaultlog(ref)
-            log.setdefault("build", [])
-            log.setdefault("stdout", []).append(full_line)
+            self.log = self.parser.defaultlog = self.parser.setdefaultlog(ref)
+            return True
+        return False
+
+    @staticmethod
+    def _deactivated(parsed_line: Match) -> bool:
+        line = parsed_line.group("rest")
+        match = re.fullmatch(r"Package '\w+' built", line)
+        return bool(match)
+
+    def activated(self, parsed_line: Match) -> bool:
+        full_line, ref = parsed_line.group(0, "ref")
+        if self._activated(parsed_line):
+            self.log.setdefault("build", [])
+            self.parser.getdefaultlog(ref).setdefault("stdout", []).append(full_line)
             self.buildmon = BuildMonitor(self.parser.process)
             self.buildmon.start()
             return True
         return False
 
     def process(self, parsed_line: Match) -> None:
-        line = parsed_line.group("rest")
-        match = re.fullmatch(r"Package '\w+' built", line)
-        if match:
+        if self._deactivated(parsed_line):
             self.deactivate()
             return
 
+        line = parsed_line.group("rest")
         if not line:
             return
 
-        self.parser.defaultlog.setdefault("build", []).append(line)
+        self.log["build"].append(line)
         match = self.BUILD_STATUS_REGEX.fullmatch(
             line
         ) or self.BUILD_STATUS_REGEX2.match(line)
@@ -656,10 +632,9 @@ class Build(State):
 
     def _deactivate(self, final=False):
         self.parser.screen.reset()
-        ref_log = self.parser.defaultlog
-        ref_log["translation_units"] = self.translation_units()
-        warnings = ref_log.setdefault("warnings", [])
-        build_stdout = "\n".join(ref_log["build"])
+        self.log["translation_units"] = self.translation_units()
+        warnings = self.log.setdefault("warnings", [])
+        build_stdout = "\n".join(self.log["build"])
         self.compiler_types.add(self.parser.compiler_type)
 
         for compiler_type in self.compiler_types:
@@ -674,8 +649,8 @@ class Build(State):
             bison_warnings = parse_bison_warnings(build_stdout)
             warnings.extend(bison_warnings)
 
-        stderr_lines = ref_log.pop("stderr_lines", ())
-        ref_log.setdefault("stderr", []).extend(chain(*stderr_lines))
+        stderr_lines = self.log.pop("stderr_lines", ())
+        self.log.setdefault("stderr", []).extend(chain(*stderr_lines))
 
         for compiler_type in self.compiler_types:
             warning_output, stderr_lines = filter_compiler_warnings(
@@ -695,6 +670,22 @@ class Build(State):
         emit_warnings(stderr_lines)
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
+
+
+class BuildTest(Build):
+    def _activated(self, parsed_line: Match) -> bool:
+        line, ref = parsed_line.group("rest", "ref")
+        if line == "(test package): Calling build()":
+            self.screen.print(f"Building test for {ref}")
+            self.log = self.parser.defaultlog = self.parser.setdefaultlog(
+                ref
+            ).setdefault("test_build", {})
+            return True
+        return False
+
+    @staticmethod
+    def _deactivated(parsed_line: Match) -> bool:
+        return bool(parsed_line.group("ref"))
 
 
 class ConanParser:
@@ -728,7 +719,7 @@ class ConanParser:
         self.states.add(Packages(self))
         self.states.add(Build(self))
         self.states.add(Package(self))
-        self.states.add(TestPackage(self))
+        self.states.add(BuildTest(self))
 
     @property
     def compiler_type(self) -> str:
