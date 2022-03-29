@@ -544,6 +544,7 @@ class Build(State):
         self, tu_list: Iterable[Dict[str, Any]]
     ) -> Iterator[Dict[str, Any]]:
         src_filter = {
+            None: lambda path: "meson-private" in path.parts,
             "cmake": lambda path: set(path.parts) & {"CMake", "CMakeFiles", "cmake.tmp"}
             or re.search(r"/cmake/test_compiler.c(pp)?", path.as_posix())
             or re.search(r"/cmake-[23].\d+/Modules/(CMake|Check)", path.as_posix()),
@@ -551,7 +552,9 @@ class Build(State):
             "make": lambda path: path.stem in {"conftest", "dummy"},
         }
         active_filters = {
-            key: value for key, value in src_filter.items() if key in self.tools
+            key: value
+            for key, value in src_filter.items()
+            if key in self.tools or key is None
         }
 
         src_counter = 0
