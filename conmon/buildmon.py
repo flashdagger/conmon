@@ -48,6 +48,9 @@ class CompilerParser(argparse.ArgumentParser):
         "-TC",
         "-FS",
     }
+    IGNORED_FLAGS_AFTER = {
+        "-link",
+    }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, allow_abbrev=False, **kwargs)
@@ -110,6 +113,8 @@ class CompilerParser(argparse.ArgumentParser):
         clean_args = []
         unknown_args = []
         for arg in args:
+            if arg in self.IGNORED_FLAGS_AFTER:
+                break
             if arg in self.IGNORED_FLAGS:
                 continue
             for option in sorted_options:
@@ -176,8 +181,11 @@ class BuildMonitor(Thread):
     def make_absolute(path: str, cwd: str) -> Path:
         ppath = Path(path)
         if not ppath.is_absolute():
-            ppath = Path(cwd, path)
-        return ppath.absolute().resolve()
+            ppath = Path(cwd, path).absolute()
+        try:
+            return ppath.resolve()
+        except OSError:
+            return ppath
 
     @staticmethod
     def is_valid_tu(file: Path) -> bool:
@@ -322,6 +330,7 @@ class BuildMonitor(Thread):
                 self.proc_cache[child_id] = info
                 self.cache_responsefile(info)
 
+    # noinspection PyBroadException
     def run(self):
         while self.proc.is_running() and not self.finish.is_set():
             t_start = time.monotonic()
@@ -335,8 +344,8 @@ class BuildMonitor(Thread):
         for info_map in self.proc_cache.values():
             try:
                 self.check_process(info_map)
-            except BaseException as exc:
-                LOG_ONCE.error(repr(exc))
+            except BaseException:
+                LOG.exception("Exception while processing...")
                 continue
 
         executables = ", ".join(

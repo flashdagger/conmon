@@ -40,6 +40,9 @@ cases = [
                 "-I.",
                 "-o",
                 "power.cpp",
+                "-link",  # ignore all options after
+                "-DLL",
+                "-IMPLIB:libltdl\\.libs\\ltdl.dll.lib",
             ],
             "exe": "clang",
             "cwd": "source",
