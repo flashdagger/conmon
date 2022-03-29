@@ -3,10 +3,10 @@ import re
 from collections import Counter
 from itertools import groupby
 from operator import itemgetter
-from typing import Any, Dict, List, Optional, Tuple, Pattern
+from typing import Any, Dict, List, Optional, Tuple, Pattern, Union
 
-from conmon.regex import shorten_conan_path
-from conmon.utils import shorten, UniqueLogger
+from conmon.regex import shorten_conan_path, REF_REGEX
+from conmon.utils import shorten, UniqueLogger, compact_pattern
 
 LOG = logging.getLogger("BUILD")
 LOG_ONCE = UniqueLogger(LOG)
@@ -106,6 +106,14 @@ class WarningRegex:
             :\ (?P<severity>warning|error)
         )?
         :\ #
+        (?P<info>.*)
+        """
+    )
+    CONAN = re.compile(
+        rf"""(?xm)
+        (?:(?P<severity_l>ERROR|WARN):\ )?
+        (?:{compact_pattern(REF_REGEX)[0]}:\ +)?
+        (?(severity_l) | (?P<severity>ERROR|WARN):\ ?)
         (?P<info>.*)
         """
     )
@@ -264,3 +272,17 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
             LOG.info("  %s: %s", key, value)
 
     return warnings
+
+
+def filter_lines(
+    output: List[List[str]], *regex: Union[str, Pattern]
+) -> List[List[str]]:
+    residue = []
+
+    for lines in output:
+        text = "\n".join((*lines, "\n"))
+        if any(re.search(rgx, text) for rgx in regex):
+            continue
+        residue.append(lines)
+
+    return residue

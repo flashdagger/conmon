@@ -3,8 +3,6 @@
 
 import re
 
-from conmon.utils import compact_pattern
-
 DECOLORIZE_REGEX = re.compile(r"[\u001b]\[\d{1,2}m", re.UNICODE)
 CONAN_DATA_PATH = re.compile(
     r"""(?x)
@@ -32,14 +30,6 @@ REF_REGEX = re.compile(
             )?
          )?
      )
-    """
-)
-WARNING_REGEX = re.compile(
-    rf"""(?xm)
-    (?:(?P<severity_l>ERROR|WARN):\ )?
-    (?:{compact_pattern(REF_REGEX)[0]}:\ +)?
-    (?(severity_l) | (?P<severity>ERROR|WARN):\ ?)
-    (?P<info>.*)
     """
 )
 

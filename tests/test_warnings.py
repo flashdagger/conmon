@@ -6,7 +6,6 @@ import textwrap
 import pytest
 
 from conmon.compilers import WarningRegex, parse_compiler_warnings
-from conmon.regex import WARNING_REGEX
 
 output = [
     "src/main/src/Em_FilteringQmFu.c: In function \u2018Em_FilteringQmFu_processSensorSignals\u2019:",
@@ -78,7 +77,7 @@ def test_gnu_hint():
 
 
 def test_conan_warning():
-    match = WARNING_REGEX.fullmatch("libjpeg/1.2.3: WARN: package is corrupted")
+    match = WarningRegex.CONAN.fullmatch("libjpeg/1.2.3: WARN: package is corrupted")
     assert match
     expected = {
         "ref": "libjpeg/1.2.3",
@@ -88,7 +87,7 @@ def test_conan_warning():
     }
     assert {key: match.group(key) for key in expected.keys()} == expected
 
-    match = WARNING_REGEX.fullmatch(
+    match = WarningRegex.CONAN.fullmatch(
         "WARN: libmysqlclient/8.0.25: requirement openssl/1.1.1m "
         "overridden by poco/1.11.1 to openssl/1.1.1l"
     )

@@ -43,10 +43,11 @@ from .compilers import (
     parse_cmake_warnings,
     filter_compiler_warnings,
     parse_bison_warnings,
-    parse_autotools_warnings,
+    filter_lines,
+    WarningRegex,
 )
 from .conan import LOG as CONAN_LOG
-from .regex import DECOLORIZE_REGEX, REF_REGEX, WARNING_REGEX, shorten_conan_path
+from .regex import DECOLORIZE_REGEX, REF_REGEX, shorten_conan_path
 from .utils import (
     StrictConfigParser,
     ScreenWriter,
@@ -528,7 +529,7 @@ class Build(State):
             # shorten at path separator
             output = re.sub(r"\.{3}[^/\\]+(?=[/\\])", "...", output)
             self.screen.print(f"{output:{self.MAX_WIDTH}}", overwrite=True)
-        elif line.startswith("-- ") or line.startswith("checking "):
+        elif line.startswith("-- ") or line.lower().startswith("checking "):
             self.screen.print(line, overwrite=True)
         else:
             match = self.parser.SEVERITY_REGEX.match(line)
@@ -674,16 +675,14 @@ class Build(State):
             )
             warnings.extend(cmake_warnings)
 
-        if "make" in self.tools:
-            cmake_warnings, stderr_lines = popwarnings(
-                stderr_lines, parse_autotools_warnings
-            )
-            warnings.extend(cmake_warnings)
-
-        # TODO: filter meson progress
-        # Generating targets: 73 % |███████████████████████████████▌ | 22 / 30[00:00 < 00:00, 51.27 it / s]
-        # build.ninja: 82 % |███████████████████████████████▏ | 351 / 428[00:00 < 00:00, 1630.55 it / s]
-
+        stderr_lines = filter_lines(
+            stderr_lines,
+            # empty lines
+            re.compile(r"^\s*$"),
+            # meson progress bar
+            re.compile(r"(?m)^(Generating targets|(Writing )?build\.ninja): +\d+ *%"),
+            WarningRegex.AUTOTOOLS,
+        )
         emit_warnings(stderr_lines)
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
@@ -831,7 +830,7 @@ class ConanParser:
 
         for line in lines:
             line = line.rstrip()
-            match = WARNING_REGEX.match(line)
+            match = WarningRegex.CONAN.match(line)
             if match:
                 flush()
                 ref, severity_l, severity_r, info = match.group(
@@ -868,6 +867,7 @@ class ConanParser:
         stderr_marker_start = marker.format(" <stderr> ")
         stdout_marker_start = marker.format(" <stdout> ")
         stderr_written = True
+        log_states = conan.conmon_setting("log_states", False)
 
         while not streams.exhausted:
             try:
@@ -884,10 +884,12 @@ class ConanParser:
 
                 for line in stdout:
                     self.process_line(DECOLORIZE_REGEX.sub("", line))
-                    state = self.states.active_instance()
-                    name = state and type(state).__name__
-                    raw_fh.write(f"[{name}] {line}")
-                    # raw_fh.write(line)
+                    if log_states:
+                        state = self.states.active_instance()
+                        name = state and type(state).__name__
+                        raw_fh.write(f"[{name}] {line}")
+                    else:
+                        raw_fh.write(line)
                 raw_fh.flush()
 
             if stderr:
