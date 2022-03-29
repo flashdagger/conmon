@@ -58,17 +58,17 @@ from .utils import (
 )
 
 CONMON_LOG = logging.getLogger("CONMON")
-
 PARENT_PROCS = [parent.name() for parent in Process(os.getppid()).parents()]
 LOG_HINTS: Dict[str, None] = {}
 
 
-def filehandler(key, mode="w", hint="report"):
+def filehandler(key: str, hint="") -> TextIO:
     path = conan.conmon_setting(key)
     if isinstance(path, str):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        LOG_HINTS.setdefault(f"saved {hint} to {path!r}")
-    else:
+        if hint:
+            LOG_HINTS.setdefault(f"saved {hint} to {path!r}")
+    elif hint:
         env_key = f"CONMON_{key.upper()}"
         hint_path = key.replace("_", ".")
         fmt = "export {}={}"
@@ -81,10 +81,10 @@ def filehandler(key, mode="w", hint="report"):
             if name == "cmd.exe":
                 fmt = "set {}={}"
                 break
-        template = f"hint: use {fmt!r} to save {{}}"
+        template = f"hint: execute {fmt!r} to save {{}}"
         LOG_HINTS.setdefault(template.format(env_key, hint_path, hint))
 
-    return open(path or os.devnull, mode, encoding="utf-8")
+    return open(path or os.devnull, "w", encoding="utf-8")
 
 
 def popwarnings(error_lines: List[List[str]], parse_func: Callable[[str], List[Dict]]):
