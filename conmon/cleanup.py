@@ -241,6 +241,8 @@ def main() -> int:
         LOG.info("Running in Gitlab CI")
 
     if args.what == "conan":
+        if "*" not in args.filter and "@" not in args.filter:
+            args.filter = f"{args.filter}*"
         LOG.info(
             "Cleaning conan package cache. (min_age='%s days' min_size=%r filter=%r)",
             args.days,
