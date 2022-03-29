@@ -5,8 +5,8 @@ from itertools import groupby
 from operator import itemgetter
 from typing import Any, Dict, List, Optional, Tuple, Pattern, Union
 
-from conmon.regex import shorten_conan_path, REF_REGEX
-from conmon.utils import shorten, UniqueLogger, compact_pattern
+from conmon.regex import shorten_conan_path, REF_REGEX, compact_pattern
+from conmon.utils import shorten, UniqueLogger
 
 LOG = logging.getLogger("BUILD")
 LOG_ONCE = UniqueLogger(LOG)

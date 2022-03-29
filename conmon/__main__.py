@@ -47,13 +47,12 @@ from .compilers import (
     WarningRegex,
 )
 from .conan import LOG as CONAN_LOG
-from .regex import DECOLORIZE_REGEX, REF_REGEX, shorten_conan_path
+from .regex import DECOLORIZE_REGEX, REF_REGEX, shorten_conan_path, compact_pattern
 from .utils import (
     StrictConfigParser,
     ScreenWriter,
     shorten,
     unique,
-    compact_pattern,
     ProcessStreamHandler,
     get_terminal_width,
 )

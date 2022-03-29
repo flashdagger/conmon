@@ -20,7 +20,6 @@ from typing import (
     TypeVar,
     Iterator,
     Tuple,
-    Pattern,
     Optional,
     Union,
 )
@@ -269,18 +268,6 @@ def unique(items: Iterable[T]) -> Iterator[T]:
             continue
         seen.add(item)
         yield item
-
-
-def compact_pattern(regex: Pattern) -> Tuple[str, int]:
-    flags = regex.flags
-    # remove inline flags
-    pattern = re.sub(r"\(\?([aiLmsux])+\)", "", regex.pattern, flags=re.ASCII)
-    # remove whitespace in verbose pattern
-    if flags & re.VERBOSE:
-        pattern = re.sub(r"(?<!\\)\s+|\\(?= )|#[^\n]+\n", "", pattern, flags=re.ASCII)
-        flags -= re.VERBOSE
-
-    return pattern, flags
 
 
 def common_parent(*paths: Union[str, os.PathLike]) -> Optional[Path]:
