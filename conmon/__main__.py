@@ -830,6 +830,9 @@ class ConanParser:
                 )
             self.getdefaultlog(ref).setdefault("stderr", []).extend(stderr)
 
+        if not "".join(lines).rstrip():
+            return
+
         for line in lines:
             line = line.rstrip()
             match = WarningRegex.CONAN.match(line)
