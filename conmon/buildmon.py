@@ -273,7 +273,7 @@ class BuildMonitor(Thread):
         for key, value in sorted(vars(args).items()):
             if not value:
                 continue
-            if key in {"includes", "system_includes"}:
+            if key in ("forced_includes", "system_includes", "includes"):
                 data[key] = {self.make_absolute(path, proc["cwd"]) for path in value}
             elif key not in {"cc_frontend", "ccas_frontend"}:
                 data[key] = set(value) if isinstance(value, list) else value
