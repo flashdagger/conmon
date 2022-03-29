@@ -82,6 +82,7 @@ def test_buildmon_process(case):
         for tu in translation_units:
             if key not in tu:
                 continue
+            print(key, tu[key])
             tu[key] = [
                 str(Path(path).relative_to(Path.cwd()).as_posix()) for path in tu[key]
             ]

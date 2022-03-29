@@ -7,6 +7,7 @@ import time
 from configparser import ConfigParser
 from contextlib import suppress
 from io import TextIOBase
+from math import log
 from pathlib import Path
 from queue import Queue
 from threading import Thread
@@ -299,3 +300,26 @@ class UniqueLogger(logging.Logger):
             return
         self.seen.add(key)
         getattr(self._logger, "_log")(level, msg, args, **kwargs)
+
+
+def human_readable_size(
+    size: Union[int, float], unit: str, factor=1000, precision: int = 1
+) -> str:
+    si_map = {-2: "u", -1: "m", 0: "", 1: "k", 2: "M", 3: "G", 4: "T"}
+    assert precision >= 0
+    try:
+        index = int(log(abs(size)) / log(factor)) - (1 if abs(size) < 1.0 else 0)
+    except ValueError:
+        index = 0
+    index = max(min(index, max(si_map)), min(si_map))
+    sized = size / factor**index
+    if index == 0:
+        if isinstance(size, int):
+            precision = 0
+    else:
+        unit = unit[0]
+    return f"{sized:.{precision}f} {si_map[index]}{unit}"
+
+
+def human_readable_byte_size(size: int, precision: int = 1) -> str:
+    return human_readable_size(size, "Bytes", factor=1024, precision=precision)

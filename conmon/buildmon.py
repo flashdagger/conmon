@@ -13,7 +13,13 @@ from typing import Any, Dict, List, Optional, Set, Hashable, Iterator, Union, Tu
 
 from psutil import AccessDenied, Process, NoSuchProcess
 
-from conmon.utils import append_to_set, merge_mapping, WinShlex, UniqueLogger
+from conmon.utils import (
+    append_to_set,
+    merge_mapping,
+    WinShlex,
+    UniqueLogger,
+    human_readable_size,
+)
 from .utils import shorten
 
 LOG = logging.getLogger("BUILDMON")
@@ -342,12 +348,13 @@ class BuildMonitor(Thread):
         if self.executables:
             LOG.info("Detected executables: %s", ", ".join(sorted(self.executables)))
 
+        hrs = partial(human_readable_size, unit="seconds")
         LOG.debug(
-            "Timings: max=%.3e min=%.3e mean=%.3e median=%.3e",
-            max(self.timing),
-            min(self.timing),
-            mean(self.timing),
-            median(self.timing),
+            "Time consumed per process scan: max=%s min=%s mean=%s median=%s",
+            hrs(max(self.timing)),
+            hrs(min(self.timing)),
+            hrs(mean(self.timing)),
+            hrs(median(self.timing)),
         )
 
     def scan_msys(self):

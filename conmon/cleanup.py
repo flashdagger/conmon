@@ -14,6 +14,7 @@ import colorama
 import colorlog
 
 from . import conan
+from .utils import human_readable_byte_size
 
 LOG = logging.getLogger("CLEANUP")
 
@@ -26,19 +27,6 @@ class GLOBAL:
         fnmatch.fnmatch if sys.platform.startswith("win") else fnmatch.fnmatchcase
     )
     min_size = 0
-
-
-def human_readable_size(size: int, precision: int = 1) -> str:
-    ssize = float(size)
-
-    for dim in ("Bytes", "kB", "MB", "GB"):
-        if ssize > 1024:
-            ssize = ssize / 1024
-        else:
-            break
-
-    fsize = f"{ssize:.{precision}f}".rstrip("0").rstrip(".")
-    return f"{fsize} {dim}"
 
 
 def ref_from_path(path: Path) -> str:
@@ -89,7 +77,7 @@ def cleanup_env(args) -> int:
         if fsize < GLOBAL.min_size:
             continue
 
-        hr_size = human_readable_size(fsize)
+        hr_size = human_readable_byte_size(fsize)
         info = f"{hr_size}, {age.days} days"
         if args.dry_run:
             LOG.info("Would delete %r (%s)", name, info)
@@ -104,7 +92,9 @@ def cleanup_env(args) -> int:
     else:
         action = "Could free" if args.dry_run else "Freed"
         LOG.info(
-            "%s %s in virtual environments.", action, human_readable_size(total_size)
+            "%s %s in virtual environments.",
+            action,
+            human_readable_byte_size(total_size),
         )
 
     return 0
@@ -135,7 +125,7 @@ def cleanup_conan_cache(args) -> int:
         if fsize < GLOBAL.min_size:
             continue
 
-        hr_size = human_readable_size(fsize)
+        hr_size = human_readable_byte_size(fsize)
         info = f"{hr_size}, {age.days} days"
         if args.dry_run:
             LOG.info("Would delete %r (%s)", ref, info)
@@ -151,7 +141,7 @@ def cleanup_conan_cache(args) -> int:
         LOG.info("Nothing to delete.")
     else:
         action = "Could free" if args.dry_run else "Freed"
-        LOG.info("%s %s in conan cache.", action, human_readable_size(total_size))
+        LOG.info("%s %s in conan cache.", action, human_readable_byte_size(total_size))
 
     return return_status
 
@@ -174,7 +164,7 @@ def cleanup_conan_dlcache(args) -> int:
         size = stat.st_size
         if age.days < args.days or size < GLOBAL.min_size:
             continue
-        hr_size = human_readable_size(size)
+        hr_size = human_readable_byte_size(size)
         info = f"{hr_size}, {age.days} days"
         if args.dry_run:
             LOG.info("Would delete %s (%s)", path.name, info)
@@ -192,7 +182,9 @@ def cleanup_conan_dlcache(args) -> int:
         LOG.info("Nothing to delete.")
     else:
         action = "Could free" if args.dry_run else "Freed"
-        LOG.info("%s %s in download cache.", action, human_readable_size(total_size))
+        LOG.info(
+            "%s %s in download cache.", action, human_readable_byte_size(total_size)
+        )
 
     if args.dry_run:
         return 0
@@ -246,7 +238,7 @@ def main() -> int:
         LOG.info(
             "Cleaning conan package cache. (min_age='%s days' min_size=%r filter=%r)",
             args.days,
-            human_readable_size(GLOBAL.min_size),
+            human_readable_byte_size(GLOBAL.min_size),
             args.filter,
         )
         return cleanup_conan_cache(args)
@@ -254,14 +246,14 @@ def main() -> int:
         LOG.info(
             "Cleaning conan download cache. (min_age='%s days' min_size=%r)",
             args.days,
-            human_readable_size(GLOBAL.min_size),
+            human_readable_byte_size(GLOBAL.min_size),
         )
         return cleanup_conan_dlcache(args)
     if args.what == "envs":
         LOG.info(
             "Cleaning Python venvs. (min_age='%s days' min_size=%r filter=%r)",
             args.days,
-            human_readable_size(GLOBAL.min_size),
+            human_readable_byte_size(GLOBAL.min_size),
             args.filter,
         )
         return cleanup_env(args)
