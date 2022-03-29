@@ -171,7 +171,7 @@ class BuildMonitor(Thread):
         ppath = Path(path)
         if not ppath.is_absolute():
             ppath = Path(cwd, path)
-        return ppath.absolute()
+        return ppath.absolute().resolve()
 
     @staticmethod
     def is_valid_tu(file: Path) -> bool:

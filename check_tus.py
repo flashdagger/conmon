@@ -72,7 +72,7 @@ def test_main(path="./report.json"):
 
     json_map = {}
     for lib, data in info["requirements"].items():
-        tus = data.get("translation_units")
+        tus = data.get("build", {}).get("translation_units")
         if not tus:
             continue
 

@@ -250,7 +250,7 @@ class Requirements(State):
         self.stdout = parser.log.setdefault("stdout", [])
         pattern, flags = compact_pattern(REF_REGEX)
         self.regex = re.compile(
-            rf" +{pattern} from '?(?P<remote>[\w\- ]+)'? +- +(?P<status>\w+)", flags
+            rf" +{pattern} from (?P<remote>'?[\w\- ]+'?) +- +(?P<status>\w+)", flags
         )
         self.req: List[Dict[str, Optional[str]]] = []
         self.indent_ref = 0
@@ -287,7 +287,7 @@ class Requirements(State):
         for item in sorted(self.req, key=itemgetter("status", "remote", "ref")):
             self.screen.print(
                 f"    {item['status']:^10} {item['ref']:{self.indent_ref}} from "
-                f"{repr(item['remote'])}"
+                f"{item['remote']}"
             )
         self.req.clear()
         super()._deactivate(final=False)
