@@ -3,6 +3,7 @@
 /dist
 /.*
 /*.json
+/*.log
 /*.egg-info
 
 *.pyc
