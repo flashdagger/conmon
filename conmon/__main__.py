@@ -63,13 +63,14 @@ PARENT_PROCS = [parent.name() for parent in Process(os.getppid()).parents()]
 LOG_HINTS: Dict[str, None] = {}
 
 
-def filehandler(env, mode="w", hint="report"):
-    path = os.getenv(env)
-    if path:
+def filehandler(key, mode="w", hint="report"):
+    path = conan.conmon_setting(key)
+    if isinstance(path, str):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         LOG_HINTS.setdefault(f"saved {hint} to {path!r}")
     else:
-        hint_path = ".".join(env.lower().split("_")[-2:])
+        env_key = f"CONMON_{key.upper()}"
+        hint_path = key.replace("_", ".")
         fmt = "export {}={}"
         for name in PARENT_PROCS:
             if name == "bash":
@@ -81,7 +82,7 @@ def filehandler(env, mode="w", hint="report"):
                 fmt = "set {}={}"
                 break
         template = f"hint: use {fmt!r} to save {{}}"
-        LOG_HINTS.setdefault(template.format(env, hint_path, hint))
+        LOG_HINTS.setdefault(template.format(env_key, hint_path, hint))
 
     return open(path or os.devnull, mode, encoding="utf-8")
 
@@ -544,7 +545,8 @@ class Build(State):
     ) -> Iterator[Dict[str, Any]]:
         src_filter = {
             "cmake": lambda path: set(path.parts) & {"CMake", "CMakeFiles", "cmake.tmp"}
-            or re.match(r".*/cmake-[23].\d+/Modules/(CMake|Check)", path.as_posix()),
+            or re.search(r"/cmake/test_compiler.c(pp)?", path.as_posix())
+            or re.search(r"/cmake-[23].\d+/Modules/(CMake|Check)", path.as_posix()),
             "conftest": lambda path: path.stem == "conftest",
             "make": lambda path: path.stem in {"conftest", "dummy"},
         }
@@ -625,7 +627,7 @@ class Build(State):
         self.tools.update(self.buildmon.executables)
         tu_list = self.processed_tus(self.buildmon.translation_units)
 
-        with filehandler("CONMON_PROC_JSON", hint="process debug json") as proc_fh:
+        with filehandler("proc_json", hint="process debug json") as proc_fh:
             json.dump(
                 list(self.buildmon.proc_cache.values()),
                 proc_fh,
@@ -677,6 +679,10 @@ class Build(State):
                 stderr_lines, parse_autotools_warnings
             )
             warnings.extend(cmake_warnings)
+
+        # TODO: filter meson progress
+        # Generating targets: 73 % |███████████████████████████████▌ | 22 / 30[00:00 < 00:00, 51.27 it / s]
+        # build.ninja: 82 % |███████████████████████████████▏ | 351 / 428[00:00 < 00:00, 1630.55 it / s]
 
         emit_warnings(stderr_lines)
         self.parser.setdefaultlog()
@@ -923,6 +929,8 @@ def monitor(args: List[str]) -> int:
     os.environ["MSBUILDDISABLENODEREUSE"] = "1"
     # tell conan not to prompt for user input
     os.environ["CONAN_NON_INTERACTIVE"] = "1"
+    # set conan logging level
+    os.environ["CONAN_LOGGING_LEVEL"] = "FATAL"
 
     trace_path = Path(os.getenv("CONAN_TRACE_FILE", "."))
     if trace_path == Path("."):
@@ -939,7 +947,7 @@ def monitor(args: List[str]) -> int:
         conan_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
     )
     parser = ConanParser(process)
-    with filehandler("CONMON_CONAN_LOG", hint="raw conan output") as fh:
+    with filehandler("conan_log", hint="raw conan output") as fh:
         parser.process_streams(fh)
     parser.finalize()
 
@@ -950,7 +958,7 @@ def monitor(args: List[str]) -> int:
                 if path.exists():
                     path.unlink()
 
-    with filehandler("CONMON_REPORT_JSON", hint="report json") as fh:
+    with filehandler("report_json", hint="report json") as fh:
         json.dump(parser.log, fh, indent=2)
 
     for hint in LOG_HINTS:
@@ -979,18 +987,20 @@ def main() -> int:
         )
     )
 
+    level = conan.loglevel("loglevel")
+
     # general conmon logger
     CONMON_LOG.addHandler(handler)
-    CONMON_LOG.setLevel(logging.DEBUG)
+    CONMON_LOG.setLevel(level)
     # conan logger for warnings/errors
     CONAN_LOG.addHandler(handler)
-    CONAN_LOG.setLevel(logging.WARNING)
+    CONAN_LOG.setLevel(level)
     # conan build logger
     BLOG.addHandler(handler)
-    BLOG.setLevel(logging.INFO)
+    BLOG.setLevel(level)
     # buildmon process logger
     PLOG.addHandler(handler)
-    PLOG.setLevel(logging.DEBUG)
+    PLOG.setLevel(level)
 
     if os.getenv("CI"):
         CONMON_LOG.info("Running in Gitlab CI")

@@ -5,6 +5,7 @@ import shlex
 import sys
 from ast import literal_eval
 from configparser import ConfigParser
+from contextlib import suppress
 from functools import lru_cache
 from importlib import import_module
 from importlib.util import find_spec
@@ -46,6 +47,16 @@ def config(section: Optional[str] = None) -> Dict[str, Any]:
     }
 
 
+def conmon_setting(name: str, default: Any = None) -> Any:
+    env_key = f"CONMON_{name.upper()}"
+    value = os.getenv(env_key)
+    if isinstance(value, str):
+        with suppress(ValueError, SyntaxError):
+            return literal_eval(value)
+        return value
+    return config("conmon").get(name, default)
+
+
 def storage_path() -> Path:
     spath = config("storage").get("path", ".data")
     path = Path(spath).expanduser()
@@ -57,6 +68,16 @@ def storage_path() -> Path:
 def download_cache() -> Optional[Path]:
     dlpath = config("storage").get("download_cache")
     return dlpath and Path(dlpath).absolute()
+
+
+def loglevel(name: str, default=logging.WARNING) -> int:
+    level = conmon_setting(name)
+    if isinstance(level, str):
+        level = getattr(logging, level.upper(), None)
+    if not isinstance(level, int):
+        level = default
+    assert isinstance(level, int)
+    return level
 
 
 @lru_cache(maxsize=1)
@@ -84,7 +105,7 @@ def call_cmd_and_version() -> Tuple[List[str], str]:
         pass
 
     # use the conan executable or python calling the module
-    conmon_conan_cmd = os.getenv("CONMON_CONAN_CMD", "conan")
+    conmon_conan_cmd = conmon_setting("conan_cmd", "conan")
     try:
         LOG.debug("calling via %r", conmon_conan_cmd)
         conan_command = shlex.split(conmon_conan_cmd)
