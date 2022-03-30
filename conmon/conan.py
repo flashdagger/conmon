@@ -48,7 +48,7 @@ def config(section: Optional[str] = None) -> Dict[str, Any]:
 
 
 def conmon_setting(name: str, default: Any = None) -> Any:
-    env_key = f"CONMON_{name.upper()}"
+    env_key = f"CONMON_{name.upper().replace('.', '_')}"
     value = os.getenv(env_key)
     if isinstance(value, str):
         with suppress(ValueError, SyntaxError):

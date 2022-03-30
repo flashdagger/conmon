@@ -39,7 +39,8 @@ class UniqueLogger(logging.Logger):
 
 
 def setup_logger(logger: logging.Logger):
-    logger.setLevel(_GLOBALS.log_level)
+    level = conan.loglevel(f"log.level.{logger.name.lower()}", _GLOBALS.log_level)
+    logger.setLevel(level)
     if not logger.hasHandlers():
         logger.addHandler(_GLOBALS.handler)
 
@@ -85,8 +86,10 @@ def init(force=False):
         )
     )
 
-    _GLOBALS.log_level = conan.loglevel("loglevel")
+    _GLOBALS.log_level = conan.loglevel("log.level")
 
+    # .conan module cannot import .logging due to circular dependency
+    setup_logger(conan.LOG)
     for logger in _GLOBALS.logger_mapping.values():
         setup_logger(logger)
 
