@@ -17,6 +17,7 @@ from conmon.utils import (
     merge_mapping,
     WinShlex,
     human_readable_size,
+    human_readable_byte_size,
 )
 from .logging import get_logger, UniqueLogger
 from .utils import shorten
@@ -200,8 +201,6 @@ class BuildMonitor(Thread):
                 self.rsp_cache[response_file] = response_file.read_bytes()
 
     def parse_responsefile(self, cmdline: List[str], *, cwd, posix=True) -> List[str]:
-        split = shlex.split if posix else WinShlex.split
-        encoding = "utf-8" if posix else "utf-16"
         new_cmdline = []
         for arg in cmdline:
             if not arg.startswith("@"):
@@ -209,14 +208,21 @@ class BuildMonitor(Thread):
                 continue
 
             response_file = self.make_absolute(arg[1:], cwd)
-            rsp_txt = self.rsp_cache.get(response_file)
+            rspf_data = self.rsp_cache.get(response_file)
 
-            if rsp_txt is None:
+            if rspf_data is None:
                 LOG.warning("Missing response file %s", response_file)
                 new_cmdline.append(arg)
             else:
-                LOG.debug("Read response file %s", response_file)
-                new_cmdline.extend(split(rsp_txt.decode(encoding=encoding)))
+                split = shlex.split if posix else WinShlex.split
+                encoding = "utf-16" if set(rspf_data[0:2]) == {0xFE, 0xFF} else "utf-8"
+                new_cmdline.extend(split(rspf_data.decode(encoding=encoding)))
+                LOG.debug(
+                    "Read response file %s (encoding=%r, size=%s)",
+                    response_file,
+                    encoding,
+                    human_readable_byte_size(len(rspf_data)),
+                )
         return new_cmdline
 
     def check_process(self, process_map: Dict[str, Any]):
