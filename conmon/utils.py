@@ -290,7 +290,7 @@ def human_readable_size(
     size: Union[int, float], unit: str, factor=1000, min_precision: int = 0
 ) -> str:
     assert min_precision >= 0
-    si_map = {-2: "u", -1: "m", 0: "", 1: "k", 2: "M", 3: "G", 4: "T"}
+    si_map = {-2: "\u03bc", -1: "m", 0: "", 1: "k", 2: "M", 3: "G", 4: "T"}
 
     try:
         index = int(log(abs(size)) / log(factor)) - (1 if abs(size) < 1.0 else 0)

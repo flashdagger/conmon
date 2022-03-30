@@ -443,7 +443,7 @@ class Build(State):
                 .*? # msbuild prints only the filename
             )?
             (?P<file>
-                [\-.\w/\\]+ (?(status) \.[a-z]{1,3}$ | \.(?:asm|cpp|cxx|cc?)$ )
+                [\-.\w/\\]+ (?(status) \.[a-z]{1,3}$ | \.(?:asm|cpp|cxx|cc?|[sS])$ )
             )
     """
     )
@@ -452,7 +452,7 @@ class Build(State):
             (?P<status>$)?    # should never match
             .*\ -c\           # compile but don't link
             (?P<file>
-                [\-.\w/\\]+ \. (?:asm|cpp|cxx|cc?) (?=\ )
+                (?:[a-zA-Z]:)? [\-.\w/\\]+ \. (?:asm|cpp|cxx|cc?|[sS]) (?=\ )
             )
         """
     )
@@ -529,17 +529,15 @@ class Build(State):
             output = re.sub(r"\.{3}[^/\\]+(?=[/\\])", "...", output)
             self.screen.print(f"{output:{self.MAX_WIDTH}}", overwrite=True)
         elif line.startswith("-- ") or line.lower().startswith("checking "):
-            self.screen.print(line, overwrite=True)
+            self.screen.print(shorten_conan_path(line), overwrite=True)
         else:
             match = self.parser.SEVERITY_REGEX.match(line)
-            info = match.group("severity")[0].upper() if match else ""
-            if info == "E":
+            severity = match and match.group("severity")
+            if severity == "error":
                 esc = logger_escape_code(BLOG, "ERROR")
-                self.screen.print(f"{esc}{info} {line}")
-            elif info == "W":
+                self.screen.print(f"{esc}E {line}")
+            elif severity == "warning":
                 self.warnings += 1
-            elif info:
-                self.screen.print(info, indent=0)
 
     def filtered_tus(
         self, tu_list: Iterable[Dict[str, Any]]
