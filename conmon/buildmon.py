@@ -359,7 +359,7 @@ class BuildMonitor(Thread):
 
         hrs = partial(human_readable_size, unit="seconds")
         LOG.debug(
-            "Time consumed per process scan: max=%s min=%s mean=%s median=%s",
+            "Time consumed per process scan: max=%s, min=%s, mean=%s, median=%s",
             hrs(max(self.timing)),
             hrs(min(self.timing)),
             hrs(mean(self.timing)),

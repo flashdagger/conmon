@@ -287,23 +287,32 @@ def common_parent(*paths: Union[str, os.PathLike]) -> Optional[Path]:
 
 
 def human_readable_size(
-    size: Union[int, float], unit: str, factor=1000, precision: int = 1
+    size: Union[int, float], unit: str, factor=1000, min_precision: int = 0
 ) -> str:
+    assert min_precision >= 0
     si_map = {-2: "u", -1: "m", 0: "", 1: "k", 2: "M", 3: "G", 4: "T"}
-    assert precision >= 0
+
     try:
         index = int(log(abs(size)) / log(factor)) - (1 if abs(size) < 1.0 else 0)
     except ValueError:
         index = 0
+
     index = max(min(index, max(si_map)), min(si_map))
     sized = size / factor**index
+
+    if sized <= 100:
+        min_precision += 2
+    elif sized <= 10:
+        min_precision += 1
+
     if index == 0:
         if isinstance(size, int):
-            precision = 0
+            min_precision = 0
     else:
         unit = unit[0]
-    return f"{sized:.{precision}f} {si_map[index]}{unit}"
+
+    return f"{sized:.{min_precision}f} {si_map[index]}{unit}"
 
 
-def human_readable_byte_size(size: int, precision: int = 1) -> str:
-    return human_readable_size(size, "Bytes", factor=1024, precision=precision)
+def human_readable_byte_size(size: int) -> str:
+    return human_readable_size(size, "Bytes", factor=1024)
