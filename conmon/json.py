@@ -1,8 +1,9 @@
-from json import JSONEncoder, loads
+from json import JSONEncoder, loads, load
 from pathlib import Path
 from typing import TextIO
 
 loads = loads  # pylint: disable=self-assigning-variable
+load = load  # pylint: disable=self-assigning-variable
 
 
 class Encoder(JSONEncoder):

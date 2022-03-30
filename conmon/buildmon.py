@@ -230,7 +230,7 @@ class BuildMonitor(Thread):
             return
 
         exe = Path(process_map["cmdline"][0])
-        process_map["cmdline"] = process_map["cmdline"][1:]
+        # process_map["cmdline"] = process_map["cmdline"][1:]
         if not exe.is_absolute():
             exe = self.make_absolute(process_map["exe"], process_map["cwd"])
         process_map["exe"] = exe
