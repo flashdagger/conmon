@@ -25,13 +25,13 @@ class _GLOBALS:
 
 class UniqueLogger(logging.Logger):
     def __init__(self, logger: logging.Logger):
-        super().__init__(logger.name, logger.level)
+        super().__init__(f"{logger.name}_unique")
         self._logger = logger
         self.seen: Set = set()
 
     # pylint: disable=arguments-differ
     def _log(self, level, msg, args, **kwargs):
-        key = tuple((msg, *map(str, args)))
+        key = tuple((str(msg), *map(str, args)))
         if key in self.seen:
             return
         self.seen.add(key)
