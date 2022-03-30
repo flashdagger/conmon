@@ -1,5 +1,4 @@
 import argparse
-import logging
 import re
 import shlex
 import time
@@ -17,12 +16,12 @@ from conmon.utils import (
     append_to_set,
     merge_mapping,
     WinShlex,
-    UniqueLogger,
     human_readable_size,
 )
+from .logging import get_logger, UniqueLogger
 from .utils import shorten
 
-LOG = logging.getLogger("BUILDMON")
+LOG = get_logger("BUILDMON")
 LOG_ONCE = UniqueLogger(LOG)
 
 
@@ -201,7 +200,7 @@ class BuildMonitor(Thread):
                 self.rsp_cache[response_file] = response_file.read_bytes()
 
     def parse_responsefile(self, cmdline: List[str], *, cwd, posix=True) -> List[str]:
-        split: Any = shlex.split if posix else WinShlex.split
+        split = shlex.split if posix else WinShlex.split
         encoding = "utf-8" if posix else "utf-16"
         new_cmdline = []
         for arg in cmdline:
@@ -216,6 +215,7 @@ class BuildMonitor(Thread):
                 LOG.warning("Missing response file %s", response_file)
                 new_cmdline.append(arg)
             else:
+                LOG.debug("Read response file %s", response_file)
                 new_cmdline.extend(split(rsp_txt.decode(encoding=encoding)))
         return new_cmdline
 

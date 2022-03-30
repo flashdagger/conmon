@@ -29,14 +29,12 @@ from typing import (
     Callable,
 )
 
-import colorama
-import colorlog
 from psutil import Popen, Process
 
 from . import __version__
 from . import conan
 from . import json
-from .buildmon import BuildMonitor, LOG as PLOG
+from .buildmon import BuildMonitor
 from .compilers import (
     LOG as BLOG,
     parse_compiler_warnings,
@@ -47,6 +45,7 @@ from .compilers import (
     WarningRegex,
 )
 from .conan import LOG as CONAN_LOG
+from .logging import get_logger, init as initialize_logging, logger_escape_code
 from .regex import DECOLORIZE_REGEX, REF_REGEX, shorten_conan_path, compact_pattern
 from .utils import (
     StrictConfigParser,
@@ -57,7 +56,7 @@ from .utils import (
     get_terminal_width,
 )
 
-CONMON_LOG = logging.getLogger("CONMON")
+CONMON_LOG = get_logger("CONMON")
 PARENT_PROCS = [parent.name() for parent in Process(os.getppid()).parents()]
 LOG_HINTS: Dict[str, None] = {}
 
@@ -509,10 +508,11 @@ class Build(State):
             line
         ) or self.BUILD_STATUS_REGEX2.match(line)
         if match:
-            if self.warnings:
+            if self.warnings and BLOG.isEnabledFor(logging.WARNING):
+                esc = logger_escape_code(BLOG, "WARNING")
                 self.screen.print(
-                    colorama.Fore.YELLOW + f"{self.warnings:4} warning(s)",
-                    indent=0,  # self.WIDTH,
+                    f"{esc}{self.warnings:4} warning(s)",
+                    indent=0,
                 )
             self.warnings = 0
 
@@ -534,7 +534,8 @@ class Build(State):
             match = self.parser.SEVERITY_REGEX.match(line)
             info = match.group("severity")[0].upper() if match else ""
             if info == "E":
-                self.screen.print(colorama.Fore.RED + f"{info} {line}")
+                esc = logger_escape_code(BLOG, "ERROR")
+                self.screen.print(f"{esc}{info} {line}")
             elif info == "W":
                 self.warnings += 1
             elif info:
@@ -976,38 +977,8 @@ def monitor(args: List[str]) -> int:
 
 def main() -> int:
     """main entry point for console script"""
-
+    initialize_logging()
     args = parse_args(sys.argv[1:])
-
-    colorama_args = dict(autoreset=True, convert=None, strip=None, wrap=True)
-    # prevent messing up colorama settings
-    if os.getenv("CI"):
-        colorama.deinit()
-        colorama_args.update(dict(strip=False, convert=False))
-    colorama.init(**colorama_args)
-
-    handler = logging.StreamHandler()
-    handler.setFormatter(
-        colorlog.ColoredFormatter(
-            "%(log_color)s[%(name)s:%(levelname)s] %(message)s",
-            log_colors={**colorlog.default_log_colors, **dict(DEBUG="light_black")},
-        )
-    )
-
-    level = conan.loglevel("loglevel")
-
-    # general conmon logger
-    CONMON_LOG.addHandler(handler)
-    CONMON_LOG.setLevel(level)
-    # conan logger for warnings/errors
-    CONAN_LOG.addHandler(handler)
-    CONAN_LOG.setLevel(level)
-    # conan build logger
-    BLOG.addHandler(handler)
-    BLOG.setLevel(level)
-    # buildmon process logger
-    PLOG.addHandler(handler)
-    PLOG.setLevel(level)
 
     if os.getenv("CI"):
         CONMON_LOG.info("Running in Gitlab CI")

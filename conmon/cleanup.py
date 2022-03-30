@@ -1,6 +1,5 @@
 import argparse
 import fnmatch
-import logging
 import os
 import re
 import shutil
@@ -10,13 +9,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, List
 
-import colorama
-import colorlog
-
 from . import conan
+from .logging import get_logger, init as init_logging
 from .utils import human_readable_byte_size
 
-LOG = logging.getLogger("CLEANUP")
+LOG = get_logger("CLEANUP")
 
 
 # pylint: disable=too-few-public-methods
@@ -200,6 +197,7 @@ def cleanup_conan_dlcache(args) -> int:
 
 
 def main() -> int:
+    init_logging()
     args = parse_args(sys.argv[1:])
     GLOBAL.debug = args.debug
     if args.size:
@@ -212,25 +210,6 @@ def main() -> int:
         num = float(match.group(1))
         factor = {"k": 1, "m": 2, "g": 3}.get(match.group(2), 0)
         GLOBAL.min_size = int(num * 1024**factor)
-
-    colorama_args = dict(autoreset=True, convert=None, strip=None, wrap=True)
-    # prevent messing up colorama settings
-    if os.getenv("CI"):
-        colorama.deinit()
-        colorama_args.update(dict(strip=False, convert=False))
-    colorama.init(**colorama_args)
-
-    handler = logging.StreamHandler()
-    handler.setFormatter(
-        colorlog.ColoredFormatter("%(log_color)s[%(name)s:%(levelname)s] %(message)s")
-    )
-
-    LOG.addHandler(handler)
-    conan.LOG.addHandler(handler)
-    LOG.setLevel(logging.DEBUG)
-
-    if os.getenv("CI"):
-        LOG.info("Running in Gitlab CI")
 
     if args.what == "conan":
         if "*" not in args.filter and "@" not in args.filter:

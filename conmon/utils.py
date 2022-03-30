@@ -1,4 +1,3 @@
-import logging
 import os
 import re
 import shlex
@@ -285,21 +284,6 @@ def common_parent(*paths: Union[str, os.PathLike]) -> Optional[Path]:
         last_parent = p_set.pop()
 
     return last_parent
-
-
-class UniqueLogger(logging.Logger):
-    def __init__(self, logger: logging.Logger):
-        super().__init__(logger.name, logger.level)
-        self._logger = logger
-        self.seen: Set[Tuple[str]] = set()
-
-    # pylint: disable=arguments-differ
-    def _log(self, level, msg, args, **kwargs):
-        key = tuple((msg, *map(str, args)))
-        if key in self.seen:
-            return
-        self.seen.add(key)
-        getattr(self._logger, "_log")(level, msg, args, **kwargs)
 
 
 def human_readable_size(
