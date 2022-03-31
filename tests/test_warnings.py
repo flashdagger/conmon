@@ -64,6 +64,17 @@ output = [
     "*** PostgreSQL then you do not need to worry about this, because the Bison",
     "*** output is pre-generated.)",
     "end",
+    "CMake Warning at cmake/ldap.cmake:158 (MESSAGE):",
+    "  Could not find LDAP",
+    "Call Stack (most recent call first):",
+    "  CMakeListsOriginal.txt:1351 (MYSQL_CHECK_LDAP)",
+    "  CMakeLists.txt:7 (include)",
+    "",
+    "",
+    "CMake Warning at libmysql/authentication_ldap/CMakeLists.txt:30 (MESSAGE):",
+    "  Skipping the LDAP client authentication plugin",
+    "",
+    "",
 ]
 
 
@@ -79,7 +90,8 @@ dataset = [
                 "column": "5",
                 "severity": "warning",
                 "info": "implicit declaration of function ‘memset’",
-                "hint": "     memset(&reicevedSignals, 0, sizeof(reicevedSignals));\n"
+                "hint": ""
+                "     memset(&reicevedSignals, 0, sizeof(reicevedSignals));\n"
                 "     ^~~~~~",
             },
             {
@@ -88,8 +100,8 @@ dataset = [
                 "line": "92",
                 "column": None,
                 "severity": "warning",
-                "info": "improperly calling multi-line macro `SETUP_STACK_POINTER' with 0 "
-                "parameters",
+                "info": ""
+                "improperly calling multi-line macro `SETUP_STACK_POINTER' with 0 parameters",
                 "category": "-w+macro-params-legacy",
                 "hint": None,
             },
@@ -102,7 +114,8 @@ dataset = [
                 "severity": "warning",
                 "info": "extension used",
                 "category": "-Wlanguage-extension-token",
-                "hint": "ZEXTERN z_off64_t ZEXPORT gzseek64 OF((gzFile, z_off64_t, int));\n"
+                "hint": ""
+                "ZEXTERN z_off64_t ZEXPORT gzseek64 OF((gzFile, z_off64_t, int));\n"
                 "                                               ^",
             },
             {
@@ -115,8 +128,8 @@ dataset = [
                 "info": "ignoring return value of ‘fchown’, declared with attribute "
                 "warn_unused_result",
                 "category": "-Wunused-result",
-                "hint": " 1073 |    (void) fchown ( fd, fileMetaInfo.st_uid, fileMetaInfo.st_gid );"
-                "\n"
+                "hint": ""
+                " 1073 |    (void) fchown ( fd, fileMetaInfo.st_uid, fileMetaInfo.st_gid );\n"
                 "      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
             },
             {
@@ -128,7 +141,8 @@ dataset = [
                 "info": 'deprecated directive: ‘%name-prefix "constexpYY"’, use ‘%define '
                 "api.prefix {constexpYY}’",
                 "category": "-Wdeprecated",
-                "hint": '   35 | %name-prefix "constexpYY"\n'
+                "hint": ""
+                '   35 | %name-prefix "constexpYY"\n'
                 "      | ^~~~~~~~~~~~~~~~~~~~~~~~~      | %define api.prefix "
                 "{constexpYY}",
             },
@@ -143,7 +157,8 @@ dataset = [
                 "hint": None,
             },
             {
-                "context": "In file included from ../../src/include/c.h:54,\n"
+                "context": ""
+                "In file included from ../../src/include/c.h:54,\n"
                 "                 from ../../src/include/postgres_fe.h:25,\n"
                 "                 from archive.c:19:\n",
                 "file": "../../src/include/pg_config.h",
@@ -152,7 +167,8 @@ dataset = [
                 "severity": "warning",
                 "category": "-Wpedantic",
                 "info": "ISO C does not support ‘__int128’ types",
-                "hint": "  772 | #define PG_INT128_TYPE __int128\n"
+                "hint": ""
+                "  772 | #define PG_INT128_TYPE __int128\n"
                 "      |                        ^~~~~~~~",
             },
         ],
@@ -180,7 +196,7 @@ dataset = [
                 "strcat_s instead. To disable deprecation, use "
                 "_CRT_SECURE_NO_WARNINGS. See online help for details.",
                 "project": None,
-                "hint": '   strcat(mode2,"b");   /* binary mode */\n' "         ^",
+                "hint": '   strcat(mode2,"b");   /* binary mode */\n         ^',
             },
         ],
         id="msvc",
@@ -193,8 +209,28 @@ dataset = [
                 "file": None,
                 "line": None,
                 "function": None,
-                "info": "  Manually-specified variables were not used by the project:\n\n"
+                "info": ""
+                "  Manually-specified variables were not used by the project:\n\n"
                 "    CMAKE_EXPORT_NO_PACKAGE_REGISTRY\n\n",
+            },
+            {
+                "file": "cmake/ldap.cmake",
+                "line": "158",
+                "severity": "Warning",
+                "function": "MESSAGE",
+                "info": "  Could not find LDAP\n",
+                "context": ""
+                "Call Stack (most recent call first):\n"
+                "  CMakeListsOriginal.txt:1351 (MYSQL_CHECK_LDAP)\n"
+                "  CMakeLists.txt:7 (include)",
+            },
+            {
+                "file": "libmysql/authentication_ldap/CMakeLists.txt",
+                "line": "30",
+                "severity": "Warning",
+                "function": "MESSAGE",
+                "context": None,
+                "info": "  Skipping the LDAP client authentication plugin\n\n",
             },
         ],
         id="cmake",
@@ -212,7 +248,8 @@ dataset = [
                 "from": "configure",
                 "line": None,
                 "severity": "WARNING",
-                "info": "\n*** Without Bison you will not be able to build PostgreSQL from Git nor"
+                "info": ""
+                "\n*** Without Bison you will not be able to build PostgreSQL from Git nor"
                 "\n*** change any of the parser definition files.  You can obtain Bison from"
                 "\n*** a GNU mirror site.  (If you are using the official distribution of"
                 "\n*** PostgreSQL then you do not need to worry about this, because the Bison"
