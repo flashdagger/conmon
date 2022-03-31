@@ -75,6 +75,17 @@ output = [
     "  Skipping the LDAP client authentication plugin",
     "",
     "",
+    "In file included from /package/include/glib-2.0/gobject/gobject.h:24,",
+    "                 from /package/include/glib-2.0/gobject/gbinding.h:29,",
+    "                 from /package/include/glib-2.0/glib-object.h:22,",
+    "                 from ../source_subfolder/atk/atkobject.h:27,",
+    "                 from ../source_subfolder/atk/atk.h:25,",
+    "                 from ../source_subfolder/atk/atktext.c:22:",
+    "../source_subfolder/atk/atktext.c: In function \u2018atk_text_range_get_type_once\u2019:",
+    "../source_subfolder/atk/atktext.c:1640:52: warning: ISO C prohibits argument conversion to "
+    "union type [-Wpedantic]",
+    " 1640 | G_DEFINE_BOXED_TYPE (AtkTextRange, atk_text_range, atk_text_range_copy,",
+    "      |                                                    ^~~~~~~~~~~~~~~~~~~",
 ]
 
 
@@ -82,8 +93,7 @@ dataset = [
     pytest.param(
         [
             {
-                "context": "src/main/src/Em_FilteringQmFu.c: In function "
-                "‘Em_FilteringQmFu_processSensorSignals’:\n",
+                "context": "src/main/src/Em_FilteringQmFu.c: In function ‘Em_FilteringQmFu_processSensorSignals’:\n",
                 "file": "src/main/src/Em_FilteringQmFu.c",
                 "category": "-Wimplicit-function-declaration",
                 "line": "266",
@@ -106,8 +116,7 @@ dataset = [
                 "hint": None,
             },
             {
-                "context": "In file included from "
-                "C:\\conan\\data\\source_subfolder\\zutil.c:10:\n",
+                "context": "In file included from C:\\conan\\data\\source_subfolder\\zutil.c:10:\n",
                 "file": "C:\\conan\\data\\source_subfolder/gzguts.h",
                 "line": "146",
                 "column": "52",
@@ -125,8 +134,7 @@ dataset = [
                 "line": "1073",
                 "column": "11",
                 "severity": "warning",
-                "info": "ignoring return value of ‘fchown’, declared with attribute "
-                "warn_unused_result",
+                "info": "ignoring return value of ‘fchown’, declared with attribute warn_unused_result",
                 "category": "-Wunused-result",
                 "hint": ""
                 " 1073 |    (void) fchown ( fd, fileMetaInfo.st_uid, fileMetaInfo.st_gid );\n"
@@ -170,6 +178,25 @@ dataset = [
                 "hint": ""
                 "  772 | #define PG_INT128_TYPE __int128\n"
                 "      |                        ^~~~~~~~",
+            },
+            {
+                "context": ""
+                "In file included from /package/include/glib-2.0/gobject/gobject.h:24,\n"
+                "                 from /package/include/glib-2.0/gobject/gbinding.h:29,\n"
+                "                 from /package/include/glib-2.0/glib-object.h:22,\n"
+                "                 from ../source_subfolder/atk/atkobject.h:27,\n"
+                "                 from ../source_subfolder/atk/atk.h:25,\n"
+                "                 from ../source_subfolder/atk/atktext.c:22:\n"
+                "../source_subfolder/atk/atktext.c: In function \u2018atk_text_range_get_type_once\u2019:\n",
+                "file": "../source_subfolder/atk/atktext.c",
+                "line": "1640",
+                "column": "52",
+                "severity": "warning",
+                "info": "ISO C prohibits argument conversion to union type",
+                "category": "-Wpedantic",
+                "hint": ""
+                " 1640 | G_DEFINE_BOXED_TYPE (AtkTextRange, atk_text_range, atk_text_range_copy,\n"
+                "      |                                                    ^~~~~~~~~~~~~~~~~~~",
             },
         ],
         id="gnu",

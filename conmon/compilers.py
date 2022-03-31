@@ -33,7 +33,6 @@ class WarningRegex:
             (?:
                 (?:In\ file\ included|\ +)\ from\ [^\n]+:\d+[:,]\n
             )*
-            |
             (?:
                 (?:[A-za-z]: )? [^\n:]+:\ In\ function\ [^:]+:\n
             )?
@@ -228,7 +227,9 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
         stats[key] += 1
 
         if key not in keyset:
-            output = shorten(shorten_conan_path(match.group()), width=500)
+            output = shorten(
+                shorten_conan_path(match.group()), width=500, strip="middle"
+            )
             LOG.log(log_level(severity), output.rstrip())
             keyset.add(key)
 
