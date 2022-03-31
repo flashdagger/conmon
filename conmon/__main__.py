@@ -863,10 +863,10 @@ class ConanParser:
                 severity = severity_l or severity_r
                 loglevel = getattr(logging, severity, logging.WARNING)
                 prefix = f"{ref}: " if ref else ""
-                processed = [f"{prefix}{info}"]
+                processed = [f"{prefix}{shorten_conan_path(info)}"]
                 stderr = [line]
             elif processed or is_defaultlog:
-                processed.append(line)
+                processed.append(shorten_conan_path(line))
                 stderr.append(line)
             else:
                 residue.append(line)
