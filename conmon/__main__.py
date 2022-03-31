@@ -862,8 +862,9 @@ class ConanParser:
         parsed_line = self.parse_line(line)
         ref, rest = parsed_line.group("ref", "rest")
 
-        if ref and "is locked" in rest:
+        if ref and rest.startswith("is locked by another concurrent conan process"):
             CONAN_LOG.warning(line)
+            self.process.kill()
 
         self.states.process_hooks(parsed_line)
 
