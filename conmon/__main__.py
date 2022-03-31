@@ -10,6 +10,7 @@ import sys
 import tempfile
 from collections import defaultdict
 from contextlib import suppress
+from functools import partial
 from io import StringIO
 from itertools import chain
 from operator import itemgetter
@@ -28,6 +29,7 @@ from typing import (
     Match,
     Iterator,
     Callable,
+    cast,
 )
 
 from psutil import Popen, Process
@@ -891,6 +893,10 @@ class ConanParser:
         stdout_marker_start = marker.format(" <stdout> ")
         stderr_written = True
         log_states = conan.conmon_setting("log_states", False)
+        decolorize = cast(
+            Callable[[Iterable[str]], Iterator[str]],
+            partial(map, partial(DECOLORIZE_REGEX.sub, "")),
+        )
 
         while not streams.exhausted:
             try:
@@ -906,8 +912,8 @@ class ConanParser:
                     raw_fh.write(stdout_marker_start)
                     stderr_written = False
 
-                for line in stdout:
-                    self.process_line(DECOLORIZE_REGEX.sub("", line))
+                for line in decolorize(stdout):
+                    self.process_line(line)
                     if log_states:
                         state = self.states.active_instance()
                         name = state and type(state).__name__
@@ -918,7 +924,12 @@ class ConanParser:
 
             if stderr:
                 raw_fh.write(
-                    "".join(("" if stderr_written else stderr_marker_start, *stderr))
+                    "".join(
+                        (
+                            "" if stderr_written else stderr_marker_start,
+                            *decolorize(stderr),
+                        )
+                    )
                 )
                 raw_fh.flush()
                 stderr_written = True
