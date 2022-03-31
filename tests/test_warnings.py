@@ -39,6 +39,12 @@ output = [
     r"_CRT_SECURE_NO_WARNINGS. See online help for details.",
     '   strcat(mode2,"b");   /* binary mode */',
     "         ^",
+    "CMake Warning:",
+    "  Manually-specified variables were not used by the project:",
+    "",
+    "    CMAKE_EXPORT_NO_PACKAGE_REGISTRY",
+    "",
+    "",
 ]
 
 
@@ -147,7 +153,20 @@ dataset = [
         ],
         id="msvc",
     ),
-    pytest.param([], id="cmake"),
+    pytest.param(
+        [
+            {
+                "context": None,
+                "severity": "Warning",
+                "file": None,
+                "line": None,
+                "function": None,
+                "info": "  Manually-specified variables were not used by the project:\n\n"
+                "    CMAKE_EXPORT_NO_PACKAGE_REGISTRY\n\n",
+            },
+        ],
+        id="cmake",
+    ),
 ]
 
 
