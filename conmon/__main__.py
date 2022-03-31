@@ -62,7 +62,7 @@ PARENT_PROCS = [parent.name() for parent in Process(os.getppid()).parents()]
 LOG_HINTS: Dict[str, None] = {}
 
 
-def filehandler(key: str, hint="") -> TextIO:
+def filehandler(key: str, mode="w", hint="") -> TextIO:
     path = conan.conmon_setting(key)
     if isinstance(path, str):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -84,7 +84,7 @@ def filehandler(key: str, hint="") -> TextIO:
         template = f"hint: execute {fmt!r} to save {{}}"
         LOG_HINTS.setdefault(template.format(env_key, hint_path, hint))
 
-    return open(path or os.devnull, "w", encoding="utf-8")
+    return open(path or os.devnull, mode=mode, encoding="utf-8")
 
 
 def popwarnings(error_lines: List[List[str]], parse_func: Callable[[str], List[Dict]]):
@@ -467,11 +467,12 @@ class Build(State):
         self.tools: Set[str] = set()
         self.buildmon: Optional[BuildMonitor] = None
         self.log = parser.defaultlog
+        self.ref = "???"
 
     def _activated(self, parsed_line: Match) -> bool:
-        line, ref = parsed_line.group("rest", "ref")
+        line, self.ref = parsed_line.group("rest", "ref")
         if line == "Calling build()":
-            self.screen.print(f"Building {ref}")
+            self.screen.print(f"Building {self.ref}")
             return True
         return False
 
@@ -634,9 +635,17 @@ class Build(State):
         self.tools.update(self.buildmon.executables)
         tu_list = self.processed_tus(self.buildmon.translation_units)
 
+        proc_obj = {}
+        with suppress(ValueError, OSError, TypeError):
+            with filehandler(
+                "proc_json", mode="r", hint="process debug json"
+            ) as proc_fh:
+                proc_obj.update(json.load(proc_fh))
+
+        proc_obj[self.ref] = list(self.buildmon.proc_cache.values())
         with filehandler("proc_json", hint="process debug json") as proc_fh:
             json.dump(
-                list(self.buildmon.proc_cache.values()),
+                proc_obj,
                 proc_fh,
                 indent=2,
             )
