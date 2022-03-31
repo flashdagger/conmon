@@ -3,10 +3,10 @@ import re
 from collections import Counter
 from contextlib import suppress
 from itertools import groupby
-from typing import Any, Dict, List, Optional, Tuple, Pattern, Union
+from typing import Any, Dict, List, Optional, Pattern, Tuple, Union
 
-from .logging import get_logger, UniqueLogger
-from .regex import shorten_conan_path, REF_REGEX, compact_pattern
+from .logging import UniqueLogger, get_logger
+from .regex import REF_REGEX, compact_pattern, shorten_conan_path
 from .utils import shorten
 
 LOG = get_logger("BUILD")
@@ -74,9 +74,9 @@ class WarningRegex:
         """
     )
     AUTOTOOLS = re.compile(
-        r"""(?x)
-        (?P<from>
-            ar | autoreconf | aclocal | configure(?:\.[a-z]+)? | Makefile(?:\.[a-z]+)?
+        r"""(?xm)
+        ^(?P<from>
+            configure(?:\.[a-z]+)? | Makefile(?:\.[a-z]+)? | [a-z]+
         )
         ( :(?P<line>\d+) )?
         (

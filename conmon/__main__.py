@@ -38,11 +38,12 @@ from . import json
 from .buildmon import BuildMonitor
 from .compilers import (
     LOG as BLOG,
-    parse_compiler_warnings,
-    parse_cmake_warnings,
+    WarningRegex,
     filter_compiler_warnings,
     filter_lines,
-    WarningRegex,
+    parse_autotools_warnings,
+    parse_cmake_warnings,
+    parse_compiler_warnings,
 )
 from .conan import LOG as CONAN_LOG
 from .logging import get_logger, init as initialize_logging, logger_escape_code
@@ -551,7 +552,8 @@ class Build(State):
             or re.search(r"/cmake/test_compiler.c(pp)?", path.as_posix())
             or re.search(r"/cmake-[23].\d+/Modules/(CMake|Check)", path.as_posix()),
             "conftest": lambda path: path.stem == "conftest",
-            "make": lambda path: path.stem in {"conftest", "dummy"},
+            "make": lambda path: path.stem in {"conftest", "dummy"}
+            or path.parent.as_posix().endswith("/tools/build/feature"),
         }
         active_filters = {
             key: value
@@ -581,7 +583,7 @@ class Build(State):
                 "Discarded %s source files and %s translation sets (%s)",
                 src_counter,
                 set_counter,
-                ", ".join(discarded_files),
+                ", ".join(sorted(discarded_files)),
             )
 
     def processed_tus(self, tu_list: List[Dict[str, Any]]) -> Iterator[Dict[str, Any]]:
@@ -678,13 +680,18 @@ class Build(State):
             )
             warnings.extend(cmake_warnings)
 
+        tools_warnings, stderr_lines = popwarnings(
+            stderr_lines, parse_autotools_warnings
+        )
+        warnings.extend(tools_warnings)
+
         stderr_lines = filter_lines(
             stderr_lines,
             # empty lines
             re.compile(r"^\s*$"),
             # meson progress bar
             re.compile(r"(?m)^(Generating targets|(Writing )?build\.ninja): +\d+ *%"),
-            WarningRegex.AUTOTOOLS,
+            # WarningRegex.AUTOTOOLS,
         )
         emit_warnings(stderr_lines)
         self.parser.setdefaultlog()
