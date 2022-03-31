@@ -50,6 +50,20 @@ output = [
     "libjpeg/1.2.3: WARN: package is corrupted",
     "WARN: libmysqlclient/8.0.25: requirement openssl/1.1.1m "
     "overridden by poco/1.11.1 to openssl/1.1.1l",
+    "In file included from ../../src/include/c.h:54,",
+    "                 from ../../src/include/postgres_fe.h:25,",
+    "                 from archive.c:19:",
+    "../../src/include/pg_config.h:772:24: warning: ISO C does not support \u2018__int128\u2019 "
+    "types [-Wpedantic]",
+    "  772 | #define PG_INT128_TYPE __int128",
+    "      |                        ^~~~~~~~",
+    "configure: WARNING:",
+    "*** Without Bison you will not be able to build PostgreSQL from Git nor",
+    "*** change any of the parser definition files.  You can obtain Bison from",
+    "*** a GNU mirror site.  (If you are using the official distribution of",
+    "*** PostgreSQL then you do not need to worry about this, because the Bison",
+    "*** output is pre-generated.)",
+    "end",
 ]
 
 
@@ -128,6 +142,19 @@ dataset = [
                 "category": "-Wother",
                 "hint": None,
             },
+            {
+                "context": "In file included from ../../src/include/c.h:54,\n"
+                "                 from ../../src/include/postgres_fe.h:25,\n"
+                "                 from archive.c:19:\n",
+                "file": "../../src/include/pg_config.h",
+                "line": "772",
+                "column": "24",
+                "severity": "warning",
+                "category": "-Wpedantic",
+                "info": "ISO C does not support ‘__int128’ types",
+                "hint": "  772 | #define PG_INT128_TYPE __int128\n"
+                "      |                        ^~~~~~~~",
+            },
         ],
         id="gnu",
     ),
@@ -180,6 +207,16 @@ dataset = [
                 "systemtap-sdt-devel or systemtap-sdt-dev",
                 "line": "565",
                 "severity": None,
+            },
+            {
+                "from": "configure",
+                "line": None,
+                "severity": "WARNING",
+                "info": "\n*** Without Bison you will not be able to build PostgreSQL from Git nor"
+                "\n*** change any of the parser definition files.  You can obtain Bison from"
+                "\n*** a GNU mirror site.  (If you are using the official distribution of"
+                "\n*** PostgreSQL then you do not need to worry about this, because the Bison"
+                "\n*** output is pre-generated.)",
             },
         ],
         id="autotools",

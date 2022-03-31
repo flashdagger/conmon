@@ -3,7 +3,7 @@ import re
 from collections import Counter
 from contextlib import suppress
 from itertools import groupby
-from typing import Any, Dict, List, Optional, Pattern, Tuple, Union
+from typing import Any, Dict, List, Optional, Pattern, Tuple, Union, Set
 
 from .logging import UniqueLogger, get_logger
 from .regex import REF_REGEX, compact_pattern, shorten_conan_path
@@ -11,6 +11,7 @@ from .utils import shorten
 
 LOG = get_logger("BUILD")
 LOG_ONCE = UniqueLogger(LOG)
+SEEN_MATCHES: Set[str] = set()
 
 
 class WarningRegex:
@@ -29,14 +30,16 @@ class WarningRegex:
     GNU = re.compile(
         r"""(?xm)
         ^(?P<context>
-            (?:In\ file\ included\ from\ [^\n]+:\d+:\n)*
+            (?:
+                (?:In\ file\ included|\ +)\ from\ [^\n]+:\d+[:,]\n
+            )*
             |
             (?:
                 (?:[A-za-z]: )? [^\n:]+:\ In\ function\ [^:]+:\n
             )?
         )
         \ *
-        (?P<file>(?:[A-za-z]:)?[^\n:()]+)
+        (?P<file>(?:[A-za-z]:)?[^\n:()]+\.\w{1,4})
         (?:
             [:(]
             (?P<line>\d+)
@@ -46,7 +49,7 @@ class WarningRegex:
             )?
         )?
         \)?:\ #
-        (?P<severity>[a-z\s]+):\ #
+        (?P<severity>warning|error|note|fatal error):\ #
         (?P<info>.*?)
         (\ \[(?P<category>[\w=+\-]+)])?
         \n
@@ -80,10 +83,10 @@ class WarningRegex:
         )
         ( :(?P<line>\d+) )?
         (
-            :\ (?P<severity>warning|error)
+            :\ (?P<severity>(?i:warning|error))
         )?
-        :\ #
-        (?P<info>.*)
+        :\ ?#
+        (?P<info>.*(?:\n[ *]+[^\n]+)*)
         """
     )
     CONAN = re.compile(
@@ -142,11 +145,17 @@ def parse_autotools_warnings(output: str) -> List[Dict[str, Any]]:
     warnings = []
 
     for match in WarningRegex.AUTOTOOLS.finditer(output):
+        msg = match.group().rstrip()
+        if msg in SEEN_MATCHES:
+            continue
+        SEEN_MATCHES.add(msg)
         groupdict = match.groupdict()
         to_int(groupdict, "line")
         severity = match.group("severity")
-        groupdict["severity"] = severity or "note"
-        if severity:
+        groupdict["severity"] = severity.lower() if severity else "note"
+        if groupdict["severity"] == "error":
+            LOG_ONCE.error(match.group())
+        elif groupdict["severity"] == "warning":
             LOG_ONCE.warning(match.group())
         warnings.append(groupdict)
 
