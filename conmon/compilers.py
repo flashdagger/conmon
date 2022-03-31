@@ -1,6 +1,7 @@
 import logging
 import re
 from collections import Counter
+from contextlib import suppress
 from itertools import groupby
 from operator import itemgetter
 from typing import Any, Dict, List, Optional, Tuple, Pattern, Union
@@ -14,23 +15,6 @@ LOG_ONCE = UniqueLogger(LOG)
 
 
 class WarningRegex:
-    BISON = re.compile(
-        r"""(?xm)
-            ^(?P<file>(?:[a-zA-Z]:)?[^:\n]+):
-            (?:
-                (?P<line>\d+)[\d.-]*:
-            )?\ #
-            (?P<severity>[a-z]+):\ #
-            (?P<info>.+?)
-            (?:
-                \ \[ (?P<category>[\w-]+) ]
-            )?
-            \n
-            (?P<hint>
-                (?:[ \d]+\|[^\n]+\n)+
-            )?
-        """
-    )
     CMAKE = re.compile(
         r"""(?xm)
             ^CMake\ (?P<severity>\w+)
@@ -43,42 +27,34 @@ class WarningRegex:
             (?P<context>Call\ Stack[^\n]+ (?:\n\ +[^\n]+)+)?
         """
     )
-    CLANG_CL = re.compile(
-        r"""(?xm)
-            ^(?P<context>(In\ file\ included\ from\ [^\n]+:\d+:\n)*)
-            (?P<file>[^\n(]+)\((?P<line>\d+),(?P<column>\d+)\):\ #
-            (?P<severity>[a-z ]+):\ #
-            (?P<info>.*?)
-            (
-                \ \[ (?P<category>[^]]+) ]
-            )?
-            \n
-            (
-                (?P<hint>[^\n]+\n[\s~]*\^[\s~]*)
-                \n
-            )?
-        """
-    )
     GNU = re.compile(
         r"""(?xm)
-             ^(?P<context>
-                (In\ file\ included\ from\ [^\n]+:\d+:\n)*
-              | (
-                  (?:[A-za-z]:)? [^\n:]+:\ In\ function\ [^:]+:\n
-                )?
-              )
-              \ *
-             (?P<file>(?:[A-za-z]:)?[^\n:]+):
-             (?P<line>\d+):
-             (?:(?P<column>\d+):)?\ #
-             (?P<severity>[a-z\s]+):\ #
-             (?P<info>.*?)
-             (\ \[(?P<category>[\w=+\-]+)])?
-             \n
-             (
-                (?P<hint>[^\n]+\n[\s|~]*\^[\s~]*)
-                \n
-             )?
+        ^(?P<context>
+            (?:In\ file\ included\ from\ [^\n]+:\d+:\n)*
+            |
+            (?:
+                (?:[A-za-z]: )? [^\n:]+:\ In\ function\ [^:]+:\n
+            )?
+        )
+        \ *
+        (?P<file>(?:[A-za-z]:)?[^\n:()]+)
+        (?:
+            [:(]
+            (?P<line>\d+)
+            (?:
+                [:.,]
+                (?P<column>\d+(?:-\d+)?)
+            )?
+        )?
+        \)?:\ #
+        (?P<severity>[a-z\s]+):\ #
+        (?P<info>.*?)
+        (\ \[(?P<category>[\w=+\-]+)])?
+        \n
+        (
+            (?P<hint>[^\n]+\n[\s|~]*\^[\s~]*(?:\n\ +|\ [^\n]+)?)
+            \n
+        )?
         """
     )
     MSVC = re.compile(
@@ -136,10 +112,10 @@ def log_level(hint: Optional[str]) -> int:
 
 def to_int(mapping: Dict[str, Any], *keys: str) -> None:
     for key in keys:
-        value = mapping.get(key)
-        if not isinstance(value, str):
+        if key not in mapping:
             continue
-        mapping[key] = int(value)
+        with suppress(ValueError, TypeError):
+            mapping[key] = int(mapping[key])
 
 
 def parse_cmake_warnings(output: str) -> List[Dict[str, Any]]:
@@ -157,28 +133,6 @@ def parse_cmake_warnings(output: str) -> List[Dict[str, Any]]:
             LOG.error(match.group().rstrip())
         elif groupdict["severity"] == "warning" and groupdict["file"]:
             LOG.warning(match.group().rstrip())
-
-    return warnings
-
-
-def parse_bison_warnings(output: str) -> List[Dict[str, Any]]:
-    groupdict: Dict[str, Any]
-    warnings = []
-    seen = set()
-
-    for match in WarningRegex.BISON.finditer(output):
-        full_message = shorten_conan_path(match.group().rstrip())
-        if full_message in seen:
-            continue
-        seen.add(full_message)
-        groupdict = match.groupdict()
-        to_int(groupdict, "line")
-        groupdict["from"] = "bison"
-        warnings.append(groupdict)
-        if groupdict["severity"] == "error":
-            LOG.error(full_message)
-        elif groupdict["severity"] == "warning":
-            LOG.warning(full_message)
 
     return warnings
 
@@ -240,16 +194,28 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
             continue
         ident_set.add(ident)
         to_int(groupdict, "line", "column")
-        groupdict["from"] = (
-            "autotools" if groupdict.get("file") in {"configure.ac"} else "compiler"
-        )
-        severity = groupdict["severity"]
+
+        file = groupdict.get("file", "")
+        if file.endswith(".y"):
+            from_tool = "bison"
+        elif file in {"configure.ac"}:
+            from_tool = "bison"
+        else:
+            from_tool = "compiler"
+
+        groupdict["from"] = from_tool
         warnings.append(groupdict)
 
+        severity = groupdict["severity"]
         if severity not in {"warning", "error", "fatal error"}:
             continue
 
-        key = (severity, groupdict["category"] or "(no-category)")
+        key = (
+            severity,
+            groupdict["category"] or "(no-category)"
+            if from_tool == "compiler"
+            else from_tool,
+        )
         stats[key] += 1
 
         if key not in keyset:

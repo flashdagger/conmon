@@ -14,7 +14,7 @@ def test_human_readable_size():
     assert human_readable_size(3, "seconds") == "3 seconds"
     assert human_readable_size(-3.01, "seconds") == "-3.01 seconds"
     assert human_readable_size(333.75e-3, "seconds", min_precision=1) == "333.8 ms"
-    assert human_readable_size(2.2e-6, "seconds", min_precision=1) == "2.200 us"
+    assert human_readable_size(2.2e-6, "seconds", min_precision=1) == "2.200 μs"
     assert human_readable_size(0.0, "seconds", min_precision=1) == "0.000 seconds"
 
 

@@ -9,6 +9,7 @@ import re
 import sys
 import tempfile
 from collections import defaultdict
+from contextlib import suppress
 from io import StringIO
 from itertools import chain
 from operator import itemgetter
@@ -40,7 +41,6 @@ from .compilers import (
     parse_compiler_warnings,
     parse_cmake_warnings,
     filter_compiler_warnings,
-    parse_bison_warnings,
     filter_lines,
     WarningRegex,
 )
@@ -494,6 +494,15 @@ class Build(State):
             return True
         return False
 
+    def flush_warning_count(self):
+        if self.warnings and BLOG.isEnabledFor(logging.WARNING):
+            esc = logger_escape_code(BLOG, "WARNING")
+            self.screen.print(
+                f"{esc}{self.warnings:4} warning(s)",
+                indent=0,
+            )
+        self.warnings = 0
+
     def process(self, parsed_line: Match) -> None:
         if self._deactivated(parsed_line):
             self.deactivate()
@@ -508,13 +517,7 @@ class Build(State):
             line
         ) or self.BUILD_STATUS_REGEX2.match(line)
         if match:
-            if self.warnings and BLOG.isEnabledFor(logging.WARNING):
-                esc = logger_escape_code(BLOG, "WARNING")
-                self.screen.print(
-                    f"{esc}{self.warnings:4} warning(s)",
-                    indent=0,
-                )
-            self.warnings = 0
+            self.flush_warning_count()
 
             status, file = match.groups()
             prefix = f"{status.strip()} " if status else ""
@@ -640,11 +643,14 @@ class Build(State):
         return list(tu_list)
 
     def _deactivate(self, final=False):
+        self.flush_warning_count()
         self.parser.screen.reset()
         self.log["translation_units"] = self.translation_units()
         warnings = self.log.setdefault("warnings", [])
         build_stdout = "\n".join(self.log["stdout"])
         self.compiler_types.add(self.parser.compiler_type)
+        if self.tools & {"bison", "win_bison"}:
+            self.compiler_types.add("gnu")
 
         for compiler_type in self.compiler_types:
             warnings.extend(
@@ -653,10 +659,6 @@ class Build(State):
                     compiler=compiler_type,
                 ),
             )
-
-        if self.tools & {"bison", "win_bison"}:
-            bison_warnings = parse_bison_warnings(build_stdout)
-            warnings.extend(bison_warnings)
 
         stderr_lines = self.log.pop("stderr_lines", ())
         self.log.setdefault("stderr", []).extend(chain(*stderr_lines))
@@ -772,7 +774,7 @@ class ConanParser:
 
         compiler = profile["settings"].get("compiler")
         if "clang-cl" in profile.get("env", {}).get("CC", ""):
-            compiler_type = "clang-cl"
+            compiler_type = "gnu"
         elif compiler in {"clang", "gcc", "cc"}:
             compiler_type = "gnu"
         elif compiler == "Visual Studio":
@@ -877,8 +879,9 @@ class ConanParser:
             try:
                 stdout, stderr = streams.readboth()
             except KeyboardInterrupt:
-                self.screen.reset()
-                CONMON_LOG.warning("Pressed Ctrl+C")
+                with suppress(KeyboardInterrupt):
+                    self.screen.reset()
+                    CONMON_LOG.warning("Pressed Ctrl+C")
                 break
 
             if stdout:
@@ -926,7 +929,12 @@ class ConanParser:
     def finalize(self):
         self.states.deactivate_all()
         self.screen.reset()
-        self.log["conan"]["returncode"] = self.process.wait()
+        try:
+            self.log["conan"]["returncode"] = self.process.wait()
+        except KeyboardInterrupt:
+            if self.process.is_running():
+                self.process.kill()
+            self.log["conan"]["returncode"] = self.process.wait()
 
 
 def monitor(args: List[str]) -> int:

@@ -148,9 +148,6 @@ def identify_compiler(name: str) -> Optional[str]:
     if parts == {"cl"}:
         return "msvc"
 
-    if {"clang", "cl"}.issubset(parts):
-        return "clang-cl"
-
     if parts & {"gcc", "g", "cc", "c", "clang", "nasm"}:
         return "gnu"
 
@@ -236,22 +233,18 @@ class BuildMonitor(Thread):
             return
 
         exe = Path(process_map["cmdline"][0])
-        # process_map["cmdline"] = process_map["cmdline"][1:]
         if not exe.is_absolute():
             exe = self.make_absolute(process_map["exe"], process_map["cwd"])
         process_map["exe"] = exe
 
-        if compiler_type not in {"msvc", "clang-cl", "gnu"}:
-            LOG_ONCE.error("Unknown compiler type %s", compiler_type)
-            return
-
-        if compiler_type == "gnu":
-            convert = str
-            posix = True
-        else:
+        if process_map["name"] in {"cl", "clang-cl"}:
             # replace '/' with '-' for windows style args
             convert = partial(re.sub, r"^/(.*)", r"-\1")
             posix = False
+        else:
+            assert compiler_type is not None
+            convert = str
+            posix = True
 
         process_map["cmdline"] = [
             convert(option)

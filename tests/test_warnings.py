@@ -1,51 +1,100 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 import re
-import textwrap
 
 import pytest
 
-from conmon.compilers import WarningRegex, parse_compiler_warnings
+from conmon.compilers import WarningRegex
 
 output = [
     "src/main/src/Em_FilteringQmFu.c: In function \u2018Em_FilteringQmFu_processSensorSignals\u2019:",
     "src/main/src/Em_FilteringQmFu.c:266:5: warning: implicit declaration of function \u2018memset\u2019 [-Wimplicit-function-declaration]",
     "     memset(&reicevedSignals, 0, sizeof(reicevedSignals));",
     "     ^~~~~~",
-    r" C:\source_subfolder\source\common\x86\seaintegral.asm:92: warning: improperly calling multi-line macro `SETUP_STACK_POINTER' with 0 parameters [-w+macro-params-legacy]",
+    r"C:\source_subfolder\source\common\x86\seaintegral.asm:92: warning: improperly calling multi-line macro `SETUP_STACK_POINTER' with 0 parameters [-w+macro-params-legacy]",
     "some text",
+    r"In file included from C:\conan\data\source_subfolder\zutil.c:10:",
+    r"C:\conan\data\source_subfolder/gzguts.h(146,52): warning: extension used [-Wlanguage-extension-token]",
+    "ZEXTERN z_off64_t ZEXPORT gzseek64 OF((gzFile, z_off64_t, int));",
+    "                                               ^",
+    "/build/source_subfolder/bzip2.c: In function ‘applySavedFileAttrToOutputFile’:",
+    "/build/source_subfolder/bzip2.c:1073:11: warning: ignoring return value of ‘fchown’, declared with attribute warn_unused_result [-Wunused-result]",
+    " 1073 |    (void) fchown ( fd, fileMetaInfo.st_uid, fileMetaInfo.st_gid );",
+    "      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+    '/source_subfolder/src/constexp.y:35.1-25: warning: deprecated directive: ‘%name-prefix "constexpYY"’, use ‘%define api.prefix {constexpYY}’ [-Wdeprecated]',
+    '   35 | %name-prefix "constexpYY"',
+    "      | ^~~~~~~~~~~~~~~~~~~~~~~~~"
+    "      | %define api.prefix {constexpYY}"
+    "/source_subfolder/src/constexp.y: warning: fix-its can be applied.  Rerun with option '--update'. [-Wother]",
 ]
 
 
 dataset = [
     pytest.param(
         [
-            dict(
-                file="src/main/src/Em_FilteringQmFu.c",
-                category="-Wimplicit-function-declaration",
-                column="5",
-                line="266",
-                severity="warning",
-                info="implicit declaration of function ‘memset’",
-                context="src/main/src/Em_FilteringQmFu.c: In function ‘Em_FilteringQmFu_processSensorSignals’:\n",
-                hint="     memset(&reicevedSignals, 0, sizeof(reicevedSignals));\n"
+            {
+                "context": "src/main/src/Em_FilteringQmFu.c: In function "
+                "‘Em_FilteringQmFu_processSensorSignals’:\n",
+                "file": "src/main/src/Em_FilteringQmFu.c",
+                "category": "-Wimplicit-function-declaration",
+                "line": "266",
+                "column": "5",
+                "severity": "warning",
+                "info": "implicit declaration of function ‘memset’",
+                "hint": "     memset(&reicevedSignals, 0, sizeof(reicevedSignals));\n"
                 "     ^~~~~~",
-            ),
-            dict(
-                category="-w+macro-params-legacy",
-                column=None,
-                context="",
-                file="C:\\source_subfolder\\source\\common\\x86\\seaintegral.asm",
-                hint=None,
-                info="improperly calling multi-line macro `SETUP_STACK_POINTER' with 0 parameters",
-                line="92",
-                severity="warning",
-            ),
+            },
+            {
+                "context": "",
+                "file": "C:\\source_subfolder\\source\\common\\x86\\seaintegral.asm",
+                "line": "92",
+                "column": None,
+                "severity": "warning",
+                "info": "improperly calling multi-line macro `SETUP_STACK_POINTER' with 0 "
+                "parameters",
+                "category": "-w+macro-params-legacy",
+                "hint": None,
+            },
+            {
+                "context": "In file included from "
+                "C:\\conan\\data\\source_subfolder\\zutil.c:10:\n",
+                "file": "C:\\conan\\data\\source_subfolder/gzguts.h",
+                "line": "146",
+                "column": "52",
+                "severity": "warning",
+                "info": "extension used",
+                "category": "-Wlanguage-extension-token",
+                "hint": "ZEXTERN z_off64_t ZEXPORT gzseek64 OF((gzFile, z_off64_t, int));\n"
+                "                                               ^",
+            },
+            {
+                "context": "/build/source_subfolder/bzip2.c: In function "
+                "‘applySavedFileAttrToOutputFile’:\n",
+                "file": "/build/source_subfolder/bzip2.c",
+                "line": "1073",
+                "column": "11",
+                "severity": "warning",
+                "info": "ignoring return value of ‘fchown’, declared with attribute "
+                "warn_unused_result",
+                "category": "-Wunused-result",
+                "hint": " 1073 |    (void) fchown ( fd, fileMetaInfo.st_uid, fileMetaInfo.st_gid );\n"
+                "      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+            },
+            {
+                "context": "",
+                "file": "/source_subfolder/src/constexp.y",
+                "line": "35",
+                "column": "1-25",
+                "severity": "warning",
+                "info": 'deprecated directive: ‘%name-prefix "constexpYY"’, use ‘%define '
+                "api.prefix {constexpYY}’",
+                "category": "-Wdeprecated",
+                "hint": None,
+            },
         ],
         id="gnu",
     ),
     pytest.param([], id="msvc"),
-    pytest.param([], id="clang-cl"),
     pytest.param([], id="cmake"),
 ]
 
@@ -58,22 +107,6 @@ def test_warnings_regex(expected, request):
         for match in re.finditer(WarningRegex.get(compiler), "\n".join(output))
     )
     assert matches == expected
-
-
-def test_gnu_hint():
-    warning_output = """
-    /build/source_subfolder/bzip2.c: In function ‘applySavedFileAttrToOutputFile’:
-    /build/source_subfolder/bzip2.c:1073:11: warning: ignoring return value of ‘fchown’, declared with attribute warn_unused_result [-Wunused-result]
-     1073 |    (void) fchown ( fd, fileMetaInfo.st_uid, fileMetaInfo.st_gid );
-          |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    """
-
-    lines = textwrap.dedent(warning_output).splitlines()
-    warnings = parse_compiler_warnings(output="\n".join(lines), compiler="gnu")
-    assert len(lines) == 6
-    assert warnings, "No warnings parsed"
-    assert warnings[0]["hint"].splitlines() == lines[3:5]
 
 
 def test_conan_warning():
