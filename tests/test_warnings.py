@@ -39,12 +39,17 @@ output = [
     r"_CRT_SECURE_NO_WARNINGS. See online help for details.",
     '   strcat(mode2,"b");   /* binary mode */',
     "         ^",
+    "Makefile.config:565: No sys/sdt.h found, no SDT events are defined, please install "
+    "systemtap-sdt-devel or systemtap-sdt-dev",
     "CMake Warning:",
     "  Manually-specified variables were not used by the project:",
     "",
     "    CMAKE_EXPORT_NO_PACKAGE_REGISTRY",
     "",
     "",
+    "libjpeg/1.2.3: WARN: package is corrupted",
+    "WARN: libmysqlclient/8.0.25: requirement openssl/1.1.1m "
+    "overridden by poco/1.11.1 to openssl/1.1.1l",
 ]
 
 
@@ -167,6 +172,43 @@ dataset = [
         ],
         id="cmake",
     ),
+    pytest.param(
+        [
+            {
+                "from": "Makefile.config",
+                "info": "No sys/sdt.h found, no SDT events are defined, please install "
+                "systemtap-sdt-devel or systemtap-sdt-dev",
+                "line": "565",
+                "severity": None,
+            },
+        ],
+        id="autotools",
+    ),
+    pytest.param(
+        [
+            {
+                "ref": "libjpeg/1.2.3",
+                "name": "libjpeg",
+                "version": "1.2.3",
+                "user": None,
+                "channel": None,
+                "info": "package is corrupted",
+                "severity": "WARN",
+                "severity_l": None,
+            },
+            {
+                "ref": "libmysqlclient/8.0.25",
+                "name": "libmysqlclient",
+                "version": "8.0.25",
+                "user": None,
+                "channel": None,
+                "severity_l": "WARN",
+                "severity": None,
+                "info": "requirement openssl/1.1.1m overridden by poco/1.11.1 to openssl/1.1.1l",
+            },
+        ],
+        id="conan",
+    ),
 ]
 
 
@@ -178,28 +220,3 @@ def test_warnings_regex(expected, request):
         for match in re.finditer(WarningRegex.get(compiler), "\n".join(output) + "\n")
     )
     assert matches == expected
-
-
-def test_conan_warning():
-    match = WarningRegex.CONAN.fullmatch("libjpeg/1.2.3: WARN: package is corrupted")
-    assert match
-    expected = {
-        "ref": "libjpeg/1.2.3",
-        "severity": "WARN",
-        "severity_l": None,
-        "info": "package is corrupted",
-    }
-    assert {key: match.group(key) for key in expected.keys()} == expected
-
-    match = WarningRegex.CONAN.fullmatch(
-        "WARN: libmysqlclient/8.0.25: requirement openssl/1.1.1m "
-        "overridden by poco/1.11.1 to openssl/1.1.1l"
-    )
-    assert match
-    expected = {
-        "ref": "libmysqlclient/8.0.25",
-        "severity_l": "WARN",
-        "severity": None,
-        "info": "requirement openssl/1.1.1m overridden by poco/1.11.1 to openssl/1.1.1l",
-    }
-    assert {key: match.group(key) for key in expected.keys()} == expected

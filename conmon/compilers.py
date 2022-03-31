@@ -76,7 +76,7 @@ class WarningRegex:
     AUTOTOOLS = re.compile(
         r"""(?x)
         (?P<from>
-            ar | autoreconf | aclocal | configure(?:\.ac)? | Makefile(?:\.am)?
+            ar | autoreconf | aclocal | configure(?:\.[a-z]+)? | Makefile(?:\.[a-z]+)?
         )
         ( :(?P<line>\d+) )?
         (
@@ -197,8 +197,6 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
 
         file = groupdict.get("file", "")
         if file.endswith(".y"):
-            from_tool = "bison"
-        elif file in {"configure.ac"}:
             from_tool = "bison"
         else:
             from_tool = "compiler"
