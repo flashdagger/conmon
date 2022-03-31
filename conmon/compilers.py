@@ -70,6 +70,7 @@ class WarningRegex:
                 \ \[ (?P<project>[^]]+) ]
             )?
             \n
+            (?P<hint>[^\n]+\n\s*\^)?
         """
     )
     AUTOTOOLS = re.compile(

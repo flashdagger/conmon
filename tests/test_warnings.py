@@ -7,25 +7,38 @@ import pytest
 from conmon.compilers import WarningRegex
 
 output = [
-    "src/main/src/Em_FilteringQmFu.c: In function \u2018Em_FilteringQmFu_processSensorSignals\u2019:",
-    "src/main/src/Em_FilteringQmFu.c:266:5: warning: implicit declaration of function \u2018memset\u2019 [-Wimplicit-function-declaration]",
+    "src/main/src/Em_FilteringQmFu.c: In function "
+    "\u2018Em_FilteringQmFu_processSensorSignals\u2019:",
+    "src/main/src/Em_FilteringQmFu.c:266:5: warning: implicit declaration of function "
+    "\u2018memset\u2019 [-Wimplicit-function-declaration]",
     "     memset(&reicevedSignals, 0, sizeof(reicevedSignals));",
     "     ^~~~~~",
-    r"C:\source_subfolder\source\common\x86\seaintegral.asm:92: warning: improperly calling multi-line macro `SETUP_STACK_POINTER' with 0 parameters [-w+macro-params-legacy]",
+    r"C:\source_subfolder\source\common\x86\seaintegral.asm:92: warning: improperly calling "
+    r"multi-line macro `SETUP_STACK_POINTER' with 0 parameters [-w+macro-params-legacy]",
     "some text",
     r"In file included from C:\conan\data\source_subfolder\zutil.c:10:",
-    r"C:\conan\data\source_subfolder/gzguts.h(146,52): warning: extension used [-Wlanguage-extension-token]",
+    r"C:\conan\data\source_subfolder/gzguts.h(146,52): warning: extension used "
+    r"[-Wlanguage-extension-token]",
     "ZEXTERN z_off64_t ZEXPORT gzseek64 OF((gzFile, z_off64_t, int));",
     "                                               ^",
     "/build/source_subfolder/bzip2.c: In function ‘applySavedFileAttrToOutputFile’:",
-    "/build/source_subfolder/bzip2.c:1073:11: warning: ignoring return value of ‘fchown’, declared with attribute warn_unused_result [-Wunused-result]",
+    "/build/source_subfolder/bzip2.c:1073:11: warning: ignoring return value of ‘fchown’, declared "
+    "with attribute warn_unused_result [-Wunused-result]",
     " 1073 |    (void) fchown ( fd, fileMetaInfo.st_uid, fileMetaInfo.st_gid );",
     "      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
-    '/source_subfolder/src/constexp.y:35.1-25: warning: deprecated directive: ‘%name-prefix "constexpYY"’, use ‘%define api.prefix {constexpYY}’ [-Wdeprecated]',
+    "/source_subfolder/src/constexp.y:35.1-25: warning: deprecated directive: ‘%name-prefix "
+    '"constexpYY"’, use ‘%define api.prefix {constexpYY}’ [-Wdeprecated]',
     '   35 | %name-prefix "constexpYY"',
     "      | ^~~~~~~~~~~~~~~~~~~~~~~~~" "      | %define api.prefix {constexpYY}",
-    "/source_subfolder/src/constexp.y: warning: fix-its can be applied.  Rerun with option '--update'. [-Wother]",
-    "/source_subfolder/common/socket_utils.cc(43): warning C4312: 'reinterpret_cast': conversion from 'int' to 'HANDLE' of greater size",
+    "/source_subfolder/src/constexp.y: warning: fix-its can be applied.  Rerun with option "
+    "'--update'. [-Wother]",
+    "/source_subfolder/common/socket_utils.cc(43): warning C4312: 'reinterpret_cast': conversion "
+    "from 'int' to 'HANDLE' of greater size",
+    r"C:\source_subfolder\bzlib.c(1418,10): warning C4996: 'strcat': This function or variable may "
+    r"be unsafe. Consider using strcat_s instead. To disable deprecation, use "
+    r"_CRT_SECURE_NO_WARNINGS. See online help for details.",
+    '   strcat(mode2,"b");   /* binary mode */',
+    "         ^",
 ]
 
 
@@ -77,7 +90,8 @@ dataset = [
                 "info": "ignoring return value of ‘fchown’, declared with attribute "
                 "warn_unused_result",
                 "category": "-Wunused-result",
-                "hint": " 1073 |    (void) fchown ( fd, fileMetaInfo.st_uid, fileMetaInfo.st_gid );\n"
+                "hint": " 1073 |    (void) fchown ( fd, fileMetaInfo.st_uid, fileMetaInfo.st_gid );"
+                "\n"
                 "      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
             },
             {
@@ -116,6 +130,19 @@ dataset = [
                 "info": "'reinterpret_cast': conversion from 'int' to 'HANDLE' of greater size",
                 "category": "C4312",
                 "project": None,
+                "hint": None,
+            },
+            {
+                "file": "C:\\source_subfolder\\bzlib.c",
+                "line": "1418",
+                "column": "10",
+                "category": "C4996",
+                "severity": "warning",
+                "info": "'strcat': This function or variable may be unsafe. Consider using "
+                "strcat_s instead. To disable deprecation, use "
+                "_CRT_SECURE_NO_WARNINGS. See online help for details.",
+                "project": None,
+                "hint": '   strcat(mode2,"b");   /* binary mode */\n' "         ^",
             },
         ],
         id="msvc",
