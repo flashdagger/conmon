@@ -3,7 +3,6 @@ import re
 from collections import Counter
 from contextlib import suppress
 from itertools import groupby
-from operator import itemgetter
 from typing import Any, Dict, List, Optional, Tuple, Pattern, Union
 
 from .logging import get_logger, UniqueLogger
@@ -212,9 +211,7 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
 
         key = (
             severity,
-            groupdict["category"] or "(no-category)"
-            if from_tool == "compiler"
-            else from_tool,
+            repr(groupdict["category"]) if from_tool == "compiler" else from_tool,
         )
         stats[key] += 1
 
@@ -233,9 +230,9 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
         )
         if severity != "warning":
             continue
-        for _, key, value in sorted(stat_list, key=itemgetter(2), reverse=True):
-            if key is None:
-                continue
+        for _, key, value in sorted(
+            stat_list, key=lambda item: (item[0][0], item[1]), reverse=True
+        ):
             LOG.info("  %s: %s", key, value)
 
     return warnings

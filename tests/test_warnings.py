@@ -23,9 +23,9 @@ output = [
     "      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
     '/source_subfolder/src/constexp.y:35.1-25: warning: deprecated directive: ‘%name-prefix "constexpYY"’, use ‘%define api.prefix {constexpYY}’ [-Wdeprecated]',
     '   35 | %name-prefix "constexpYY"',
-    "      | ^~~~~~~~~~~~~~~~~~~~~~~~~"
-    "      | %define api.prefix {constexpYY}"
+    "      | ^~~~~~~~~~~~~~~~~~~~~~~~~" "      | %define api.prefix {constexpYY}",
     "/source_subfolder/src/constexp.y: warning: fix-its can be applied.  Rerun with option '--update'. [-Wother]",
+    "/source_subfolder/common/socket_utils.cc(43): warning C4312: 'reinterpret_cast': conversion from 'int' to 'HANDLE' of greater size",
 ]
 
 
@@ -89,12 +89,37 @@ dataset = [
                 "info": 'deprecated directive: ‘%name-prefix "constexpYY"’, use ‘%define '
                 "api.prefix {constexpYY}’",
                 "category": "-Wdeprecated",
+                "hint": '   35 | %name-prefix "constexpYY"\n'
+                "      | ^~~~~~~~~~~~~~~~~~~~~~~~~      | %define api.prefix "
+                "{constexpYY}",
+            },
+            {
+                "context": "",
+                "file": "/source_subfolder/src/constexp.y",
+                "line": None,
+                "column": None,
+                "severity": "warning",
+                "info": "fix-its can be applied.  Rerun with option '--update'.",
+                "category": "-Wother",
                 "hint": None,
             },
         ],
         id="gnu",
     ),
-    pytest.param([], id="msvc"),
+    pytest.param(
+        [
+            {
+                "file": "/source_subfolder/common/socket_utils.cc",
+                "line": "43",
+                "column": None,
+                "severity": "warning",
+                "info": "'reinterpret_cast': conversion from 'int' to 'HANDLE' of greater size",
+                "category": "C4312",
+                "project": None,
+            },
+        ],
+        id="msvc",
+    ),
     pytest.param([], id="cmake"),
 ]
 
@@ -104,7 +129,7 @@ def test_warnings_regex(expected, request):
     compiler = request.node.callspec.id
     matches = list(
         match.groupdict()
-        for match in re.finditer(WarningRegex.get(compiler), "\n".join(output))
+        for match in re.finditer(WarningRegex.get(compiler), "\n".join(output) + "\n")
     )
     assert matches == expected
 
