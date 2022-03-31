@@ -203,6 +203,10 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
             from_tool = "compiler"
 
         groupdict["from"] = from_tool
+        for _item in ("context", "hint"):
+            if _item in groupdict:
+                value = groupdict[_item]
+                groupdict[_item] = value.splitlines(keepends=False) if value else []
         warnings.append(groupdict)
 
         severity = groupdict["severity"]
@@ -221,7 +225,7 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
             keyset.add(key)
 
     total_stats = ((key[0], key[1], stats[key]) for key in sorted(stats))
-    for severity, stats_iter in groupby(total_stats, key=lambda item: item[0]):
+    for severity, stats_iter in groupby(total_stats, key=lambda _item: _item[0]):
         stat_list: List[Any] = list(stat for stat in stats_iter)
         LOG.info(
             "Compilation issued %s distinct %s(s)",
@@ -231,7 +235,7 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
         if severity != "warning":
             continue
         for _, key, value in sorted(
-            stat_list, key=lambda item: (item[0][0], item[1]), reverse=True
+            stat_list, key=lambda item: (item[1][0], item[2]), reverse=True
         ):
             LOG.info("  %s: %s", key, value)
 
