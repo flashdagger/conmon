@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 import re
-from typing import Pattern, Tuple
+from typing import Pattern, Tuple, Iterator, Match, Union, Optional
 
 DECOLORIZE_REGEX = re.compile(r"[\u001b]\[\d{1,2}m", re.UNICODE)
 CONAN_DATA_PATH = re.compile(
@@ -50,3 +50,20 @@ def compact_pattern(regex: Pattern) -> Tuple[str, int]:
         flags -= re.VERBOSE
 
     return pattern, flags
+
+
+def finditer(
+    pattern: Union[Pattern[str], str], string: str, flags=0
+) -> Iterator[Tuple[Optional[Match], str]]:
+    span_end = 0
+    for match in re.finditer(pattern, string, flags):
+        yield match, string[span_end : match.start()]
+        span_end = match.end()
+    yield None, string[span_end:]
+
+
+def split(
+    pattern: Union[Pattern[str], str], string: str, flags=0
+) -> Tuple[Tuple[Match, ...], Tuple[str, ...]]:
+    matches, strings = zip(*finditer(pattern, string, flags))
+    return matches[:-1], strings
