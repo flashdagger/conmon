@@ -27,7 +27,7 @@ class Regex:
         r"""(?xm)
             ^CMake\ (?P<severity>\w+)
             (?:
-                \ (?:in|at)\ (?P<file>(?:[A-za-z]:)?[^\n:]+)
+                \ (?:in|at)\ (?P<file>(?:[A-Za-z]:)?[^\n:]+)
                 (?::(?P<line>\d+)\ \((?P<function>\w+)\))?
             )?:
             \n
@@ -42,14 +42,16 @@ class Regex:
         r"""(?xm)
         ^(?P<context>
             (?:
-                (?:In\ file\ included|\ +)\ from\ [^\n]+:\d+[:,]\n
-            )*
-            (?:
-                (?:[A-za-z]: )? [^\n:]+:\ In\ function\ [^:\n]+:\n
-            )?
-        )
+                (?:
+                    (?:In\ file\ included|\ +)\ from\ [^\n]+:\d+[:,]\n
+                )*
+                (?:
+                    (?:[A-Za-z]: )? [^\n:]+:\ In\ function\ [^:\n]+:\n
+                )?
+            )+
+        )?
         \ *
-        (?P<file>(?:[A-za-z]:)?[^\n:()]+\.\w{1,4})
+        (?P<file>(?:[A-Za-z]:)?[^\n:()]+\.\w{1,4})
         (?:
             [:(]
             (?P<line>\d+)

@@ -110,6 +110,14 @@ output = [
     "      |                                         ~~~~~~",
     "      |                                         |",
     "      |                                         long unsigned int *",
+    "In file included from ../../src/include/postgres.h:47,",
+    "                 from rmtree.c:15:",
+    "rmtree.c: In function \u2018rmtree\u2019:",
+    "In file included from ../../src/include/c.h:54,",
+    "                 from ../../src/include/postgres.h:46,",
+    "                 from stringinfo.c:20:",
+    "../../src/include/pg_config.h:772:24: warning: ISO C does not support \u2018__int128\u2019 "
+    "types [-Wpedantic]",
     "",
 ]
 
@@ -242,6 +250,22 @@ dataset = [
                 "      |                                         ~~~~~~\n"
                 "      |                                         |\n"
                 "      |                                         long unsigned int *",
+            },
+            {
+                "context": ""
+                "In file included from ../../src/include/postgres.h:47,\n"
+                "                 from rmtree.c:15:\n"
+                "rmtree.c: In function ‘rmtree’:\n"
+                "In file included from ../../src/include/c.h:54,\n"
+                "                 from ../../src/include/postgres.h:46,\n"
+                "                 from stringinfo.c:20:\n",
+                "file": "../../src/include/pg_config.h",
+                "line": "772",
+                "column": "24",
+                "severity": "warning",
+                "info": "ISO C does not support ‘__int128’ types",
+                "category": "-Wpedantic",
+                "hint": None,
             },
         ],
         id="gnu",
