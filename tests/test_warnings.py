@@ -86,6 +86,20 @@ output = [
     "union type [-Wpedantic]",
     " 1640 | G_DEFINE_BOXED_TYPE (AtkTextRange, atk_text_range, atk_text_range_copy,",
     "      |                                                    ^~~~~~~~~~~~~~~~~~~",
+    "CMake Warning:",
+    "  Manually-specified variables were not used by the project:",
+    "",
+    "    CMAKE_EXPORT_NO_PACKAGE_REGISTRY",
+    "    CMAKE_INSTALL_BINDIR",
+    "    CMAKE_INSTALL_DATAROOTDIR",
+    "    CMAKE_INSTALL_INCLUDEDIR",
+    "    CMAKE_INSTALL_LIBDIR",
+    "    CMAKE_INSTALL_LIBEXECDIR",
+    "    CMAKE_INSTALL_OLDINCLUDEDIR",
+    "    MAKE_INSTALL_SBINDIR",
+    "",
+    "",
+    "",
 ]
 
 
@@ -237,15 +251,16 @@ dataset = [
                 "line": None,
                 "function": None,
                 "info": ""
-                "  Manually-specified variables were not used by the project:\n\n"
-                "    CMAKE_EXPORT_NO_PACKAGE_REGISTRY\n\n",
+                "  Manually-specified variables were not used by the project:\n"
+                "\n"
+                "    CMAKE_EXPORT_NO_PACKAGE_REGISTRY",
             },
             {
                 "file": "cmake/ldap.cmake",
                 "line": "158",
                 "severity": "Warning",
                 "function": "MESSAGE",
-                "info": "  Could not find LDAP\n",
+                "info": "  Could not find LDAP",
                 "context": ""
                 "Call Stack (most recent call first):\n"
                 "  CMakeListsOriginal.txt:1351 (MYSQL_CHECK_LDAP)\n"
@@ -257,7 +272,24 @@ dataset = [
                 "severity": "Warning",
                 "function": "MESSAGE",
                 "context": None,
-                "info": "  Skipping the LDAP client authentication plugin\n\n",
+                "info": "  Skipping the LDAP client authentication plugin",
+            },
+            {
+                "context": None,
+                "severity": "Warning",
+                "file": None,
+                "line": None,
+                "function": None,
+                "info": "  Manually-specified variables were not used by the project:\n"
+                "\n"
+                "    CMAKE_EXPORT_NO_PACKAGE_REGISTRY\n"
+                "    CMAKE_INSTALL_BINDIR\n"
+                "    CMAKE_INSTALL_DATAROOTDIR\n"
+                "    CMAKE_INSTALL_INCLUDEDIR\n"
+                "    CMAKE_INSTALL_LIBDIR\n"
+                "    CMAKE_INSTALL_LIBEXECDIR\n"
+                "    CMAKE_INSTALL_OLDINCLUDEDIR\n"
+                "    MAKE_INSTALL_SBINDIR",
             },
         ],
         id="cmake",
@@ -318,6 +350,6 @@ def test_warnings_regex(expected, request):
     compiler = request.node.callspec.id
     matches = list(
         match.groupdict()
-        for match in re.finditer(WarningRegex.get(compiler), "\n".join(output) + "\n")
+        for match in re.finditer(WarningRegex.get(compiler), "\n".join(output))
     )
     assert matches == expected

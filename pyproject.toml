@@ -15,7 +15,7 @@ exclude = '''
 [tool.pytest.ini_options]
 minversion = "6.0"
 python_files = ["tests.py", "test_*.py"]
-addopts = "-vv --tb=auto -W ignore::DeprecationWarning"
+addopts = "-vv --tb=auto"
 cache_dir = ".cache/pytest"
 
 [tool.mypy]

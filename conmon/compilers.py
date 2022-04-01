@@ -20,10 +20,13 @@ class WarningRegex:
             (?:
                 \ (?:in|at)\ (?P<file>(?:[A-za-z]:)?[^\n:]+)
                 (?::(?P<line>\d+)\ \((?P<function>\w+)\))?
-             )?:
-             \n
-            (?P<info> (?:\ +[^\n]+\n{1,2})+ )
+            )?:
+            \n
+            (?P<info> \ +[^\n]+(\n{1,2}\ +[^\n]+)* )
+            \n
             (?P<context>Call\ Stack[^\n]+ (?:\n\ +[^\n]+)+)?
+            (?(context)\n)
+            \n{2}
         """
     )
     GNU = re.compile(
@@ -33,7 +36,7 @@ class WarningRegex:
                 (?:In\ file\ included|\ +)\ from\ [^\n]+:\d+[:,]\n
             )*
             (?:
-                (?:[A-za-z]: )? [^\n:]+:\ In\ function\ [^:]+:\n
+                (?:[A-za-z]: )? [^\n:]+:\ In\ function\ [^:\n]+:\n
             )?
         )
         \ *
@@ -72,6 +75,7 @@ class WarningRegex:
             )?
             \n
             (?P<hint>[^\n]+\n\s*\^)?
+            (?(hint)\n)
         """
     )
     AUTOTOOLS = re.compile(
@@ -85,6 +89,7 @@ class WarningRegex:
         )?
         :\ ?#
         (?P<info>.*(?:\n[ *]+[^\n]+)*)
+        \n
         """
     )
     CONAN = re.compile(
@@ -93,6 +98,7 @@ class WarningRegex:
         (?:{compact_pattern(REF_REGEX)[0]}:\ +)?
         (?(severity_l) | (?P<severity>ERROR|WARN):\ ?)
         (?P<info>.*)
+        \n
         """
     )
 
