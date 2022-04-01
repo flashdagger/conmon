@@ -7,11 +7,10 @@ from typing import Any, Dict, List, Optional, Pattern, Tuple, Union, Set
 
 from .logging import UniqueLogger, get_logger
 from .regex import REF_REGEX, compact_pattern, shorten_conan_path
-from .utils import shorten
+from .utils import shorten, added_first
 
 LOG = get_logger("BUILD")
 LOG_ONCE = UniqueLogger(LOG)
-SEEN_MATCHES: Set[str] = set()
 
 
 class WarningRegex:
@@ -144,10 +143,6 @@ def parse_autotools_warnings(output: str) -> List[Dict[str, Any]]:
     warnings = []
 
     for match in WarningRegex.AUTOTOOLS.finditer(output):
-        msg = match.group().rstrip()
-        if msg in SEEN_MATCHES:
-            continue
-        SEEN_MATCHES.add(msg)
         groupdict = match.groupdict()
         to_int(groupdict, "line")
         severity = match.group("severity")
@@ -188,8 +183,8 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
     stats: Dict[Tuple[str, str], int] = Counter()
     groupdict: Dict[str, Any]
     warnings: List[Dict[str, Any]] = []
-    keyset = set()
-    ident_set = set()
+    keyset: Set[Tuple[str, str]] = set()
+    ident_set: Set[int] = set()
     compiler_regex = WarningRegex.get(compiler)
     if not compiler_regex:
         LOG.warning("parse_warnings: unknown type %r", compiler)
@@ -198,9 +193,8 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
     for match in compiler_regex.finditer(output):
         groupdict = match.groupdict()
         ident = hash(frozenset(groupdict.items()))
-        if ident in ident_set:
+        if not added_first(ident_set, ident):
             continue
-        ident_set.add(ident)
         to_int(groupdict, "line", "column")
 
         file = groupdict.get("file", "")
@@ -226,12 +220,11 @@ def parse_compiler_warnings(output: str, compiler: str) -> List[Dict[str, Any]]:
         )
         stats[key] += 1
 
-        if key not in keyset:
+        if added_first(keyset, key):
             output = shorten(
                 shorten_conan_path(match.group()), width=500, strip="middle"
             )
             LOG.log(log_level(severity), output.rstrip())
-            keyset.add(key)
 
     total_stats = ((key[0], key[1], stats[key]) for key in sorted(stats))
     for severity, stats_iter in groupby(total_stats, key=lambda _item: _item[0]):

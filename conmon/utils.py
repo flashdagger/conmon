@@ -270,6 +270,13 @@ def unique(items: Iterable[T]) -> Iterator[T]:
         yield item
 
 
+def added_first(container: Set, item: Hashable) -> bool:
+    if item in container:
+        return False
+    container.add(item)
+    return True
+
+
 def common_parent(*paths: Union[str, os.PathLike]) -> Optional[Path]:
     def iter_parts(_path):
         ppath = Path(_path)

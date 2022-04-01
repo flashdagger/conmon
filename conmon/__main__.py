@@ -30,6 +30,7 @@ from typing import (
     Iterator,
     Callable,
     cast,
+    Hashable,
 )
 
 from psutil import Popen, Process
@@ -57,6 +58,8 @@ from .utils import (
     unique,
     ProcessStreamHandler,
     get_terminal_width,
+    freeze_json_object,
+    added_first,
 )
 
 CONMON_LOG = get_logger("CONMON")
@@ -92,13 +95,16 @@ def filehandler(key: str, mode="w", hint="") -> TextIO:
 def popwarnings(error_lines: List[List[str]], parse_func: Callable[[str], List[Dict]]):
     residue = []
     parsed_warnings = []
+    seen: Set[Hashable] = set()
 
     for lines in error_lines:
         warnings_found = parse_func("\n".join(lines))
-        if warnings_found:
-            parsed_warnings.extend(warnings_found)
-        else:
+        if not warnings_found:
             residue.append(lines)
+        for warning in warnings_found:
+            frozen = freeze_json_object(warning)
+            if added_first(seen, frozen):
+                parsed_warnings.append(warning)
 
     return parsed_warnings, residue
 
