@@ -64,7 +64,11 @@ class Regex:
         (\ \[(?P<category>[\w=+\-]+)])?
         \n
         (
-            (?P<hint>[^\n]+\n[\s|~]*\^[\s~]*(?:\n\ +|\ [^\n]+)?)
+            (?P<hint>
+                [^\n]+\n
+                [^\^\n]*\^[^\^\n]*
+                (?:\n\ +[^\n]+)*
+            )
             \n
         )?
         """
@@ -119,7 +123,9 @@ class Regex:
     @classmethod
     def dict(cls, *keys: str) -> Dict[str, Pattern]:
         if not keys:
-            keys = tuple(key for key in dir(cls) if key.isupper())
+            keys = tuple(
+                key.lower().replace("_", "-") for key in dir(cls) if key.isupper()
+            )
         return {key: cls.get(key) for key in keys}
 
 
@@ -184,7 +190,7 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
             key = (
                 severity,
                 repr(mapping["category"])
-                if mapping["from"] == "compiler"
+                if mapping["from"] == "compilation"
                 else mapping["from"],
             )
 

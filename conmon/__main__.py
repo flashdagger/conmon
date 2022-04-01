@@ -649,7 +649,7 @@ class Build(State):
         build_stdout = "\n".join(self.log["stdout"]) + "\n"
         build_stderr = "\n".join(self.log["stderr"]) + "\n"
 
-        match_map: Dict[str, List[Match]] = dict()
+        match_map = dict()  # pylint: disable=use-dict-literal
         filter_by_regex(build_stdout, match_map, **Regex.dict("gnu", "msvc"))
         build_stderr = filter_by_regex(
             build_stderr, match_map, **Regex.dict("gnu", "msvc", "cmake", "autotools")

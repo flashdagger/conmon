@@ -99,6 +99,17 @@ output = [
     "    MAKE_INSTALL_SBINDIR",
     "",
     "",
+    "source_subfolder/src/tramp.c:215:52: warning: format \u2018%ld\u2019 expects argument of type "
+    "\u2018long int *\u2019, but argument 8 has type \u2018long unsigned int *\u2019 [-Wformat=]",
+    '  215 |     nfields = sscanf (line, "%lx-%lx %9s %lx %9s %ld %s",',
+    "      |                                                  ~~^",
+    "      |                                                    |",
+    "      |                                                    long int *",
+    "      |                                                  %ld",
+    "  216 |       &start, &end, perm, &offset, dev, &inode, file);",
+    "      |                                         ~~~~~~",
+    "      |                                         |",
+    "      |                                         long unsigned int *",
     "",
 ]
 
@@ -211,6 +222,26 @@ dataset = [
                 "hint": ""
                 " 1640 | G_DEFINE_BOXED_TYPE (AtkTextRange, atk_text_range, atk_text_range_copy,\n"
                 "      |                                                    ^~~~~~~~~~~~~~~~~~~",
+            },
+            {
+                "context": "",
+                "file": "source_subfolder/src/tramp.c",
+                "line": "215",
+                "column": "52",
+                "severity": "warning",
+                "info": "format ‘%ld’ expects argument of type ‘long int *’, but argument 8 "
+                "has type ‘long unsigned int *’",
+                "category": "-Wformat=",
+                "hint": ""
+                '  215 |     nfields = sscanf (line, "%lx-%lx %9s %lx %9s %ld %s",\n'
+                "      |                                                  ~~^\n"
+                "      |                                                    |\n"
+                "      |                                                    long int *\n"
+                "      |                                                  %ld\n"
+                "  216 |       &start, &end, perm, &offset, dev, &inode, file);\n"
+                "      |                                         ~~~~~~\n"
+                "      |                                         |\n"
+                "      |                                         long unsigned int *",
             },
         ],
         id="gnu",
