@@ -163,7 +163,7 @@ class BuildMonitor(Thread):
         self.proc = proc
         self.proc_cache: Dict = {}
         self.rsp_cache: Dict = {}
-        self.compiler: Dict[str, Optional[str]] = {}
+        self.compiler: Set[str] = set()
         self._translation_units: Dict[Hashable, Set] = {}
         self.finish = Event()
         self.timing: List[float] = []
@@ -224,7 +224,7 @@ class BuildMonitor(Thread):
 
     def check_process(self, process_map: Dict[str, Any]):
         compiler_type = identify_compiler(process_map["name"])
-        self.compiler[process_map["name"]] = compiler_type
+        self.compiler.add(process_map["name"])
         if (
             compiler_type is None
             or process_map["cwd"] is None
@@ -347,12 +347,8 @@ class BuildMonitor(Thread):
                 LOG.exception("Exception while processing...")
                 continue
 
-        executables = ", ".join(
-            f"{key} ({value})" for key, value in self.compiler.items()
-        )
-
-        if executables:
-            LOG.info("Detected compiler: %s", executables)
+        if self.compiler:
+            LOG.info("Detected compiler: %s", ", ".join(self.compiler))
         if self.executables:
             LOG.info("Detected executables: %s", ", ".join(sorted(self.executables)))
 

@@ -454,8 +454,6 @@ class Build(State):
         super().__init__(parser)
         self.parser = parser
         self.warnings = 0
-        self.compiler_types: Set[str] = set()
-        self.tools: Set[str] = set()
         self.buildmon: Optional[BuildMonitor] = None
         self.log = parser.defaultlog
         self.ref = "???"
@@ -513,7 +511,7 @@ class Build(State):
             self.flush_warning_count()
 
             status, file = match.groups()
-            prefix = f"{status.strip()} " if status else ""
+            prefix = f"{status.strip():>9} " if status else ""
             output = shorten(
                 file,
                 width=self.MAX_WIDTH,
@@ -547,10 +545,11 @@ class Build(State):
             "make": lambda path: path.stem in {"conftest", "dummy"}
             or path.parent.as_posix().endswith("/tools/build/feature"),
         }
+        assert self.buildmon
         active_filters = {
             key: value
             for key, value in src_filter.items()
-            if key in self.tools or key is None
+            if key in self.buildmon.executables or key is None
         }
 
         src_counter = 0
@@ -620,10 +619,6 @@ class Build(State):
         assert self.buildmon
         self.buildmon.finish.set()
         self.buildmon.join()
-        self.compiler_types.update(
-            value for value in self.buildmon.compiler.values() if value is not None
-        )
-        self.tools.update(self.buildmon.executables)
         tu_list = self.processed_tus(self.buildmon.translation_units)
 
         proc_obj = {}
@@ -641,7 +636,6 @@ class Build(State):
                 indent=2,
             )
 
-        self.buildmon = None
         return list(tu_list)
 
     def _deactivate(self, final=False):
@@ -654,13 +648,12 @@ class Build(State):
 
         build_stdout = "\n".join(self.log["stdout"]) + "\n"
         build_stderr = "\n".join(self.log["stderr"]) + "\n"
-        pattern_map = {
-            name: Regex.get(name) for name in ("gnu", "msvc", "cmake", "autotools")
-        }
 
         match_map: Dict[str, List[Match]] = dict()
-        filter_by_regex(build_stdout, match_map, **pattern_map)
-        build_stderr = filter_by_regex(build_stderr, match_map, **pattern_map)
+        filter_by_regex(build_stdout, match_map, **Regex.dict("gnu", "msvc"))
+        build_stderr = filter_by_regex(
+            build_stderr, match_map, **Regex.dict("gnu", "msvc", "cmake", "autotools")
+        )
         self.log["warnings"] = warnings_from_matches(**match_map)
 
         build_stderr = filter_by_regex(
@@ -674,8 +667,9 @@ class Build(State):
         )
         build_stderr = build_stderr.rstrip()
         if build_stderr:
-            CONMON_LOG.debug("unprocessed stderr:\n%s", indent(build_stderr, "    "))
+            CONMON_LOG.debug("unprocessed stderr:\n%s", indent(build_stderr, "  "))
 
+        self.buildmon = None
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
 
@@ -754,24 +748,6 @@ class ConanParser:
         self.states.add(Package(self))
         self.states.add(BuildTest(self))
         self.states.add(RunTest(self))
-
-    @property
-    def compiler_type(self) -> str:
-        profile = self.log.get("config", {})
-        if "settings" not in profile:
-            return "unknown"
-
-        compiler = profile["settings"].get("compiler")
-        if "clang-cl" in profile.get("env", {}).get("CC", ""):
-            compiler_type = "gnu"
-        elif compiler in {"clang", "gcc", "cc"}:
-            compiler_type = "gnu"
-        elif compiler == "Visual Studio":
-            compiler_type = "msvc"
-        else:
-            compiler_type = "unknown"
-
-        return compiler_type
 
     def parse_line(self, line) -> Match:
         match = self.LINE_REGEX.match(line)

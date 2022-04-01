@@ -6,7 +6,6 @@ from typing import (
     Any,
     Dict,
     List,
-    Optional,
     Pattern,
     Tuple,
     Set,
@@ -113,9 +112,15 @@ class Regex:
     )
 
     @classmethod
-    def get(cls, key: str, default=None) -> Optional[Pattern]:
+    def get(cls, key: str) -> Pattern:
         key = key.replace("-", "_").upper()
-        return getattr(cls, key, default)
+        return getattr(cls, key)
+
+    @classmethod
+    def dict(cls, *keys: str) -> Dict[str, Pattern]:
+        if not keys:
+            keys = tuple(key for key in dir(cls) if key.isupper())
+        return {key: cls.get(key) for key in keys}
 
 
 _PROCESSED: Set[str] = set()
@@ -127,6 +132,24 @@ def convert(mapping: Dict[str, Any], func: Callable, *keys: str) -> None:
             continue
         with suppress(ValueError, TypeError, AttributeError):
             mapping[key] = func(mapping[key])
+
+
+def show_stats(stats):
+    total_stats = ((key[0], key[1], stats[key]) for key in sorted(stats))
+    for severity, stats_iter in groupby(total_stats, key=lambda _item: _item[0]):
+        stat_list: List[Any] = list(stat for stat in stats_iter)
+        total = sum(key[-1] for key in stat_list)
+        if total < 2:
+            continue
+        LOG.info(
+            "Compilation issued %s distinct %s(s)",
+            total,
+            severity,
+        )
+        for _, key, value in sorted(
+            stat_list, key=lambda item: (item[1][0], item[2]), reverse=True
+        ):
+            LOG.info("  %s: %s", key, value)
 
 
 def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
@@ -147,9 +170,7 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
             )
             convert(mapping, str.lower, "severity")
             if name in {"gnu", "msvc"}:
-                mapping["from"] = (
-                    "bison" if mapping["file"].endswith(".y") else "compiler"
-                )
+                mapping["from"] = "compilation"
             elif "from" not in mapping:
                 mapping["from"] = name
             warnings.append(mapping)
@@ -171,23 +192,8 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
                 output = shorten(
                     shorten_conan_path(match.group()), width=500, strip="middle"
                 )
-                LOG.log(level_by_name(severity), output.rstrip())
+                LOG.log(level_by_name(str(severity)), output.rstrip())
             stats[key] += 1
 
-    total_stats = ((key[0], key[1], stats[key]) for key in sorted(stats))
-    for severity, stats_iter in groupby(total_stats, key=lambda _item: _item[0]):
-        stat_list: List[Any] = list(stat for stat in stats_iter)
-        total = sum(key[-1] for key in stat_list)
-        if total < 2:
-            continue
-        LOG.info(
-            "Compilation issued %s distinct %s(s)",
-            total,
-            severity,
-        )
-        for _, key, value in sorted(
-            stat_list, key=lambda item: (item[1][0], item[2]), reverse=True
-        ):
-            LOG.info("  %s: %s", key, value)
-
+    show_stats(stats)
     return warnings
