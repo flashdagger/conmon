@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 import re
-from typing import Pattern, Tuple, Iterator, Match, Union, Optional
+from typing import Pattern, Tuple, Iterator, Match, Union, Optional, List, Dict
 
 DECOLORIZE_REGEX = re.compile(r"[\u001b]\[\d{1,2}m", re.UNICODE)
 CONAN_DATA_PATH = re.compile(
@@ -62,8 +62,12 @@ def finditer(
     yield None, string[span_end:]
 
 
-def split(
-    pattern: Union[Pattern[str], str], string: str, flags=0
-) -> Tuple[Tuple[Match, ...], Tuple[str, ...]]:
-    matches, strings = zip(*finditer(pattern, string, flags))
-    return matches[:-1], strings
+def filter_by_regex(
+    string: str, mapping: Dict[str, List[Match]], **patterns: Union[Pattern[str], str]
+) -> str:
+    for name, pattern in patterns.items():
+        matches, strings = zip(*finditer(pattern, string))
+        string = "".join(strings)
+        mapping.setdefault(name, []).extend(matches[:-1])
+
+    return string

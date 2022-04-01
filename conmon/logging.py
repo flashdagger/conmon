@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 import logging
 import os
-from typing import Dict, Mapping, Set
+from typing import Dict, Mapping, Set, Optional
 
 import colorama
 from colorlog import default_log_colors, ColoredFormatter
@@ -36,6 +36,12 @@ class UniqueLogger(logging.Logger):
             return
         self.seen.add(key)
         getattr(self._logger, "_log")(level, msg, args, **kwargs)
+
+
+def level_by_name(name: Optional[str], default=logging.INFO) -> int:
+    name = name.upper() if name else ""
+    name, *_ = name.split()
+    return getattr(logging, name, default)
 
 
 def setup_logger(logger: logging.Logger):

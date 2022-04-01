@@ -16,6 +16,7 @@ from itertools import chain
 from operator import itemgetter
 from pathlib import Path
 from subprocess import PIPE
+from textwrap import indent
 from typing import (
     Any,
     Dict,
@@ -30,7 +31,6 @@ from typing import (
     Iterator,
     Callable,
     cast,
-    Hashable,
 )
 
 from psutil import Popen, Process
@@ -39,18 +39,15 @@ from . import __version__
 from . import conan
 from . import json
 from .buildmon import BuildMonitor
-from .compilers import (
-    LOG as BLOG,
-    WarningRegex,
-    filter_compiler_warnings,
-    filter_lines,
-    parse_autotools_warnings,
-    parse_cmake_warnings,
-    parse_compiler_warnings,
-)
 from .conan import LOG as CONAN_LOG
 from .logging import get_logger, init as initialize_logging, logger_escape_code
-from .regex import DECOLORIZE_REGEX, REF_REGEX, shorten_conan_path, compact_pattern
+from .regex import (
+    DECOLORIZE_REGEX,
+    REF_REGEX,
+    shorten_conan_path,
+    compact_pattern,
+    filter_by_regex,
+)
 from .utils import (
     StrictConfigParser,
     ScreenWriter,
@@ -58,8 +55,11 @@ from .utils import (
     unique,
     ProcessStreamHandler,
     get_terminal_width,
-    freeze_json_object,
-    added_first,
+)
+from .warnings import (
+    LOG as BLOG,
+    Regex,
+    warnings_from_matches,
 )
 
 CONMON_LOG = get_logger("CONMON")
@@ -90,23 +90,6 @@ def filehandler(key: str, mode="w", hint="") -> TextIO:
         LOG_HINTS.setdefault(template.format(env_key, hint_path, hint))
 
     return open(path or os.devnull, mode=mode, encoding="utf-8")
-
-
-def popwarnings(error_lines: List[List[str]], parse_func: Callable[[str], List[Dict]]):
-    residue = []
-    parsed_warnings = []
-    seen: Set[Hashable] = set()
-
-    for lines in error_lines:
-        warnings_found = parse_func("\n".join(lines))
-        if not warnings_found:
-            residue.append(lines)
-        for warning in warnings_found:
-            frozen = freeze_json_object(warning)
-            if added_first(seen, frozen):
-                parsed_warnings.append(warning)
-
-    return parsed_warnings, residue
 
 
 def emit_warnings(lines: List[List[str]]):
@@ -664,53 +647,35 @@ class Build(State):
     def _deactivate(self, final=False):
         self.flush_warning_count()
         self.parser.screen.reset()
-        self.log["translation_units"] = self.translation_units()
-        warnings = self.log.setdefault("warnings", [])
-        build_stdout = "\n".join(self.log["stdout"])
-        self.compiler_types.add(self.parser.compiler_type)
-        if self.tools & {"bison", "win_bison"}:
-            self.compiler_types.add("gnu")
-
-        for compiler_type in self.compiler_types:
-            warnings.extend(
-                parse_compiler_warnings(
-                    build_stdout,
-                    compiler=compiler_type,
-                ),
-            )
 
         stderr_lines = self.log.pop("stderr_lines", ())
         self.log.setdefault("stderr", []).extend(chain(*stderr_lines))
+        self.log["translation_units"] = self.translation_units()
 
-        for compiler_type in self.compiler_types:
-            warning_output, stderr_lines = filter_compiler_warnings(
-                stderr_lines, compiler=compiler_type
-            )
-            compiler_warnings = parse_compiler_warnings(
-                warning_output, compiler=compiler_type
-            )
-            warnings.extend(compiler_warnings)
+        build_stdout = "\n".join(self.log["stdout"]) + "\n"
+        build_stderr = "\n".join(self.log["stderr"]) + "\n"
+        pattern_map = {
+            name: Regex.get(name) for name in ("gnu", "msvc", "cmake", "autotools")
+        }
 
-        if "cmake" in self.tools:
-            cmake_warnings, stderr_lines = popwarnings(
-                stderr_lines, parse_cmake_warnings
-            )
-            warnings.extend(cmake_warnings)
+        match_map: Dict[str, List[Match]] = dict()
+        filter_by_regex(build_stdout, match_map, **pattern_map)
+        build_stderr = filter_by_regex(build_stderr, match_map, **pattern_map)
+        self.log["warnings"] = warnings_from_matches(**match_map)
 
-        tools_warnings, stderr_lines = popwarnings(
-            stderr_lines, parse_autotools_warnings
+        build_stderr = filter_by_regex(
+            build_stderr,
+            {},
+            empty_lines=re.compile(r"(?m)^\s*\n"),
+            warnings_generated=re.compile(r"(?m)^\d+ warnings? generated\.\n"),
+            meson_status=re.compile(
+                r"(?m)^(Generating targets|(Writing )?build\.ninja): +\d+ *%.+\n"
+            ),
         )
-        warnings.extend(tools_warnings)
+        build_stderr = build_stderr.rstrip()
+        if build_stderr:
+            CONMON_LOG.debug("unprocessed stderr:\n%s", indent(build_stderr, "    "))
 
-        stderr_lines = filter_lines(
-            stderr_lines,
-            # empty lines
-            re.compile(r"^\s*$"),
-            # meson progress bar
-            re.compile(r"(?m)^(Generating targets|(Writing )?build\.ninja): +\d+ *%"),
-            # WarningRegex.AUTOTOOLS,
-        )
-        emit_warnings(stderr_lines)
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
 
@@ -860,7 +825,7 @@ class ConanParser:
 
         for line in lines:
             line = line.rstrip()
-            match = WarningRegex.CONAN.match(line)
+            match = Regex.CONAN.match(line)
             if match:
                 flush()
                 ref, severity_l, severity_r, info = match.group(

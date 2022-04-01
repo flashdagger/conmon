@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from conmon.compilers import WarningRegex
+from conmon.warnings import Regex
 
 output = [
     "src/main/src/Em_FilteringQmFu.c: In function "
@@ -350,6 +350,6 @@ def test_warnings_regex(expected, request):
     compiler = request.node.callspec.id
     matches = list(
         match.groupdict()
-        for match in re.finditer(WarningRegex.get(compiler), "\n".join(output))
+        for match in re.finditer(Regex.get(compiler), "\n".join(output))
     )
     assert matches == expected
