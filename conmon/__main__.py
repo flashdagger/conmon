@@ -532,8 +532,9 @@ class Build(State):
         else:
             match = self.parser.SEVERITY_REGEX.match(line)
             severity = match and match.group("severity")
-            if severity == "error":
-                esc = logger_escape_code(BLOG, "ERROR")
+            if severity and "error" in severity:
+                level_name = "CRITICAL" if severity == "fatal error" else "ERROR"
+                esc = logger_escape_code(BLOG, level_name)
                 self.screen.print(f"{esc}E {line}")
             elif severity == "warning":
                 self.warnings += 1
@@ -723,7 +724,7 @@ class RunTest(State):
 class ConanParser:
     CONAN_VERSION = "<undefined>"
     SEVERITY_REGEX = re.compile(
-        r"(?xm).+?:\ (?P<severity>warning|error)(?::\ |\ [a-zA-Z])"
+        r"(?xm).+?:\ (?P<severity>warning|error|fatal\ error)(?::\ |\ [a-zA-Z])"
     )
     LINE_REGEX = re.compile(
         rf"(?:{compact_pattern(REF_REGEX)[0]}(?:: ?| ))?(?P<rest>[^\r\n]*)"
@@ -950,10 +951,13 @@ def monitor(args: List[str]) -> int:
     with filehandler("report_json", hint="report json") as fh:
         json.dump(parser.log, fh, indent=2)
 
+    returncode = process.wait()
+    if returncode:
+        CONMON_LOG.error("conan exited with code %s", returncode)
     for hint in LOG_HINTS:
         CONMON_LOG.info(hint)
 
-    return process.wait()
+    return returncode
 
 
 def main() -> int:

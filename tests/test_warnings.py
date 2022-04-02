@@ -118,6 +118,7 @@ output = [
     "                 from stringinfo.c:20:",
     "../../src/include/pg_config.h:772:24: warning: ISO C does not support \u2018__int128\u2019 "
     "types [-Wpedantic]",
+    "C:\\src\\bzlib.c(161) : note: index 'blockSize100k' range checked by comparison on this line",
     "",
 ]
 
@@ -126,7 +127,8 @@ dataset = [
     pytest.param(
         [
             {
-                "context": "src/main/src/Em_FilteringQmFu.c: In function ‘Em_FilteringQmFu_processSensorSignals’:\n",
+                "context": "src/main/src/Em_FilteringQmFu.c: In function "
+                "‘Em_FilteringQmFu_processSensorSignals’:\n",
                 "file": "src/main/src/Em_FilteringQmFu.c",
                 "category": "-Wimplicit-function-declaration",
                 "line": "266",
@@ -167,7 +169,8 @@ dataset = [
                 "line": "1073",
                 "column": "11",
                 "severity": "warning",
-                "info": "ignoring return value of ‘fchown’, declared with attribute warn_unused_result",
+                "info": ""
+                "ignoring return value of ‘fchown’, declared with attribute warn_unused_result",
                 "category": "-Wunused-result",
                 "hint": ""
                 " 1073 |    (void) fchown ( fd, fileMetaInfo.st_uid, fileMetaInfo.st_gid );\n"
@@ -220,7 +223,8 @@ dataset = [
                 "                 from ../source_subfolder/atk/atkobject.h:27,\n"
                 "                 from ../source_subfolder/atk/atk.h:25,\n"
                 "                 from ../source_subfolder/atk/atktext.c:22:\n"
-                "../source_subfolder/atk/atktext.c: In function \u2018atk_text_range_get_type_once\u2019:\n",
+                "../source_subfolder/atk/atktext.c: In function "
+                "\u2018atk_text_range_get_type_once\u2019:\n",
                 "file": "../source_subfolder/atk/atktext.c",
                 "line": "1640",
                 "column": "52",
@@ -265,6 +269,16 @@ dataset = [
                 "severity": "warning",
                 "info": "ISO C does not support ‘__int128’ types",
                 "category": "-Wpedantic",
+                "hint": None,
+            },
+            {
+                "context": "",
+                "file": "C:\\src\\bzlib.c",
+                "line": "161",
+                "column": None,
+                "severity": "note",
+                "category": None,
+                "info": "index 'blockSize100k' range checked by comparison on this line",
                 "hint": None,
             },
         ],

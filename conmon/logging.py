@@ -38,7 +38,7 @@ class UniqueLogger(logging.Logger):
         getattr(self._logger, "_log")(level, msg, args, **kwargs)
 
 
-def level_from_name(name: Optional[str], default=logging.INFO) -> int:
+def level_from_name(name: Optional[str], default=logging.NOTSET) -> int:
     name = name.upper() if name else ""
     name, *_ = name.split()
     return getattr(logging, name, default)

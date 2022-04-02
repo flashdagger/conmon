@@ -60,8 +60,8 @@ class Regex:
                 (?P<column>\d+(?:-\d+)?)
             )?
         )?
-        \)?:\ #
-        (?P<severity>warning|error|note|fatal error):\ #
+        (?:\)\ ?)?:\ #
+        (?P<severity>warning|error|note|fatal\ error):\ #
         (?P<info>.*?)
         (\ \[(?P<category>[\w=+\-]+)])?
         \n
@@ -154,6 +154,8 @@ def show_stats(stats):
             total,
             severity,
         )
+        if severity != "warning":
+            continue
         for _, key, value in sorted(
             stat_list, key=lambda item: (item[1][0], item[2]), reverse=True
         ):
@@ -184,7 +186,7 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
             warnings.append(mapping)
 
             severity = mapping.get("severity")
-            if severity not in {"warning", "error", "fatal error"}:
+            if severity not in {"warning", "error", "fatal error", "note"}:
                 continue
             if name == "cmake" and not mapping["file"]:
                 continue
@@ -196,7 +198,7 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
                 else mapping["from"],
             )
 
-            if key not in stats:
+            if key not in stats and severity != "note":
                 output = shorten(
                     shorten_conan_path(match.group()), width=500, strip="middle"
                 )
