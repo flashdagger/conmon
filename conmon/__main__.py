@@ -779,26 +779,21 @@ class ConanParser:
         residue: List[str] = []
         stderr: List[str] = []
         ref: Optional[str] = None
-        is_defaultlog = self.defaultlog == self.log
 
         def flush():
             if not processed:
                 return
 
             self.screen.reset()
-            preq = -1 if ref or is_defaultlog else None
+            max_width = (get_terminal_width() or 140) - 20
 
-            if len(processed) == 1:
-                max_width = -1 if is_defaultlog else (get_terminal_width() or 140) - 20
-                CONAN_LOG.log(
-                    loglevel,
-                    shorten(processed[0], width=preq or max_width, strip="right"),
-                )
-            else:
-                CONAN_LOG.log(
-                    loglevel,
-                    shorten("\n".join(processed), width=preq or 300, strip="middle"),
-                )
+            CONAN_LOG.log(
+                loglevel,
+                "\n".join(
+                    shorten(_line, width=max_width, strip="middle")
+                    for _line in processed
+                ),
+            )
             self.getdefaultlog(ref).setdefault("stderr", []).extend(stderr)
 
         if not "".join(lines).rstrip():
@@ -817,7 +812,7 @@ class ConanParser:
                 prefix = f"{ref}: " if ref else ""
                 processed = [f"{prefix}{shorten_conan_path(info)}"]
                 stderr = [line]
-            elif processed or is_defaultlog:
+            elif processed or self.defaultlog == self.log:
                 processed.append(shorten_conan_path(line))
                 stderr.append(line)
             else:

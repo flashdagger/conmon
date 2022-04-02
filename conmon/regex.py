@@ -4,6 +4,8 @@
 import re
 from typing import Pattern, Tuple, Iterator, Match, Union, Optional, List, Dict
 
+from conmon.conan import storage_path
+
 DECOLORIZE_REGEX = re.compile(r"[\u001b]\[\d{1,2}m", re.UNICODE)
 CONAN_DATA_PATH = re.compile(
     r"""(?x)
@@ -36,7 +38,11 @@ REF_REGEX = re.compile(
 
 
 def shorten_conan_path(text: str, placeholder=r"...\g<sep>", count=0) -> str:
-    return CONAN_DATA_PATH.sub(placeholder, text, count=count)
+    storage = str(storage_path())
+    text = CONAN_DATA_PATH.sub(placeholder, text, count=count)
+    if len(storage) > 20:
+        text = text.replace(storage, "...")
+    return text
 
 
 def compact_pattern(regex: Pattern) -> Tuple[str, int]:
