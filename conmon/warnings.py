@@ -68,7 +68,7 @@ class Regex:
         (
             (?P<hint>
                 [^\n]+\n
-                [^\^\n]*\^[^\^\n]*
+                (?: [^\^\n]*\^[^\^\n]* | \ +\|[^\n]+ )
                 (?:\n\ +[^\n]+)*
             )
             \n
@@ -109,9 +109,9 @@ class Regex:
     )
     CONAN = re.compile(
         rf"""(?xm)
-        (?:(?P<severity_l>ERROR|WARN):\ )?
+        ^(?:(?P<severity_l>ERROR|WARN(?:ING)?):\ )?
         (?:{compact_pattern(REF_REGEX)[0]}:\ +)?
-        (?(severity_l) | (?P<severity>ERROR|WARN):\ ?)
+        (?(severity_l) | (?P<severity>ERROR|WARN(?:ING)?):\ ?)
         (?P<info>.*)
         \n
         """
