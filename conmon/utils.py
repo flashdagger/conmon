@@ -261,20 +261,18 @@ def shorten(
 T = TypeVar("T", bound=Hashable)
 
 
-def unique(items: Iterable[T]) -> Iterator[T]:
-    seen = set()
-    for item in items:
-        if item in seen:
-            continue
-        seen.add(item)
-        yield item
-
-
 def added_first(container: Set, item: Hashable) -> bool:
     if item in container:
         return False
     container.add(item)
     return True
+
+
+def unique(items: Iterable[T]) -> Iterator[T]:
+    seen: Set[Hashable] = set()
+    for item in items:
+        if added_first(seen, freeze_json_object(item)):
+            yield item
 
 
 def common_parent(*paths: Union[str, os.PathLike]) -> Optional[Path]:

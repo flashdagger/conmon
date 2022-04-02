@@ -41,7 +41,7 @@ def shorten_conan_path(text: str, placeholder=r"...\g<sep>", count=0) -> str:
     storage = str(storage_path())
     text = CONAN_DATA_PATH.sub(placeholder, text, count=count)
     if len(storage) > 20:
-        text = text.replace(storage, "...")
+        text = text.replace(storage, "(storage)")
     return text
 
 

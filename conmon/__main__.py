@@ -41,6 +41,7 @@ from . import json
 from .buildmon import BuildMonitor
 from .conan import LOG as CONAN_LOG
 from .logging import (
+    UniqueLogger,
     get_logger,
     init as initialize_logging,
     logger_escape_code,
@@ -54,12 +55,12 @@ from .regex import (
     filter_by_regex,
 )
 from .utils import (
-    StrictConfigParser,
+    ProcessStreamHandler,
     ScreenWriter,
+    StrictConfigParser,
+    get_terminal_width,
     shorten,
     unique,
-    ProcessStreamHandler,
-    get_terminal_width,
 )
 from .warnings import (
     LOG as BLOG,
@@ -68,6 +69,7 @@ from .warnings import (
 )
 
 CONMON_LOG = get_logger("CONMON")
+CONAN_LOG_ONCE = UniqueLogger(CONAN_LOG)
 PARENT_PROCS = [parent.name() for parent in Process(os.getppid()).parents()]
 LOG_HINTS: Dict[str, None] = {}
 
@@ -95,20 +97,6 @@ def filehandler(key: str, mode="w", hint="") -> TextIO:
         LOG_HINTS.setdefault(template.format(env_key, hint_path, hint))
 
     return open(path or os.devnull, mode=mode, encoding="utf-8")
-
-
-def emit_warnings(lines: List[List[str]]):
-    more = len(lines) - 10
-    if more > 0:
-        lines = [
-            *lines[:10],
-            [f"... {more} more lines emitted ..."],
-        ]
-    filtered = unique(tuple(lines) for lines in lines)
-    res_msg = "\n[...]\n".join(("\n".join(lines) for lines in filtered))
-    res_msg = shorten_conan_path(res_msg)
-    if res_msg.strip():
-        CONMON_LOG.warning("STDERR: %s", res_msg.strip("\n"))
 
 
 class State:
@@ -671,9 +659,12 @@ class Build(State):
                 r"(?m)^(Generating targets|(Writing )?build\.ninja): +\d+ *%.+\n"
             ),
         )
-        build_stderr = build_stderr.rstrip()
+        build_stderr = "".join(unique(build_stderr.splitlines(keepends=True))).rstrip()
         if build_stderr:
-            CONMON_LOG.debug("unprocessed stderr:\n%s", indent(build_stderr, "  "))
+            CONMON_LOG.debug(
+                "unprocessed stderr:\n%s",
+                indent(shorten_conan_path(build_stderr), "  "),
+            )
 
         self.buildmon = None
         self.parser.setdefaultlog()
@@ -788,7 +779,7 @@ class ConanParser:
             self.screen.reset()
             max_width = (get_terminal_width() or 140) - 20
 
-            CONAN_LOG.log(
+            CONAN_LOG_ONCE.log(
                 loglevel,
                 "\n".join(
                     shorten(_line, width=max_width, strip="middle")
