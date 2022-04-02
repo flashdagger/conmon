@@ -423,7 +423,7 @@ class Build(State):
         r"""(?x)
             (?:
                 (?P<status>
-                    \[\ {0,2}\d+(?:%|/\d+) ] | \ +(?:CC|CCLD|CPPAS)(?=\ )
+                    \[\ {0,2}\d+(?:%|[/\d]+) ] | \ +(?:CC|CCLD|CPPAS)(?=\ )
                 )?  # ninja, cmake or automake
                 .*? # msbuild prints only the filename
             )?
@@ -502,9 +502,11 @@ class Build(State):
         ) or self.BUILD_STATUS_REGEX2.match(line)
         if match:
             self.flush_warning_count()
-
             status, file = match.groups()
-            prefix = f"{status.strip():>9} " if status else ""
+            with suppress(ValueError, AttributeError):
+                _current, _total = status.strip("[]").split("/")
+                status = f"[{_current:>0{len(_total)}}/{_total}]"
+            prefix = f"{status} " if status else ""
             output = shorten(
                 file,
                 width=self.MAX_WIDTH,
