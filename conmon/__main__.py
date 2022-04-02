@@ -40,7 +40,12 @@ from . import conan
 from . import json
 from .buildmon import BuildMonitor
 from .conan import LOG as CONAN_LOG
-from .logging import get_logger, init as initialize_logging, logger_escape_code
+from .logging import (
+    get_logger,
+    init as initialize_logging,
+    logger_escape_code,
+    level_from_name,
+)
 from .regex import (
     DECOLORIZE_REGEX,
     REF_REGEX,
@@ -775,7 +780,6 @@ class ConanParser:
         stderr: List[str] = []
         ref: Optional[str] = None
         is_defaultlog = self.defaultlog == self.log
-        max_width = -1 if is_defaultlog else (get_terminal_width() or 140) - 20
 
         def flush():
             if not processed:
@@ -785,6 +789,7 @@ class ConanParser:
             preq = -1 if ref or is_defaultlog else None
 
             if len(processed) == 1:
+                max_width = -1 if is_defaultlog else (get_terminal_width() or 140) - 20
                 CONAN_LOG.log(
                     loglevel,
                     shorten(processed[0], width=preq or max_width, strip="right"),
@@ -800,15 +805,15 @@ class ConanParser:
             return
 
         for line in lines:
-            line = line.rstrip()
             match = Regex.CONAN.match(line)
+            line = line.rstrip("\n")
             if match:
                 flush()
                 ref, severity_l, severity_r, info = match.group(
                     "ref", "severity_l", "severity", "info"
                 )
                 severity = severity_l or severity_r
-                loglevel = getattr(logging, severity, logging.WARNING)
+                loglevel = level_from_name(severity, logging.WARNING)
                 prefix = f"{ref}: " if ref else ""
                 processed = [f"{prefix}{shorten_conan_path(info)}"]
                 stderr = [line]

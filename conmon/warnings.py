@@ -14,7 +14,7 @@ from typing import (
     Callable,
 )
 
-from .logging import UniqueLogger, get_logger, level_by_name
+from .logging import UniqueLogger, get_logger, level_from_name
 from .regex import REF_REGEX, compact_pattern, shorten_conan_path
 from .utils import shorten, added_first
 
@@ -200,7 +200,7 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
                 output = shorten(
                     shorten_conan_path(match.group()), width=500, strip="middle"
                 )
-                LOG.log(level_by_name(str(severity)), output.rstrip())
+                LOG.log(level_from_name(str(severity)), output.rstrip())
             stats[key] += 1
 
     show_stats(stats)

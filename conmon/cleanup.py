@@ -143,12 +143,12 @@ def cleanup_conan_cache(args) -> int:
     return return_status
 
 
+# pylint: disable=too-many-branches
 def cleanup_conan_dlcache(args) -> int:
-    output = conan.download_cache()
-    if output is None:
+    cache = conan.download_cache()
+    if cache is None:
         return 1
 
-    cache = Path(output)
     if not cache.exists():
         return 0
 

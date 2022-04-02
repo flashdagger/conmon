@@ -154,6 +154,7 @@ def identify_compiler(name: str) -> Optional[str]:
     return None
 
 
+# pylint: disable=too-many-instance-attributes
 class BuildMonitor(Thread):
     CYCLE_TIME_S = 0.025
     PARSER = CompilerParser(prog=Path(__file__).stem, add_help=False)
