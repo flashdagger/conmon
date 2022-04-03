@@ -462,7 +462,7 @@ class Build(State):
     def _deactivated(parsed_line: Match) -> bool:
         line = parsed_line.group("rest")
         match = re.fullmatch(r"Package '\w+' built", line)
-        return bool(match)
+        return bool(match) or line.startswith("ERROR:")
 
     def activated(self, parsed_line: Match) -> bool:
         full_line, ref = parsed_line.group(0, "ref")
@@ -839,9 +839,15 @@ class ConanParser:
             partial(map, partial(DECOLORIZE_REGEX.sub, "")),
         )
 
+        readmerged = os.name == "posix" and conan.conmon_setting(
+            "build.merge_stderr", default=False
+        )
         while not streams.exhausted:
             try:
-                stdout, stderr = streams.readboth()
+                if readmerged and isinstance(self.states.active_instance(), Build):
+                    stdout, stderr = streams.readmerged(), ()
+                else:
+                    stdout, stderr = streams.readboth()
             except KeyboardInterrupt:
                 with suppress(KeyboardInterrupt):
                     self.screen.reset()

@@ -12,6 +12,7 @@ from io import TextIOBase
 from math import log
 from pathlib import Path
 from queue import Queue
+from select import select
 from threading import Thread
 from typing import (
     Hashable,
@@ -175,6 +176,11 @@ class ProcessStreamHandler:
     def __init__(self, proc: Popen):
         self.stdout = AsyncPipeReader(proc.stdout)
         self.stderr = AsyncPipeReader(proc.stderr)
+        self.select = (
+            lambda: select([proc.stdout, proc.stderr], [], [])
+            if os.name == "posix"
+            else lambda: None
+        )
 
     @property
     def exhausted(self) -> bool:
@@ -184,6 +190,15 @@ class ProcessStreamHandler:
         stdout_lines = tuple(self.stdout.readlines(block_first=True))
         stderr_lines = tuple(self.stderr.readlines())
         return stdout_lines, stderr_lines
+
+    def readmerged(self) -> Tuple[str, ...]:
+        while not self.exhausted:
+            stdout_lines = tuple(self.stdout.readlines())
+            stderr_lines = tuple(self.stderr.readlines())
+            if stderr_lines or stdout_lines:
+                return stdout_lines + stderr_lines
+            self.select()
+        return ()
 
 
 class MappingPair(tuple):
