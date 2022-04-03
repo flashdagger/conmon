@@ -936,6 +936,11 @@ def monitor(args: List[str]) -> int:
     process = Popen(
         conan_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
     )
+    cycle_time_s = conan.conmon_setting("build.monitor", True)
+    if isinstance(cycle_time_s, float):
+        BuildMonitor.CYCLE_TIME_S = cycle_time_s
+    elif not cycle_time_s:
+        BuildMonitor.ACTIVE = False
     parser = ConanParser(process)
     with filehandler("conan_log", hint="raw conan output") as fh:
         parser.process_streams(fh)

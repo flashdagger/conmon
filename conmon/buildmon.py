@@ -159,6 +159,7 @@ def identify_compiler(name: str) -> Optional[str]:
 
 # pylint: disable=too-many-instance-attributes
 class BuildMonitor(Thread):
+    ACTIVE = True
     CYCLE_TIME_S = 0.025
     PARSER = CompilerParser(prog=Path(__file__).stem, add_help=False)
 
@@ -175,6 +176,8 @@ class BuildMonitor(Thread):
         self.msys_bin: Union[None, bool, Path] = None
 
     def start(self) -> None:
+        if not self.ACTIVE:
+            return
         self.stop()
         assert not self.is_alive()
         self.__init__(self.proc)
