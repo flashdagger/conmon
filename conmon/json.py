@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+
 from json import JSONEncoder, loads, load
 from pathlib import Path
 from typing import TextIO
