@@ -419,6 +419,7 @@ class Export(State):
 
 class Build(State):
     MAX_WIDTH = 65
+    PROC_JSON_RESET = False
     BUILD_STATUS_REGEX = re.compile(
         r"""(?x)
             (?:
@@ -447,9 +448,13 @@ class Build(State):
         super().__init__(parser)
         self.parser = parser
         self.warnings = 0
-        self.buildmon: Optional[BuildMonitor] = None
+        self.buildmon = BuildMonitor(self.parser.process)
         self.log = parser.defaultlog
         self.ref = "???"
+        if not Build.PROC_JSON_RESET:
+            with filehandler("proc_json", hint="process debug json") as fh:
+                fh.write("{}")
+            Build.PROC_JSON_RESET = True
 
     def _activated(self, parsed_line: Match) -> bool:
         line, self.ref = parsed_line.group("rest", "ref")
@@ -473,7 +478,6 @@ class Build(State):
                 self.REF_LOG_KEY, {}
             )
             self.log.setdefault("stdout", [])
-            self.buildmon = BuildMonitor(self.parser.process)
             self.buildmon.start()
             return True
         return False
@@ -541,7 +545,6 @@ class Build(State):
             "make": lambda path: path.stem in {"conftest", "dummy"}
             or path.parent.as_posix().endswith("/tools/build/feature"),
         }
-        assert self.buildmon
         active_filters = {
             key: value
             for key, value in src_filter.items()
@@ -611,12 +614,7 @@ class Build(State):
                 "s" if set_counter > 1 else "",
             )
 
-    def translation_units(self) -> List[Dict[str, Any]]:
-        assert self.buildmon
-        self.buildmon.finish.set()
-        self.buildmon.join()
-        tu_list = self.processed_tus(self.buildmon.translation_units)
-
+    def dump_debug_proc(self):
         proc_obj = {}
         with suppress(ValueError, OSError, TypeError):
             with filehandler(
@@ -632,15 +630,17 @@ class Build(State):
                 indent=2,
             )
 
-        return list(tu_list)
-
     def _deactivate(self, final=False):
         self.flush_warning_count()
         self.parser.screen.reset()
+        self.buildmon.stop()
+        self.dump_debug_proc()
 
         stderr_lines = self.log.pop("stderr_lines", ())
         self.log.setdefault("stderr", []).extend(chain(*stderr_lines))
-        self.log["translation_units"] = self.translation_units()
+        self.log["translation_units"] = list(
+            self.processed_tus(self.buildmon.translation_units)
+        )
 
         build_stdout = "\n".join(self.log["stdout"]) + "\n"
         build_stderr = "\n".join(self.log["stderr"]) + "\n"
@@ -668,7 +668,6 @@ class Build(State):
                 indent(shorten_conan_path(build_stderr), "  "),
             )
 
-        self.buildmon = None
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
 
@@ -679,7 +678,8 @@ class BuildTest(Build):
     def _activated(self, parsed_line: Match) -> bool:
         line, ref = parsed_line.group("rest", "ref")
         if line == "(test package): Calling build()":
-            self.screen.print(f"Building test for {ref}")
+            self.ref = f"{ref} (test package)"
+            self.screen.print(f"Building {self.ref}")
             return True
         return False
 
@@ -845,7 +845,8 @@ class ConanParser:
         while not streams.exhausted:
             try:
                 if readmerged and isinstance(self.states.active_instance(), Build):
-                    stdout, stderr = streams.readmerged(), ()
+                    stderr: Tuple[str, ...] = ()
+                    stdout = streams.readmerged()
                 else:
                     stdout, stderr = streams.readboth()
             except KeyboardInterrupt:
