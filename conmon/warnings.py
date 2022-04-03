@@ -1,3 +1,4 @@
+import logging
 import re
 from collections import Counter
 from contextlib import suppress
@@ -12,14 +13,16 @@ from typing import (
     Iterable,
     Match,
     Callable,
+    Optional,
 )
 
-from .logging import UniqueLogger, get_logger, level_from_name
+from .logging import UniqueLogger, get_logger
 from .regex import REF_REGEX, compact_pattern, shorten_conan_path
-from .utils import shorten, added_first
+from .utils import added_first
 
 LOG = get_logger("BUILD")
 LOG_ONCE = UniqueLogger(LOG)
+_PROCESSED: Set[str] = set()
 
 
 class Regex:
@@ -131,7 +134,18 @@ class Regex:
         return {key: cls.get(key) for key in keys}
 
 
-_PROCESSED: Set[str] = set()
+def loglevel_from_severity(severity: Optional[str]) -> int:
+    severity = severity.lower() if severity else ""
+
+    if severity.startswith("warn"):
+        return logging.WARNING
+    if severity == "fatal error":
+        return logging.CRITICAL
+    if severity == "error":
+        return logging.ERROR
+    if severity == "note":
+        return logging.INFO
+    return logging.NOTSET
 
 
 def convert(mapping: Dict[str, Any], func: Callable, *keys: str) -> None:
@@ -144,13 +158,13 @@ def convert(mapping: Dict[str, Any], func: Callable, *keys: str) -> None:
 
 def show_stats(stats):
     total_stats = ((key[0], key[1], stats[key]) for key in sorted(stats))
-    for severity, stats_iter in groupby(total_stats, key=lambda _item: _item[0]):
-        stat_list: List[Any] = list(stat for stat in stats_iter)
+    for severity, stats_iter in groupby(total_stats, key=lambda item: item[0]):
+        stat_list = tuple(stats_iter)
         total = sum(key[-1] for key in stat_list)
         if total < 2:
             continue
         LOG.info(
-            "Compilation issued %s distinct %s(s)",
+            "Compilation issued %s distinct %ss",
             total,
             severity,
         )
@@ -159,7 +173,7 @@ def show_stats(stats):
         for _, key, value in sorted(
             stat_list, key=lambda item: (item[1][0], item[2]), reverse=True
         ):
-            LOG.info("  %s: %s", key, value)
+            LOG.info(" %4sx %s", value, key)
 
 
 def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
@@ -199,10 +213,10 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
             )
 
             if key not in stats and severity != "note":
-                output = shorten(
-                    shorten_conan_path(match.group()), width=500, strip="middle"
+                LOG.log(
+                    loglevel_from_severity(severity),
+                    shorten_conan_path(match.group().rstrip()),
                 )
-                LOG.log(level_from_name(str(severity)), output.rstrip())
             stats[key] += 1
 
     show_stats(stats)

@@ -505,7 +505,7 @@ class Build(State):
             status, file = match.groups()
             with suppress(ValueError, AttributeError):
                 _current, _total = status.strip("[]").split("/")
-                status = f"[{_current:>0{len(_total)}}/{_total}]"
+                status = f"[{_current:>{len(_total)}}/{_total}]"
             prefix = f"{status} " if status else ""
             output = shorten(
                 file,

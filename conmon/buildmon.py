@@ -22,7 +22,7 @@ from conmon.utils import (
 from .logging import get_logger, UniqueLogger
 from .utils import shorten
 
-LOG = get_logger("BUILDMON")
+LOG = get_logger("PROC")
 LOG_ONCE = UniqueLogger(LOG)
 
 
