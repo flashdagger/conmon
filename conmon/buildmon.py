@@ -9,9 +9,8 @@ from contextlib import suppress
 from functools import partial
 from pathlib import Path
 from statistics import mean, median
-from subprocess import check_output, CalledProcessError
 from threading import Event, Thread
-from typing import Any, Dict, List, Optional, Set, Hashable, Iterator, Union, Tuple
+from typing import Any, Dict, List, Optional, Set, Hashable, Union
 
 from psutil import AccessDenied, Process, NoSuchProcess
 
@@ -22,22 +21,13 @@ from conmon.utils import (
     human_readable_size,
     human_readable_byte_size,
 )
+from .bash import Bash, BashError, scan_msys
 from .logging import get_logger, UniqueLogger
+from .regex import shorten_conan_path
 from .utils import shorten
 
 LOG = get_logger("PROC")
 LOG_ONCE = UniqueLogger(LOG)
-
-
-def parse_ps(output: str) -> Iterator[Dict[str, str]]:
-    lines = output.splitlines(keepends=False)
-    header = lines[0].split()
-
-    for line in lines[1:]:
-        if not line.startswith(" "):
-            continue
-        entries = line.split(maxsplit=len(header) - 1)
-        yield dict(zip(header, entries))
 
 
 class CompilerParser(argparse.ArgumentParser):
@@ -173,7 +163,7 @@ class BuildMonitor(Thread):
         self.finish = Event()
         self.timing: List[float] = []
         self.executables: Set[str] = set()
-        self.msys_bin: Union[None, bool, Path] = None
+        self.bash: Union[None, bool, Bash] = None
         self.seen_proc: Set[Process] = set()
 
     def start(self) -> None:
@@ -316,9 +306,7 @@ class BuildMonitor(Thread):
             LOG_ONCE.error(str(exc))
             return
 
-        for parent, procs in self.scan_msys().items():
-            if parent in children:
-                children.update(procs)
+        self.add_msys_procs(children)
 
         for child in children - self.seen_proc:
             with suppress(NoSuchProcess, AccessDenied, OSError, FileNotFoundError):
@@ -327,13 +315,15 @@ class BuildMonitor(Thread):
                     continue
 
                 path = Path(info["cmdline"][0])
-                if (
-                    path.name.lower() in {"bash.exe", "sh.exe"}
-                    and self.msys_bin is not False
-                ):
-                    if self.msys_bin is None:
-                        LOG.debug("Detected %s on Windows", path.stem)
-                    self.msys_bin = path.parent
+                if self.bash is None and path.name.lower() == "bash.exe":
+                    if self.bash is None:
+                        LOG.debug(
+                            "Detected %s on Windows: %s",
+                            path.stem,
+                            shorten_conan_path(path.as_posix()),
+                        )
+                        self.bash = False
+                        self.bash = Bash(path)
                 name = info["name"] = path.stem.lower()
                 if not identify_compiler(name):
                     self.executables.add(name)
@@ -361,6 +351,9 @@ class BuildMonitor(Thread):
             if sleep_time_s > 0.0:
                 time.sleep(sleep_time_s)
 
+        if self.bash:
+            self.bash.exit()
+
         for info_map in self.proc_cache.values():
             try:
                 self.check_process(info_map)
@@ -382,41 +375,24 @@ class BuildMonitor(Thread):
             hrs(median(self.timing)),
         )
 
-    def scan_msys(self):
-        procs: Dict[Process, Set[Process]] = {}
-        if not isinstance(self.msys_bin, Path):
-            return procs
-
-        ps_path = self.msys_bin / "ps.exe"
-        if not ps_path.is_file():
-            LOG.warning("Cannot execute ps.exe to scan for MSYS executables.")
-            self.msys_bin = False
-            return procs
+    def add_msys_procs(self, children):
+        if not self.bash:
+            return
 
         try:
-            output = check_output([str(ps_path)], encoding="utf8")
-        except CalledProcessError as exc:
-            LOG.error("call to ps.exe failed (%s)", exc.returncode)
-            self.msys_bin = False
-            return procs
+            if self.bash.last_cmd is None:
+                self.bash.send("/usr/bin/ps")
+                return
 
-        # mapping pid -> ppid, winpid
-        ppid_map: Dict[int, Tuple[int, int]] = {}
+            output = self.bash.receive(timeout=1.0)
+            if not output:
+                return
 
-        def root_process(child_pid: int) -> Process:
-            parent_pid, win_pid = ppid_map[child_pid]
-            if parent_pid == 1:
-                return Process(win_pid)
-            return root_process(parent_pid)
+            self.bash.send("/usr/bin/ps")
+            for parent, procs in scan_msys(output).items():
+                if parent in children:
+                    children.update(procs)
 
-        for info in parse_ps(output):
-            if info["COMMAND"].endswith("/ps"):
-                continue
-            ppid_map[int(info["PID"])] = int(info["PPID"]), int(info["WINPID"])
-
-        for pid, (_, winpid) in ppid_map.items():
-            with suppress(NoSuchProcess, KeyError):
-                root_proc = root_process(pid)
-                procs.setdefault(root_proc, set()).add(Process(winpid))
-
-        return procs
+        except BashError as exc:
+            LOG.error("<%s> %s", type(exc).__name__, exc)
+            self.bash = False

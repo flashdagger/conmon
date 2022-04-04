@@ -11,7 +11,7 @@ from contextlib import suppress
 from io import TextIOBase
 from math import log
 from pathlib import Path
-from queue import Queue
+from queue import Queue, Empty
 from select import select
 from threading import Thread
 from typing import (
@@ -26,6 +26,7 @@ from typing import (
     Tuple,
     Optional,
     Union,
+    IO,
 )
 
 import colorama
@@ -133,7 +134,7 @@ class ScreenWriter:
 
 
 class AsyncPipeReader:
-    def __init__(self, pipe: TextIOBase):
+    def __init__(self, pipe: IO):
         self.queue: Queue[str] = Queue()
         self.thread = Thread(target=self.reader, args=[pipe, self.queue])
         self.thread.start()
@@ -153,17 +154,27 @@ class AsyncPipeReader:
     def not_empty(self) -> bool:
         return not self.queue.empty()
 
-    def readlines(self, block_all=False, block_first=False) -> Iterator[str]:
+    def readlines(
+        self, block_all=False, block_first=False, timeout=None
+    ) -> Iterator[str]:
         if self.exhausted:
             return
 
         if block_first:
-            line = self.queue.get(block=True)
+            try:
+                line = self.queue.get(block=True, timeout=timeout)
+            except Empty:
+                return
+
             if line:
                 yield line
 
         while block_all or not self.queue.empty():
-            line = self.queue.get(block=block_all)
+            try:
+                line = self.queue.get(block=block_all, timeout=timeout)
+            except Empty:
+                return
+
             if not line:
                 break
             yield line
@@ -174,6 +185,7 @@ class AsyncPipeReader:
 
 class ProcessStreamHandler:
     def __init__(self, proc: Popen):
+        assert proc.stdout and proc.stderr, "stdout and stderr must be set"
         self.stdout = AsyncPipeReader(proc.stdout)
         self.stderr = AsyncPipeReader(proc.stderr)
         self.select = (
