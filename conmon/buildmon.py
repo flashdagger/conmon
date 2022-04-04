@@ -174,6 +174,7 @@ class BuildMonitor(Thread):
         self.timing: List[float] = []
         self.executables: Set[str] = set()
         self.msys_bin: Union[None, bool, Path] = None
+        self.seen_proc: Set[Process] = set()
 
     def start(self) -> None:
         if not self.ACTIVE:
@@ -319,7 +320,7 @@ class BuildMonitor(Thread):
             if parent in children:
                 children.update(procs)
 
-        for child in children:
+        for child in children - self.seen_proc:
             with suppress(NoSuchProcess, AccessDenied, OSError, FileNotFoundError):
                 info = child.as_dict(attrs=["exe", "cmdline", "cwd"])
                 if not (info["cmdline"] and info["cwd"]):
@@ -346,15 +347,17 @@ class BuildMonitor(Thread):
                     continue
                 self.proc_cache[hash(child)] = info
                 self.cache_responsefile(info)
+        self.seen_proc = children
 
     # noinspection PyBroadException
     def run(self):
         while self.proc.is_running() and not self.finish.is_set():
             t_start = time.monotonic()
             self.scan()
-            t_end = time.monotonic()
-            self.timing.append(t_end - t_start)
-            sleep_time_s = self.CYCLE_TIME_S - (t_end - t_start)
+            t_diff = time.monotonic() - t_start
+            if t_diff:
+                self.timing.append(t_diff)
+            sleep_time_s = self.CYCLE_TIME_S - t_diff
             if sleep_time_s > 0.0:
                 time.sleep(sleep_time_s)
 
