@@ -101,9 +101,14 @@ class Regex:
     )
     AUTOTOOLS = re.compile(
         r"""(?xm)
-        ^(?! warning | error | notice | note )
-        (?P<from>
-            configure(?:\.[a-z]+)? | Makefile(?:\.[a-z]+)? | [a-z]+
+        ^(?P<from>
+            ar 
+            | libtool 
+            | [\d\w/.-]+\.(?: m4 | asm ) 
+            | auto([a-z]+) 
+            | aclocal(?:.\w+)? 
+            | config(?:ure)?(?:\.[a-z]+)? 
+            | Makefile(?:\.[a-z]+)?
         )
         ( :(?P<line>\d+) )?
         (

@@ -539,8 +539,9 @@ class Build(State):
         src_filter = {
             None: lambda path: "meson-private" in path.parts,
             "cmake": lambda path: re.search(
-                r"/(cmake(-[\d.]+)?|CMakeFiles)/", path.as_posix()
-            ),
+                r"/(cmake-[23].\d{2}|CMakeFiles)/", path.as_posix()
+            )
+            or re.search(r"/cmake/test_[a-z]+\.c", path.as_posix()),
             "conftest": lambda path: path.stem == "conftest",
             "make": lambda path: path.stem in {"conftest", "dummy"}
             or path.parent.as_posix().endswith("/tools/build/feature"),
