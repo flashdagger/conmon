@@ -8,6 +8,7 @@ import sys
 import time
 from configparser import ConfigParser
 from contextlib import suppress
+from inspect import stack, FrameInfo
 from io import TextIOBase
 from math import log
 from pathlib import Path
@@ -32,10 +33,21 @@ from typing import (
 import colorama
 from psutil import Popen
 
+T = TypeVar("T", bound=Hashable)
+
 
 class StopWatch:
+    INSTANCES: Dict[FrameInfo, "StopWatch"] = {}
+
     def __init__(self):
         self._last_ts = time.time()
+
+    @classmethod
+    def at_location(cls) -> "StopWatch":
+        frame = stack(context=0)[1]
+        if frame not in cls.INSTANCES:
+            cls.INSTANCES[frame] = cls()
+        return cls.INSTANCES[frame]
 
     @property
     def elapsed_seconds(self) -> float:
@@ -286,9 +298,6 @@ def shorten(
         stripped_string = f"{placeholder}{string[-diff_size:]}"
 
     return template.format(stripped_string)
-
-
-T = TypeVar("T", bound=Hashable)
 
 
 def added_first(container: Set, item: Hashable) -> bool:
