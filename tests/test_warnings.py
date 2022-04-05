@@ -124,6 +124,13 @@ output = [
     "      | ",
     "WARNING: this is important",
     "warning: Boost.Build engine (b2) is 4.8.0",
+    "./src/graph.cc: In member function \u2018void Edge::Dump(const char*) const\u2019:",
+    "./src/graph.cc:409:16: warning: format \u2018%p\u2019 expects argument of type "
+    "\u2018void*\u2019, but argument 2 has type \u2018const Edge*\u2019 [-Wformat=]",
+    '  409 |   printf("] 0x%p\\n", this);',
+    "      |               ~^",
+    "      |                |",
+    "      |                void*",
     "",
 ]
 
@@ -295,6 +302,23 @@ dataset = [
                 "info": "ISO C forbids an empty translation unit",
                 "category": "-Wpedantic",
                 "hint": "  284 | #endif\n      | ",
+            },
+            {
+                "context": "./src/graph.cc: In member function "
+                "\u2018void Edge::Dump(const char*) const\u2019:\n",
+                "file": "./src/graph.cc",
+                "line": "409",
+                "column": "16",
+                "severity": "warning",
+                "info": ""
+                "format ‘%p’ expects argument of type ‘void*’, "
+                "but argument 2 has type ‘const Edge*’",
+                "category": "-Wformat=",
+                "hint": ""
+                '  409 |   printf("] 0x%p\\n", this);\n'
+                "      |               ~^\n"
+                "      |                |\n"
+                "      |                void*",
             },
         ],
         id="gnu",

@@ -52,7 +52,7 @@ class Regex:
                     (?:In\ file\ included|\ +)\ from\ [^\n]+:\d+[:,]\n
                 )*
                 (?:
-                    (?:[A-Za-z]: )? [^\n:]+:\ In\ function\ [^:\n]+:\n
+                    (?:[A-Za-z]: )? [^\n:]+:\ In\ (?:member\ )? function\ [^\n]+:\n
                 )?
             )+
         )?
