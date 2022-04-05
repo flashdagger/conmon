@@ -204,6 +204,8 @@ class BuildMonitor(Thread):
                 continue
 
             response_file = self.make_absolute(arg[1:], info["cwd"])
+            if response_file in self.rsp_cache:
+                return
             if response_file.exists():
                 self.rsp_cache[response_file] = response_file.read_bytes()
 
@@ -215,20 +217,20 @@ class BuildMonitor(Thread):
                 continue
 
             response_file = self.make_absolute(arg[1:], cwd)
-            rspf_data = self.rsp_cache.get(response_file)
+            rsp_data = self.rsp_cache.get(response_file)
 
-            if rspf_data is None:
-                LOG.warning("Missing response file %s", response_file)
+            if rsp_data is None:
+                LOG_ONCE.warning("Missing response file %s", response_file)
                 new_cmdline.append(arg)
             else:
                 split = shlex.split if posix else WinShlex.split
-                encoding = "utf-16" if set(rspf_data[0:2]) == {0xFE, 0xFF} else "utf-8"
-                new_cmdline.extend(split(rspf_data.decode(encoding=encoding)))
-                LOG.debug(
+                encoding = "utf-16" if set(rsp_data[0:2]) == {0xFE, 0xFF} else "utf-8"
+                new_cmdline.extend(split(rsp_data.decode(encoding=encoding)))
+                LOG_ONCE.debug(
                     "Read response file %s (encoding=%r, size=%s)",
                     response_file,
                     encoding,
-                    human_readable_byte_size(len(rspf_data)),
+                    human_readable_byte_size(len(rsp_data)),
                 )
         return new_cmdline
 
