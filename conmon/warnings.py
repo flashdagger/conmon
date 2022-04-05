@@ -67,9 +67,10 @@ class Regex:
             )?
         )?
         (?:\)\ ?)?:\ #
-        (?P<severity>warning|error|note|fatal\ error):\ #
+        (?P<severity>warning|error|note|message|fatal\ error)\ ?:\ #
         (?P<info>.*?)
         (\ \[(?P<category>[\w=+\-]+)])?
+        (\ \[ (?P<project>[^]\n]+) ])?        
         \n
         (
             (?P<hint>
@@ -163,7 +164,7 @@ def loglevel_from_severity(severity: Optional[str]) -> int:
         return logging.CRITICAL
     if severity == "error":
         return logging.ERROR
-    if severity == "note":
+    if severity in {"note", "message"}:
         return logging.INFO
     return logging.NOTSET
 
@@ -202,7 +203,7 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
 
     for name, matches in kwargs.items():
         for match in matches:
-            if not added_first(_PROCESSED, match.group()):
+            if not added_first(_PROCESSED, match.group().lstrip()):
                 continue
             mapping = match.groupdict()
             convert(mapping, int, "line", "column")
@@ -220,7 +221,7 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
             warnings.append(mapping)
 
             severity = mapping.get("severity")
-            if severity not in {"warning", "error", "fatal error", "note"}:
+            if severity not in {"warning", "error", "fatal error", "note", "message"}:
                 continue
             if name == "cmake" and not mapping["file"]:
                 continue
@@ -232,7 +233,7 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
                 else mapping["from"],
             )
 
-            if key not in stats and severity != "note":
+            if key not in stats and severity not in {"note", "message"}:
                 LOG.log(
                     loglevel_from_severity(severity),
                     shorten_conan_path(match.group().rstrip()),

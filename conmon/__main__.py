@@ -718,7 +718,7 @@ class RunTest(State):
 class ConanParser:
     CONAN_VERSION = "<undefined>"
     SEVERITY_REGEX = re.compile(
-        r"(?xm).+?:\ (?P<severity>warning|error|fatal\ error)(?::\ |\ [a-zA-Z])"
+        r"(?xm).+?:\ (?P<severity>warning|error|fatal\ error)(?:\ ?:\ |\ [a-zA-Z])"
     )
     LINE_REGEX = re.compile(
         rf"(?:{compact_pattern(REF_REGEX)[0]}(?:: ?| ))?(?P<rest>[^\r\n]*)"

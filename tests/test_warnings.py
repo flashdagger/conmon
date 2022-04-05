@@ -132,10 +132,11 @@ output = [
     "      |                |",
     "      |                void*",
     "ninja/1.9.0 (test package): WARN: This conanfile has no build step",
+    r"src/port/pg_crc32c_sse42_choose.c(41,10): warning : passing 'unsigned int [4]' to "
+    r"parameter of type 'int *' converts between pointers to integer types with different sign "
+    r"[-Wpointer-sign] [C:\conan\source_subfolder\libpgport.vcxproj]",
     "",
 ]
-
-
 dataset = [
     pytest.param(
         [
@@ -143,11 +144,12 @@ dataset = [
                 "context": "src/main/src/Em_FilteringQmFu.c: In function "
                 "‘Em_FilteringQmFu_processSensorSignals’:\n",
                 "file": "src/main/src/Em_FilteringQmFu.c",
-                "category": "-Wimplicit-function-declaration",
                 "line": "266",
                 "column": "5",
                 "severity": "warning",
                 "info": "implicit declaration of function ‘memset’",
+                "category": "-Wimplicit-function-declaration",
+                "project": None,
                 "hint": ""
                 "     memset(&reicevedSignals, 0, sizeof(reicevedSignals));\n"
                 "     ^~~~~~",
@@ -161,6 +163,7 @@ dataset = [
                 "info": ""
                 "improperly calling multi-line macro `SETUP_STACK_POINTER' with 0 parameters",
                 "category": "-w+macro-params-legacy",
+                "project": None,
                 "hint": None,
             },
             {
@@ -171,6 +174,7 @@ dataset = [
                 "severity": "warning",
                 "info": "extension used",
                 "category": "-Wlanguage-extension-token",
+                "project": None,
                 "hint": ""
                 "ZEXTERN z_off64_t ZEXPORT gzseek64 OF((gzFile, z_off64_t, int));\n"
                 "                                               ^",
@@ -185,6 +189,7 @@ dataset = [
                 "info": ""
                 "ignoring return value of ‘fchown’, declared with attribute warn_unused_result",
                 "category": "-Wunused-result",
+                "project": None,
                 "hint": ""
                 " 1073 |    (void) fchown ( fd, fileMetaInfo.st_uid, fileMetaInfo.st_gid );\n"
                 "      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
@@ -198,6 +203,7 @@ dataset = [
                 "info": 'deprecated directive: ‘%name-prefix "constexpYY"’, use ‘%define '
                 "api.prefix {constexpYY}’",
                 "category": "-Wdeprecated",
+                "project": None,
                 "hint": ""
                 '   35 | %name-prefix "constexpYY"\n'
                 "      | ^~~~~~~~~~~~~~~~~~~~~~~~~      | %define api.prefix "
@@ -211,6 +217,7 @@ dataset = [
                 "severity": "warning",
                 "info": "fix-its can be applied.  Rerun with option '--update'.",
                 "category": "-Wother",
+                "project": None,
                 "hint": None,
             },
             {
@@ -222,8 +229,9 @@ dataset = [
                 "line": "772",
                 "column": "24",
                 "severity": "warning",
-                "category": "-Wpedantic",
                 "info": "ISO C does not support ‘__int128’ types",
+                "category": "-Wpedantic",
+                "project": None,
                 "hint": ""
                 "  772 | #define PG_INT128_TYPE __int128\n"
                 "      |                        ^~~~~~~~",
@@ -244,6 +252,7 @@ dataset = [
                 "severity": "warning",
                 "info": "ISO C prohibits argument conversion to union type",
                 "category": "-Wpedantic",
+                "project": None,
                 "hint": ""
                 " 1640 | G_DEFINE_BOXED_TYPE (AtkTextRange, atk_text_range, atk_text_range_copy,\n"
                 "      |                                                    ^~~~~~~~~~~~~~~~~~~",
@@ -257,6 +266,7 @@ dataset = [
                 "info": "format ‘%ld’ expects argument of type ‘long int *’, but argument 8 "
                 "has type ‘long unsigned int *’",
                 "category": "-Wformat=",
+                "project": None,
                 "hint": ""
                 '  215 |     nfields = sscanf (line, "%lx-%lx %9s %lx %9s %ld %s",\n'
                 "      |                                                  ~~^\n"
@@ -282,6 +292,7 @@ dataset = [
                 "severity": "warning",
                 "info": "ISO C does not support ‘__int128’ types",
                 "category": "-Wpedantic",
+                "project": None,
                 "hint": None,
             },
             {
@@ -291,6 +302,7 @@ dataset = [
                 "column": None,
                 "severity": "note",
                 "category": None,
+                "project": None,
                 "info": "index 'blockSize100k' range checked by comparison on this line",
                 "hint": None,
             },
@@ -302,6 +314,7 @@ dataset = [
                 "severity": "warning",
                 "info": "ISO C forbids an empty translation unit",
                 "category": "-Wpedantic",
+                "project": None,
                 "hint": "  284 | #endif\n      | ",
             },
             {
@@ -315,11 +328,24 @@ dataset = [
                 "format ‘%p’ expects argument of type ‘void*’, "
                 "but argument 2 has type ‘const Edge*’",
                 "category": "-Wformat=",
+                "project": None,
                 "hint": ""
                 '  409 |   printf("] 0x%p\\n", this);\n'
                 "      |               ~^\n"
                 "      |                |\n"
                 "      |                void*",
+            },
+            {
+                "context": "",
+                "file": "src/port/pg_crc32c_sse42_choose.c",
+                "line": "41",
+                "column": "10",
+                "severity": "warning",
+                "info": "passing 'unsigned int [4]' to parameter of type 'int *' converts "
+                "between pointers to integer types with different sign",
+                "category": "-Wpointer-sign",
+                "project": "C:\\conan\\source_subfolder\\libpgport.vcxproj",
+                "hint": None,
             },
         ],
         id="gnu",
