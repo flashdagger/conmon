@@ -366,6 +366,9 @@ class BuildMonitor(Thread):
         if self.executables:
             LOG.info("Detected executables: %s", ", ".join(sorted(self.executables)))
 
+        if not self.timing:
+            return
+
         hrs = partial(human_readable_size, unit="seconds")
         LOG.debug(
             "Time consumed per process scan: max=%s, min=%s, mean=%s, median=%s",

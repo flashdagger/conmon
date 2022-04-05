@@ -70,7 +70,7 @@ class Bash:
         self.send(cmd)
         return self.receive(timeout=timeout)
 
-    def exit(self):
+    def exit(self) -> int:
         if self.proc.poll() is None:
             with suppress(TimeoutExpired):
                 self.proc.communicate("exit\n", timeout=0.2)
