@@ -102,12 +102,12 @@ class Regex:
     AUTOTOOLS = re.compile(
         r"""(?xm)
         ^(?P<from>
-            ar 
-            | libtool 
-            | [\d\w/.-]+\.(?: m4 | asm ) 
-            | auto([a-z]+) 
-            | aclocal(?:.\w+)? 
-            | config(?:ure)?(?:\.[a-z]+)? 
+            ar
+            | libtool
+            | [\d\w/.-]+\.(?: m4 | asm )
+            | auto([a-z]+)
+            | aclocal(?:.\w+)?
+            | config(?:ure)?(?:\.[a-z]+)?
             | Makefile(?:\.[a-z]+)?
         )
         ( :(?P<line>\d+) )?

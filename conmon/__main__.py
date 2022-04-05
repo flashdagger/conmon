@@ -782,13 +782,13 @@ class ConanParser:
             self.screen.reset()
             max_width = (get_terminal_width() or 140) - 20
 
-            CONAN_LOG_ONCE.log(
-                loglevel,
-                "\n".join(
-                    shorten(_line, width=max_width, strip="middle")
-                    for _line in processed
-                ),
-            )
+            if loglevel in {logging.ERROR, logging.CRITICAL}:
+                _lines = processed
+            else:
+                _lines = map(
+                    partial(shorten, width=max_width, strip="middle"), processed
+                )
+            CONAN_LOG_ONCE.log(loglevel, "\n".join(_lines))
             self.getdefaultlog(ref).setdefault("stderr", []).extend(stderr)
 
         if not "".join(lines).rstrip():
