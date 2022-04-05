@@ -123,6 +123,7 @@ output = [
     "  284 | #endif",
     "      | ",
     "WARNING: this is important",
+    "warning: Boost.Build engine (b2) is 4.8.0",
     "",
 ]
 
@@ -434,6 +435,15 @@ dataset = [
             },
         ],
         id="conan",
+    ),
+    pytest.param(
+        [
+            {
+                "severity": "warning",
+                "info": "Boost.Build engine (b2) is 4.8.0",
+            },
+        ],
+        id="build",
     ),
 ]
 

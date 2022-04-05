@@ -101,7 +101,8 @@ class Regex:
     )
     AUTOTOOLS = re.compile(
         r"""(?xm)
-        ^(?P<from>
+        ^(?! warning | error | notice | note )
+        (?P<from>
             configure(?:\.[a-z]+)? | Makefile(?:\.[a-z]+)? | [a-z]+
         )
         ( :(?P<line>\d+) )?
@@ -118,6 +119,13 @@ class Regex:
         ^(?:(?P<severity_l>ERROR|WARN(?:ING)?):\ )?
         (?:{compact_pattern(REF_REGEX)[0]}:\ +)?
         (?(severity_l) | (?P<severity>ERROR|WARN(?:ING)?):\ ?)
+        (?P<info>.*)
+        \n
+        """
+    )
+    BUILD = re.compile(
+        r"""(?xm)
+        ^(?P<severity>error|warning):\ #
         (?P<info>.*)
         \n
         """

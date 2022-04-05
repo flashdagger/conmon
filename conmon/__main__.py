@@ -646,7 +646,7 @@ class Build(State):
         build_stderr = "\n".join(self.log["stderr"]) + "\n"
 
         match_map = dict()  # pylint: disable=use-dict-literal
-        filter_by_regex(build_stdout, match_map, **Regex.dict("gnu", "msvc"))
+        filter_by_regex(build_stdout, match_map, **Regex.dict("gnu", "msvc", "build"))
         build_stderr = filter_by_regex(
             build_stderr, match_map, **Regex.dict("gnu", "msvc", "cmake", "autotools")
         )
@@ -821,7 +821,7 @@ class ConanParser:
         parsed_line = self.parse_line(line)
         ref, rest = parsed_line.group("ref", "rest")
 
-        if ref and rest.startswith("is locked by another concurrent conan process"):
+        if ref and "is locked by another concurrent conan process" in rest:
             CONAN_LOG.warning(line)
             self.process.kill()
 
