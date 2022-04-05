@@ -131,6 +131,7 @@ output = [
     "      |               ~^",
     "      |                |",
     "      |                void*",
+    "ninja/1.9.0 (test package): WARN: This conanfile has no build step",
     "",
 ]
 
@@ -456,6 +457,16 @@ dataset = [
                 "severity_l": "WARNING",
                 "user": None,
                 "version": None,
+            },
+            {
+                "severity_l": None,
+                "ref": "ninja/1.9.0",
+                "name": "ninja",
+                "version": "1.9.0",
+                "channel": None,
+                "user": None,
+                "info": "This conanfile has no build step",
+                "severity": "WARN",
             },
         ],
         id="conan",

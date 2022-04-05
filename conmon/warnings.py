@@ -117,7 +117,11 @@ class Regex:
     CONAN = re.compile(
         rf"""(?xm)
         ^(?:(?P<severity_l>ERROR|WARN(?:ING)?):\ )?
-        (?:{compact_pattern(REF_REGEX)[0]}:\ +)?
+        (?:
+            {compact_pattern(REF_REGEX)[0]} 
+            (?: \ \([a-z ]+\) )?
+            :\ +
+         )?
         (?(severity_l) | (?P<severity>ERROR|WARN(?:ING)?):\ ?)
         (?P<info>.*)
         \n
