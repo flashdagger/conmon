@@ -57,7 +57,7 @@ class Regex:
             )+
         )?
         \ *
-        (?P<file>(?:[A-Za-z]:)?[^\n:()]+)
+        (?P<file>(?:[A-Za-z]:)?[^\n:]+?)
         (?:
             [:(]
             (?P<line>\d+)
@@ -69,7 +69,7 @@ class Regex:
         (?:\)\ ?)?:\ #
         (?P<severity>warning|error|note|message|fatal\ error)\ ?:\ #
         (?P<info>.*?)
-        (\ \[(?P<category>[\w=+\-]+)])?
+        (\ \[(?P<category>[\w#=+\-]+)])?
         (\ \[ (?P<project>[^]\n]+) ])?        
         \n
         (

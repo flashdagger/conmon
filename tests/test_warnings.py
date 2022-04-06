@@ -138,6 +138,18 @@ output = [
     "NMAKE : fatal error U1077: 'C:\\Users\\marcel\\applications\\LLVM\\bin\\clang-cl.EXE' : "
     "return code '0x1'",
     "clang-cl: warning: /: 'linker' input unused [-Wunused-command-line-argument]",
+    "In file included from crypto\\asn1\\a_sign.c:22:",
+    "In file included from include\\crypto/evp.h:11:",
+    "In file included from include\\internal/refcount.h:21:",
+    "In file included from C:\\Users\\LLVM\\lib\\clang\\13.0.1\\include\\stdatomic.h:17:",
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\include\\stdatomic.h(15,2): "
+    "error: <stdatomic.h> is not yet supported when compiling as C",
+    "#error <stdatomic.h> is not yet supported when compiling as C",
+    " ^",
+    "C:\\conan\\source_subfolder\\Crypto\\src\\OpenSSLInitializer.cpp(35,10): "
+    "warning: OpenSSL 1.1.1l  24 Aug 2021 [-W#pragma-messages]",
+    "        #pragma message (OPENSSL_VERSION_TEXT POCO_INTERNAL_OPENSSL_BUILD)",
+    "                ^",
     "",
 ]
 dataset = [
@@ -360,6 +372,35 @@ dataset = [
                 "column": None,
                 "project": None,
                 "hint": None,
+            },
+            {
+                "context": "In file included from crypto\\asn1\\a_sign.c:22:\n"
+                "In file included from include\\crypto/evp.h:11:\n"
+                "In file included from include\\internal/refcount.h:21:\n"
+                "In file included from "
+                "C:\\Users\\LLVM\\lib\\clang\\13.0.1\\include\\stdatomic.h:17:\n",
+                "file": "C:\\Program Files (x86)\\Microsoft Visual Studio\\include\\stdatomic.h",
+                "line": "15",
+                "column": "2",
+                "severity": "error",
+                "category": None,
+                "info": "<stdatomic.h> is not yet supported when compiling as C",
+                "hint": "#error <stdatomic.h> is not yet supported when compiling as C\n"
+                " ^",
+                "project": None,
+            },
+            {
+                "context": "",
+                "file": "C:\\conan\\source_subfolder\\Crypto\\src\\OpenSSLInitializer.cpp",
+                "line": "35",
+                "column": "10",
+                "severity": "warning",
+                "info": "OpenSSL 1.1.1l  24 Aug 2021",
+                "category": "-W#pragma-messages",
+                "project": None,
+                "hint": "        #pragma message (OPENSSL_VERSION_TEXT "
+                "POCO_INTERNAL_OPENSSL_BUILD)\n"
+                "                ^",
             },
         ],
         id="gnu",
