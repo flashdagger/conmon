@@ -43,9 +43,8 @@ class CompilerParser(argparse.ArgumentParser):
         "-TC",
         "-FS",
     }
-    IGNORED_FLAGS_AFTER = {
-        "-link",
-    }
+    IGNORED_FLAGS_AFTER = {"-link"}
+    UNSPLIT_FLAGS = {"-I", "-U", "-D", "-FI", "-Fo"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, allow_abbrev=False, **kwargs)
@@ -79,10 +78,23 @@ class CompilerParser(argparse.ArgumentParser):
             action="store",
         )
         self.add_argument(
+            "-o",
+            "-Fo",
+            help="specifying the output file",
+            dest="output",
+            action="store",
+        )
+        self.add_argument(
             "-D", help="defines", dest="defines", action="append", default=[]
         )
         self.add_argument(
             "-U", help="undefines", dest="undefines", action="append", default=[]
+        )
+        self.add_argument(
+            "-E",
+            help="Preprocesses C and C++ source files to stdout",
+            dest="preprocess_only",
+            action="store_true",
         )
         self.add_argument(
             "-cc1", help="compiler frontend", dest="cc_frontend", action="store_true"
@@ -117,7 +129,7 @@ class CompilerParser(argparse.ArgumentParser):
                     clean_args.append(arg)
                     break
                 if arg.startswith(option):
-                    if option[1].isupper():
+                    if option in self.UNSPLIT_FLAGS:
                         k = len(option)
                         clean_args.extend((arg[:k], arg[k:]))
                     else:
@@ -274,7 +286,7 @@ class BuildMonitor(Thread):
     def parse_tus(self, proc: Dict) -> None:
         args, unknown_args = self.PARSER.parse_known_args(proc["cmdline"])
 
-        if args.cc_frontend or args.ccas_frontend:
+        if args.cc_frontend or args.ccas_frontend or args.preprocess_only:
             return
 
         data = dict(compiler=proc["exe"])
@@ -288,7 +300,7 @@ class BuildMonitor(Thread):
                 continue
             if key in ("forced_includes", "system_includes", "includes"):
                 data[key] = {self.make_absolute(path, proc["cwd"]) for path in value}
-            elif key not in {"cc_frontend", "ccas_frontend"}:
+            elif key in {"defines", "undefines", "nasm_output"}:
                 data[key] = set(value) if isinstance(value, list) else value
 
         for file in reversed(unknown_args):

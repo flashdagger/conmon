@@ -567,15 +567,13 @@ class Build(State):
         discarded_files: Set[str] = set()
 
         for unit in tu_list:
-            discarded = False
+            discarded = "RC_INVOKED" in unit.get("defines", ())
             for test in active_filters.values():
                 sources = unit["sources"]
                 if any(test(Path(src)) for src in sources):
                     src_counter += len(sources)
                     set_counter += 1
-                    discarded_files.update(
-                        re.sub(r"-[a-f\d]{6}.rc$", "-*.rc", src.name) for src in sources
-                    )
+                    discarded_files.update(src.name for src in sources)
                     discarded = True
                     break
             if not discarded:

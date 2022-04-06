@@ -21,6 +21,7 @@ cases = [
                 "-c",
                 "-x",
                 "c++",
+                "-EHsc",
                 "-fvisibility-inlines-hidden",
                 "-fPIC",
                 "-pthread",
@@ -39,6 +40,7 @@ cases = [
                 "-D_GLIBCXX_USE_CXX11_ABI=1",
                 "-I.",
                 "-o",
+                "power.o",
                 "power.cpp",
                 "-link",  # ignore all options after
                 "-DLL",
@@ -51,6 +53,7 @@ cases = [
         "translation_unit": {
             "compiler": Path.cwd() / "source/clang",
             "flags": [
+                "-EHsc",
                 "-O0",
                 "-Wall",
                 "-Zc:forScope",
