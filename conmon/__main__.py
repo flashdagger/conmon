@@ -451,6 +451,7 @@ class Build(State):
         self.buildmon = BuildMonitor(self.parser.process)
         self.log = parser.defaultlog
         self.ref = "???"
+        self.force_status = False
         if not Build.PROC_JSON_RESET:
             with filehandler("proc_json", hint="process debug json") as fh:
                 fh.write("{}")
@@ -505,8 +506,12 @@ class Build(State):
             line
         ) or self.BUILD_STATUS_REGEX2.match(line)
         if match:
-            self.flush_warning_count()
             status, file = match.groups()
+            if status:
+                self.force_status = True
+            elif self.force_status:
+                return
+            self.flush_warning_count()
             with suppress(ValueError, AttributeError):
                 _current, _total = status.strip("[]").split("/")
                 status = f"[{_current:>{len(_total)}}/{_total}]"
@@ -632,6 +637,7 @@ class Build(State):
             )
 
     def _deactivate(self, final=False):
+        self.force_status = False
         self.flush_warning_count()
         self.parser.screen.reset()
         self.buildmon.stop()
