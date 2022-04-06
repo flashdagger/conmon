@@ -19,17 +19,17 @@ from subprocess import PIPE
 from textwrap import indent
 from typing import (
     Any,
+    Callable,
     Dict,
     Iterable,
+    Iterator,
     List,
+    Match,
     Optional,
     Set,
-    Type,
-    Tuple,
     TextIO,
-    Match,
-    Iterator,
-    Callable,
+    Tuple,
+    Type,
     cast,
 )
 
@@ -44,20 +44,21 @@ from .logging import (
     UniqueLogger,
     get_logger,
     init as initialize_logging,
-    logger_escape_code,
     level_from_name,
+    logger_escape_code,
 )
 from .regex import (
     DECOLORIZE_REGEX,
     REF_REGEX,
-    shorten_conan_path,
     compact_pattern,
     filter_by_regex,
+    shorten_conan_path,
 )
 from .utils import (
     ProcessStreamHandler,
     ScreenWriter,
     StrictConfigParser,
+    added_first,
     get_terminal_width,
     shorten,
     unique,
@@ -65,6 +66,7 @@ from .utils import (
 from .warnings import (
     LOG as BLOG,
     Regex,
+    levelname_from_severity,
     warnings_from_matches,
 )
 
@@ -420,6 +422,7 @@ class Export(State):
 class Build(State):
     MAX_WIDTH = 65
     PROC_JSON_RESET = False
+    _WARNINGS: Set[str] = set()
     BUILD_STATUS_REGEX = re.compile(
         r"""(?x)
             (?:
@@ -531,12 +534,13 @@ class Build(State):
             self.screen.print(shorten_conan_path(line), overwrite=True)
         else:
             match = self.parser.SEVERITY_REGEX.match(line)
-            severity = match and match.group("severity")
-            if severity and "error" in severity:
-                level_name = "CRITICAL" if severity == "fatal error" else "ERROR"
+            if not (match and added_first(self._WARNINGS, match.group())):
+                return
+            level_name = levelname_from_severity(match.group("severity"))
+            if level_name in {"ERROR", "CRITICAL"}:
                 esc = logger_escape_code(BLOG, level_name)
                 self.screen.print(f"{esc}E {line}")
-            elif severity == "warning":
+            elif level_name == "WARNING":
                 self.warnings += 1
 
     def filtered_tus(
@@ -569,7 +573,9 @@ class Build(State):
                 if any(test(Path(src)) for src in sources):
                     src_counter += len(sources)
                     set_counter += 1
-                    discarded_files.update(src.name for src in sources)
+                    discarded_files.update(
+                        re.sub(r"-[a-f\d]{6}.rc$", "-*.rc", src.name) for src in sources
+                    )
                     discarded = True
                     break
             if not discarded:

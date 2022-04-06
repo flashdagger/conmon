@@ -70,7 +70,7 @@ class Regex:
         (?P<severity>warning|error|note|message|fatal\ error)\ ?:\ #
         (?P<info>.*?)
         (\ \[(?P<category>[\w#=+\-]+)])?
-        (\ \[ (?P<project>[^]\n]+) ])?        
+        (\ \[ (?P<project>[^]\n]+) ])?
         \n
         (
             (?P<hint>
@@ -124,7 +124,7 @@ class Regex:
         rf"""(?xm)
         ^(?:(?P<severity_l>ERROR|WARN(?:ING)?):\ )?
         (?:
-            {compact_pattern(REF_REGEX)[0]} 
+            {compact_pattern(REF_REGEX)[0]}
             (?: \ \([a-z ]+\) )?
             :\ +
          )?
@@ -155,18 +155,22 @@ class Regex:
         return {key: cls.get(key) for key in keys}
 
 
-def loglevel_from_severity(severity: Optional[str]) -> int:
+def levelname_from_severity(severity: Optional[str], default="NOTSET") -> str:
     severity = severity.lower() if severity else ""
 
     if severity.startswith("warn"):
-        return logging.WARNING
+        return "WARNING"
     if severity == "fatal error":
-        return logging.CRITICAL
+        return "CRITICAL"
     if severity == "error":
-        return logging.ERROR
+        return "ERROR"
     if severity in {"note", "message"}:
-        return logging.INFO
-    return logging.NOTSET
+        return "INFO"
+    return default
+
+
+def loglevel_from_severity(severity: Optional[str]) -> int:
+    return getattr(logging, levelname_from_severity(severity))
 
 
 def convert(mapping: Dict[str, Any], func: Callable, *keys: str) -> None:
