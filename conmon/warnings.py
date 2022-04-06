@@ -57,7 +57,7 @@ class Regex:
             )+
         )?
         \ *
-        (?P<file>(?:[A-Za-z]:)?[^\n:()]+\.\w{1,4})
+        (?P<file>(?:[A-Za-z]:)?[^\n:()]+)
         (?:
             [:(]
             (?P<line>\d+)
@@ -84,8 +84,8 @@ class Regex:
     )
     MSVC = re.compile(
         r"""(?xm)
-            (?P<file>^[^\n(]+)
-            (
+            (?P<file>^[^\n(]+(?<!\ ))
+            (?:
               \( (?P<line>\d+) (?:, (?P<column>\d+) )? \)
             )?
             \ ?:\ #

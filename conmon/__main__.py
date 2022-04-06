@@ -667,6 +667,7 @@ class Build(State):
             meson_status=re.compile(
                 r"(?m)^(Generating targets|(Writing )?build\.ninja): +\d+ *%.+\n"
             ),
+            msvc_tools=re.compile(r"(?m)^(Microsoft|Copyright) \([RC]\) .+\n"),
         )
         build_stderr = "".join(unique(build_stderr.splitlines(keepends=True))).rstrip()
         if build_stderr:

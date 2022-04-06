@@ -13,12 +13,12 @@ output = [
     "\u2018memset\u2019 [-Wimplicit-function-declaration]",
     "     memset(&reicevedSignals, 0, sizeof(reicevedSignals));",
     "     ^~~~~~",
-    r"C:\source_subfolder\source\common\x86\seaintegral.asm:92: warning: improperly calling "
-    r"multi-line macro `SETUP_STACK_POINTER' with 0 parameters [-w+macro-params-legacy]",
+    "C:\\source_subfolder\\source\\common\\x86\\seaintegral.asm:92: warning: improperly calling "
+    "multi-line macro `SETUP_STACK_POINTER' with 0 parameters [-w+macro-params-legacy]",
     "some text",
-    r"In file included from C:\conan\data\source_subfolder\zutil.c:10:",
-    r"C:\conan\data\source_subfolder/gzguts.h(146,52): warning: extension used "
-    r"[-Wlanguage-extension-token]",
+    "In file included from C:\\conan\\data\\source_subfolder\\zutil.c:10:",
+    "C:\\conan\\data\\source_subfolder/gzguts.h(146,52): warning: extension used "
+    "[-Wlanguage-extension-token]",
     "ZEXTERN z_off64_t ZEXPORT gzseek64 OF((gzFile, z_off64_t, int));",
     "                                               ^",
     "/build/source_subfolder/bzip2.c: In function ‘applySavedFileAttrToOutputFile’:",
@@ -34,9 +34,9 @@ output = [
     "'--update'. [-Wother]",
     "/source_subfolder/common/socket_utils.cc(43): warning C4312: 'reinterpret_cast': conversion "
     "from 'int' to 'HANDLE' of greater size",
-    r"C:\source_subfolder\bzlib.c(1418,10): warning C4996: 'strcat': This function or variable may "
-    r"be unsafe. Consider using strcat_s instead. To disable deprecation, use "
-    r"_CRT_SECURE_NO_WARNINGS. See online help for details.",
+    "C:\\source_subfolder\\bzlib.c(1418,10): warning C4996: 'strcat': This function or variable "
+    "may be unsafe. Consider using strcat_s instead. To disable deprecation, use "
+    "_CRT_SECURE_NO_WARNINGS. See online help for details.",
     '   strcat(mode2,"b");   /* binary mode */',
     "         ^",
     "Makefile.config:565: No sys/sdt.h found, no SDT events are defined, please install "
@@ -132,9 +132,12 @@ output = [
     "      |                |",
     "      |                void*",
     "ninja/1.9.0 (test package): WARN: This conanfile has no build step",
-    r"src/port/pg_crc32c_sse42_choose.c(41,10): warning : passing 'unsigned int [4]' to "
-    r"parameter of type 'int *' converts between pointers to integer types with different sign "
-    r"[-Wpointer-sign] [C:\conan\source_subfolder\libpgport.vcxproj]",
+    "src/port/pg_crc32c_sse42_choose.c(41,10): warning : passing 'unsigned int [4]' to "
+    "parameter of type 'int *' converts between pointers to integer types with different sign "
+    "[-Wpointer-sign] [C:\\conan\\source_subfolder\\libpgport.vcxproj]",
+    "NMAKE : fatal error U1077: 'C:\\Users\\marcel\\applications\\LLVM\\bin\\clang-cl.EXE' : "
+    "return code '0x1'",
+    "clang-cl: warning: /: 'linker' input unused [-Wunused-command-line-argument]",
     "",
 ]
 dataset = [
@@ -347,6 +350,17 @@ dataset = [
                 "project": "C:\\conan\\source_subfolder\\libpgport.vcxproj",
                 "hint": None,
             },
+            {
+                "context": "",
+                "file": "clang-cl",
+                "severity": "warning",
+                "info": "/: 'linker' input unused",
+                "category": "-Wunused-command-line-argument",
+                "line": None,
+                "column": None,
+                "project": None,
+                "hint": None,
+            },
         ],
         id="gnu",
     ),
@@ -373,6 +387,17 @@ dataset = [
                 "_CRT_SECURE_NO_WARNINGS. See online help for details.",
                 "project": None,
                 "hint": '   strcat(mode2,"b");   /* binary mode */\n         ^',
+            },
+            {
+                "file": "NMAKE",
+                "line": None,
+                "column": None,
+                "severity": "fatal error",
+                "category": "U1077",
+                "info": "'C:\\Users\\marcel\\applications\\LLVM\\bin\\clang-cl.EXE' : return "
+                "code '0x1'",
+                "project": None,
+                "hint": None,
             },
         ],
         id="msvc",
