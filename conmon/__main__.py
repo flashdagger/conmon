@@ -505,7 +505,7 @@ class Build(State):
         if not line:
             return
 
-        self.log["stdout"].append(line)
+        self.log["stdout"].append(parsed_line.group())
         match = self.BUILD_STATUS_REGEX.fullmatch(
             line
         ) or self.BUILD_STATUS_REGEX2.match(line)

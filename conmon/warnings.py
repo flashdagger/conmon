@@ -67,7 +67,7 @@ class Regex:
             )?
         )?
         (?:\)\ ?)?:\ #
-        (?P<severity>warning|error|note|message|fatal\ error)\ ?:\ #
+        (?P<severity>warning|error|ERROR|note|message|fatal\ error)\ ?:\ #
         (?P<info>.*?)
         (\ \[(?P<category>[\w#=+\-]+)])?
         (\ \[ (?P<project>[^]\n]+) ])?

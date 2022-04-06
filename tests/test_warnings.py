@@ -150,6 +150,8 @@ output = [
     "warning: OpenSSL 1.1.1l  24 Aug 2021 [-W#pragma-messages]",
     "        #pragma message (OPENSSL_VERSION_TEXT POCO_INTERNAL_OPENSSL_BUILD)",
     "                ^",
+    "source_subfolder/meson.build:1559:2: ERROR: Problem encountered: "
+    "Could not determine size of size_t.",
     "",
 ]
 dataset = [
@@ -401,6 +403,17 @@ dataset = [
                 "hint": "        #pragma message (OPENSSL_VERSION_TEXT "
                 "POCO_INTERNAL_OPENSSL_BUILD)\n"
                 "                ^",
+            },
+            {
+                "context": "",
+                "file": "source_subfolder/meson.build",
+                "line": "1559",
+                "column": "2",
+                "severity": "ERROR",
+                "category": None,
+                "info": "Problem encountered: Could not determine size of size_t.",
+                "project": None,
+                "hint": None,
             },
         ],
         id="gnu",
