@@ -15,11 +15,13 @@ from typing import Any, Dict, List, Optional, Set, Hashable, Union
 from psutil import AccessDenied, Process, NoSuchProcess
 
 from conmon.utils import (
-    append_to_set,
-    merge_mapping,
     WinShlex,
+    append_to_set,
+    freeze_json_object,
     human_readable_size,
     human_readable_byte_size,
+    merge_mapping,
+    unfreeze_json_object,
 )
 from .bash import Bash, BashError, scan_msys
 from .logging import get_logger, UniqueLogger
@@ -337,7 +339,7 @@ class BuildMonitor(Thread):
                         shorten(" ".join(info["cmdline"]), width=60, strip="middle"),
                     )
                     continue
-                self.proc_cache[hash(child)] = info
+                self.proc_cache[freeze_json_object(info)] = None
                 self.cache_responsefile(info)
         self.seen_proc = children
 
@@ -356,7 +358,8 @@ class BuildMonitor(Thread):
         if self.bash:
             self.bash.exit()
 
-        for info_map in self.proc_cache.values():
+        for frozen_info in self.proc_cache:
+            info_map = self.proc_cache[frozen_info] = unfreeze_json_object(frozen_info)
             try:
                 self.check_process(info_map)
             except BaseException:
