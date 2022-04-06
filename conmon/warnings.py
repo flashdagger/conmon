@@ -21,7 +21,7 @@ from typing import (
 
 from .logging import UniqueLogger, get_logger
 from .regex import REF_REGEX, compact_pattern, shorten_conan_path
-from .utils import added_first
+from .utils import added_first, shorten_per_line, get_terminal_width
 
 LOG = get_logger("BUILD")
 LOG_ONCE = UniqueLogger(LOG)
@@ -240,7 +240,11 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
             if key not in stats and severity not in {"note", "message"}:
                 LOG.log(
                     loglevel_from_severity(severity),
-                    shorten_conan_path(match.group().rstrip()),
+                    shorten_per_line(
+                        shorten_conan_path(match.group().rstrip()),
+                        width=get_terminal_width() or 120,
+                        strip="middle",
+                    ),
                 )
             stats[key] += 1
 

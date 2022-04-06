@@ -42,7 +42,7 @@ def show_changes(*tu) -> str:
     return "\n".join(lines)
 
 
-def assert_uninque(lib, check_data):
+def assert_unique(lib, check_data):
     diffs = {}
 
     for source, tus in check_data.items():
@@ -81,7 +81,7 @@ def test_main(path="./report.json"):
             for source in unit.pop("sources", ()):
                 check_data.setdefault(Path(source), []).append(unit)
 
-        assert_uninque(lib, check_data)
+        assert_unique(lib, check_data)
         count_map = defaultdict(int)
         for value in check_data.values():
             count_map[len(value)] += 1

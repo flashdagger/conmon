@@ -300,6 +300,13 @@ def shorten(
     return template.format(stripped_string)
 
 
+def shorten_per_line(string: str, width: int, *, strip="right", placeholder="[...]"):
+    return "".join(
+        shorten(line, width=width, strip=strip, placeholder=placeholder)
+        for line in string.splitlines(keepends=True)
+    )
+
+
 def added_first(container: Set, item: Hashable) -> bool:
     if item in container:
         return False
