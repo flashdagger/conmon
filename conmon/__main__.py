@@ -436,9 +436,10 @@ class Build(State):
     BUILD_STATUS_REGEX2 = re.compile(
         r"""(?x)
             (?P<status>$)?    # should never match
-            .*\ -c\           # compile but don't link
+            .*\ [-/]c\ .*?    # compile but don't link
             (?P<file>
-                (?:[a-zA-Z]:)? [\-.\w/\\]+ \. (?:asm|cpp|cxx|cc?|[sS]) (?=\ )
+                (?:[a-zA-Z]:)? [\-.\w/\\]+ \. (?:asm|cpp|cxx|cc?|[sS])
+                \b
             )
         """
     )
@@ -663,7 +664,8 @@ class Build(State):
             build_stderr,
             {},
             empty_lines=re.compile(r"(?m)^\s*\n"),
-            warnings_generated=re.compile(r"(?m)^\d+ warnings? generated\.\n"),
+            warnings_generated=re.compile(r"(?m)^\d+ warnings?.* generated\.\n"),
+            stop="^Stop.\n",
             meson_status=re.compile(
                 r"(?m)^(Generating targets|(Writing )?build\.ninja): +\d+ *%.+\n"
             ),
