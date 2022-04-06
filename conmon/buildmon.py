@@ -138,7 +138,7 @@ class CompilerParser(argparse.ArgumentParser):
 def identify_compiler(name: str) -> Optional[str]:
     parts = set(name.replace("+", "").split("-"))
 
-    if parts == {"cl"}:
+    if parts == {"cl"} or parts & {"rc"}:
         return "msvc"
 
     if parts & {"gcc", "g", "cc", "c", "clang", "nasm"}:
@@ -196,7 +196,7 @@ class BuildMonitor(Thread):
 
     @staticmethod
     def is_valid_tu(file: Path) -> bool:
-        return file.suffix.lower() in {".c", ".cpp", ".cxx", ".cc", ".asm", ".s"}
+        return file.suffix.lower() in {".c", ".cpp", ".cxx", ".cc", ".asm", ".s", ".rc"}
 
     def cache_responsefile(self, info: Dict):
         for arg in info["cmdline"]:
