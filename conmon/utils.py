@@ -300,10 +300,14 @@ def shorten(
     return template.format(stripped_string)
 
 
-def shorten_per_line(string: str, width: int, *, strip="right", placeholder="[...]"):
+def shorten_per_line(
+    string: str, width: int, *, strip="right", placeholder="[...]", keep_first=False
+):
     return "".join(
-        shorten(line, width=width, strip=strip, placeholder=placeholder)
-        for line in string.splitlines(keepends=True)
+        line
+        if idx == 0 and keep_first
+        else shorten(line, width=width, strip=strip, placeholder=placeholder)
+        for idx, line in enumerate(string.splitlines(keepends=True))
     )
 
 

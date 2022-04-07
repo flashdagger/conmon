@@ -244,6 +244,7 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
                         shorten_conan_path(match.group().rstrip()),
                         width=get_terminal_width() or 120,
                         strip="middle",
+                        keep_first=True,
                     ),
                 )
             stats[key] += 1
