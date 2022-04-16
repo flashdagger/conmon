@@ -549,7 +549,8 @@ class Build(State):
         src_filter = {
             None: lambda path: "meson-private" in path.parts,
             "cmake": lambda path: re.search(
-                r"/(cmake-[23].\d{2}|CMakeTmp|CMakeFiles/[23](\.\d+){1,2})/",
+                r"/(cmake-[23].\d{2}|CMakeTmp|CMakeFiles/Check[a-zA-Z]+"
+                r"|CMakeFiles/[23](\.\d+){1,2})/",
                 path.as_posix(),
             )
             or re.search(r"/cmake/test_[a-z]+\.c", path.as_posix()),
