@@ -119,7 +119,6 @@ class CompilerParser(argparse.ArgumentParser):
         sorted_options = tuple(sorted(options, reverse=True, key=len))
 
         clean_args = []
-        unknown_args = []
         for arg in args:
             if arg in self.IGNORED_FLAGS_AFTER:
                 break
@@ -134,20 +133,20 @@ class CompilerParser(argparse.ArgumentParser):
                         k = len(option)
                         clean_args.extend((arg[:k], arg[k:]))
                     else:
-                        unknown_args.append(arg)
+                        # masquerade option as unknown
+                        clean_args.append(f"@{arg}")
                     break
             else:
                 clean_args.append(arg)
 
-        return clean_args, unknown_args
+        return clean_args
 
     def parse_known_args(self, args=None, namespace=None):
-        clean_args, unknown_args = self.cleanup_args(args)
-        args, _unknown_args = super().parse_known_args(
+        clean_args = self.cleanup_args(args)
+        args, unknown_args = super().parse_known_args(
             args=clean_args, namespace=namespace
         )
-        unknown_args.extend(_unknown_args)
-        return args, unknown_args
+        return args, [arg.lstrip("@") for arg in unknown_args]
 
 
 def identify_compiler(name: str) -> Optional[str]:
@@ -375,7 +374,8 @@ class BuildMonitor(Thread):
             info_map = self.proc_cache[frozen_info] = unfreeze_json_object(frozen_info)
             try:
                 self.check_process(info_map)
-                # info_map["clean"], info_map["unknown"] = self.PARSER.cleanup_args(info_map["cmdline"])
+                # info_map["clean"], info_map["unknown"] =
+                # self.PARSER.cleanup_args(info_map["cmdline"])
             except BaseException:
                 LOG.exception("Exception while processing...")
                 continue

@@ -33,7 +33,10 @@ cases = [
                 "-include-pch",
                 "-fvisibility=hidden",
                 "-Iinclude",
+                "-external:Isystem_include",
                 "-fPIC",
+                "-f",
+                "win",
                 "-stdlib=libstdc++",
                 "-DBOOST_STACKTRACE_ADDR2LINE_LOCATION=/usr/bin/addr2line",
                 "-DBOOST_ALL_NO_LIB=1",
@@ -70,8 +73,10 @@ cases = [
                 "BOOST_STACKTRACE_ADDR2LINE_LOCATION=/usr/bin/addr2line",
                 "_GLIBCXX_USE_CXX11_ABI=1",
             ],
+            "system_includes": ["source/system_include"],
             "includes": ["source", "source/include"],
             "sources": ["source/power.cpp"],
+            "nasm_output": "win",
         },
     }
 ]
@@ -88,7 +93,6 @@ def test_buildmon_process(case):
         for tu in translation_units:
             if key not in tu:
                 continue
-            print(key, tu[key])
             tu[key] = [
                 str(Path(path).relative_to(Path.cwd()).as_posix()) for path in tu[key]
             ]
