@@ -146,7 +146,7 @@ class CompilerParser(argparse.ArgumentParser):
         args, unknown_args = super().parse_known_args(
             args=clean_args, namespace=namespace
         )
-        return args, [arg.lstrip("@") for arg in unknown_args]
+        return args, [arg[1:] if arg.startswith("@") else arg for arg in unknown_args]
 
 
 def identify_compiler(name: str) -> Optional[str]:
@@ -292,8 +292,8 @@ class BuildMonitor(Thread):
         data = dict(compiler=proc["exe"])
         data["flags"] = {
             first
-            for first, second in zip(unknown_args, unknown_args[1:])
-            if re.match(r"^-[-\w:=]+$", first) and second.startswith("-")
+            for first, second in zip(unknown_args[:], unknown_args[1:-1] + ["-"])
+            if re.match(r"^-[-\w:=+]+$", first) and second.startswith("-")
         }
         for key, value in sorted(vars(args).items()):
             if not value:

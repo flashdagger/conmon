@@ -18,7 +18,6 @@ cases = [
         "proc": {
             "cmdline": [
                 "clang++",
-                "-c",
                 "-x",
                 "c++",
                 "-EHsc",
@@ -44,6 +43,7 @@ cases = [
                 "-I.",
                 "-o",
                 "power.o",
+                "-c",
                 "power.cpp",
                 "-link",  # ignore all options after
                 "-DLL",
@@ -67,6 +67,7 @@ cases = [
                 "-g",
                 "-include-pch",
                 "-pthread",
+                "-stdlib=libstdc++",
             ],
             "defines": [
                 "BOOST_ALL_NO_LIB=1",
