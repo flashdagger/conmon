@@ -44,12 +44,13 @@ class CompilerParser(argparse.ArgumentParser):
         "-FS",
     }
     IGNORED_FLAGS_AFTER = {"-link"}
-    UNSPLIT_FLAGS = {"-I", "-U", "-D", "-FI", "-Fo"}
+    UNSPLIT_FLAGS = {"-I", "-external:I", "-U", "-D", "-FI", "-Fo", "-Fd"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, allow_abbrev=False, **kwargs)
         self.add_argument(
             "-isystem",
+            "-external:I",
             help="system includes",
             dest="system_includes",
             action="append",
@@ -374,6 +375,7 @@ class BuildMonitor(Thread):
             info_map = self.proc_cache[frozen_info] = unfreeze_json_object(frozen_info)
             try:
                 self.check_process(info_map)
+                # info_map["clean"], info_map["unknown"] = self.PARSER.cleanup_args(info_map["cmdline"])
             except BaseException:
                 LOG.exception("Exception while processing...")
                 continue
