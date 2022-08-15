@@ -329,11 +329,19 @@ class Config(State):
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
         self.lines: List[str] = []
-        self.log = parser.log["config"]
+        self.profile_type = "host"
+        self.log = parser.log["profile"]
 
     def activated(self, parsed_line: Match) -> bool:
-        line = parsed_line.group("rest")
-        return line == "Configuration:"
+        match = re.fullmatch(
+            r"Configuration(?: \(profile_(?P<ptype>[a-z]+)\))?:",
+            parsed_line.group("rest"),
+        )
+        if match:
+            self.lines.clear()
+            self.profile_type = match.group("ptype") or self.profile_type
+            return True
+        return False
 
     def process(self, parsed_line: Match) -> None:
         line = parsed_line.group(0)
@@ -350,11 +358,12 @@ class Config(State):
         buffer = StringIO("\n".join(self.lines))
         config = StrictConfigParser()
         config.read_file(buffer, "profile.ini")
+        log = self.log.setdefault(self.profile_type, {})
 
         for section in config.sections():
-            self.log[section] = dict(config.items(section))
+            log[section] = dict(config.items(section))
 
-        super()._deactivate(final=True)
+        super()._deactivate(final=False)
 
 
 class Package(State):

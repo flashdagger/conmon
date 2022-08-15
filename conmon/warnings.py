@@ -216,6 +216,7 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
                 lambda v: v.rstrip("\n").splitlines(keepends=False),
                 "context",
                 "hint",
+                "info",
             )
             convert(mapping, str.lower, "severity")
             if name in {"gnu", "msvc"}:
