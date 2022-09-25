@@ -1,0 +1,2397 @@
+{
+  "conan": {
+    "build_platform": "Windows-10-10.0.19043-SP0",
+    "python_version": "3.9.5.final.0 (cpython)",
+    "version": "1.52.0",
+    "command": [
+      "C:\\demo\\conmon\\venv\\Scripts\\python.exe",
+      "-m",
+      "conans.conan",
+      "install",
+      "zlib/[]@",
+      "--build",
+      "zlib",
+      "-pr",
+      "vs2022"
+    ],
+    "returncode": 0,
+    "tracelog": [
+      {
+        "_action": "COMMAND",
+        "name": "install_reference",
+        "parameters": {
+          "build": [
+            "zlib"
+          ],
+          "conf": null,
+          "env": null,
+          "generators": null,
+          "install_folder": null,
+          "is_build_require": false,
+          "lockfile": null,
+          "lockfile_node_id": null,
+          "lockfile_out": null,
+          "manifests": null,
+          "manifests_interactive": null,
+          "options": null,
+          "profile_build": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "profile_names": [
+            "vs2022"
+          ],
+          "remote_name": null,
+          "require_overrides": null,
+          "settings": null,
+          "update": false,
+          "verify": null
+        },
+        "time": 1664143656.6045628
+      }
+    ]
+  },
+  "profile": {
+    "host": {
+      "settings": {
+        "arch": "x86_64",
+        "arch_build": "x86_64",
+        "build_type": "Release",
+        "compiler": "Visual Studio",
+        "compiler.runtime": "MD",
+        "compiler.version": "17",
+        "os": "Windows",
+        "os_build": "Windows"
+      },
+      "options": {},
+      "build_requires": {
+        "*": "ninja/[^1.9]"
+      },
+      "env": {
+        "CFLAGS": "/diagnostics:caret /Wall",
+        "CONAN_CMAKE_GENERATOR": "Ninja"
+      }
+    }
+  },
+  "requirements": {
+    "zlib": {
+      "stdout": [
+        "zlib/1.2.12: Forced build from source",
+        "zlib/1.2.12: Applying build-requirement: ninja/1.11.0",
+        "zlib/1.2.12: Copying sources to build folder",
+        "zlib/1.2.12: Building your package in C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b",
+        "zlib/1.2.12: Generator txt created conanbuildinfo.txt",
+        "zlib/1.2.12: Calling generate()",
+        "zlib/1.2.12: Aggregating env generators",
+        "zlib/1.2.12: Calling build()",
+        "zlib/1.2.12: Package '5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b' built",
+        "zlib/1.2.12: Build folder C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\build",
+        "zlib/1.2.12: Generated conaninfo.txt",
+        "zlib/1.2.12: Generated conanbuildinfo.txt",
+        "zlib/1.2.12: Generating the package",
+        "zlib/1.2.12: Package folder C:\\conan\\data\\zlib\\1.2.12\\_\\_\\package\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b",
+        "zlib/1.2.12: Calling package()",
+        "zlib/1.2.12: Created package revision 27415161d7b51f5d2dcb39fb9aa83e1e"
+      ],
+      "version": "1.2.12",
+      "user": null,
+      "channel": null,
+      "remote": "'conan-center'",
+      "package_id": "5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b",
+      "package_revision": "27415161d7b51f5d2dcb39fb9aa83e1e",
+      "stderr": [
+        "zlib/1.2.12: WARN: Using the new toolchains and generators without specifying a build profile (e.g: -pr:b=default) is discouraged and might cause failures and unexpected behavior"
+      ],
+      "build": {
+        "stdout": [
+          "zlib/1.2.12: CMake command: cmake -G \"Ninja\" -DCMAKE_TOOLCHAIN_FILE=\"C:/conan/data/zlib/1.2.12/_/_/build/5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b/build/generators/conan_toolchain.cmake\" -DCMAKE_INSTALL_PREFIX=\"C:/conan/data/zlib/1.2.12/_/_/package/5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\" -DCMAKE_POLICY_DEFAULT_CMP0091=\"NEW\" -DCMAKE_BUILD_TYPE=\"Release\" \"C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\"",
+          "**********************************************************************",
+          "** Visual Studio 2022 Developer Command Prompt v17.1.1",
+          "** Copyright (c) 2021 Microsoft Corporation",
+          "**********************************************************************",
+          "[vcvarsall.bat] Environment initialized for: 'x64'",
+          "-- Using Conan toolchain: C:/conan/data/zlib/1.2.12/_/_/build/5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b/build/generators/conan_toolchain.cmake",
+          "-- Conan toolchain: Setting BUILD_SHARED_LIBS = OFF",
+          "-- The C compiler identification is MSVC 19.31.31104.0",
+          "-- Detecting C compiler ABI info",
+          "-- Detecting C compiler ABI info - done",
+          "-- Check for working C compiler: C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.31.31103/bin/Hostx64/x64/cl.exe - skipped",
+          "-- Detecting C compile features",
+          "-- Detecting C compile features - done",
+          "-- Looking for sys/types.h",
+          "-- Looking for sys/types.h - found",
+          "-- Looking for stdint.h",
+          "-- Looking for stdint.h - found",
+          "-- Looking for stddef.h",
+          "-- Looking for stddef.h - found",
+          "-- Check size of off64_t",
+          "-- Check size of off64_t - failed",
+          "-- Looking for fseeko",
+          "-- Looking for fseeko - not found",
+          "-- Looking for unistd.h",
+          "-- Looking for unistd.h - not found",
+          "-- Renaming",
+          "--     C:/conan/data/zlib/1.2.12/_/_/build/5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b/src/zconf.h",
+          "-- to 'zconf.h.included' because this file is included with zlib",
+          "-- but CMake generates it automatically in the build directory.",
+          "-- Configuring done",
+          "-- Generating done",
+          "-- Build files have been written to: C:/conan/data/zlib/1.2.12/_/_/build/5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b/build",
+          "zlib/1.2.12: CMake command: cmake --build \"C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\build\" -- -j8",
+          "**********************************************************************",
+          "** Visual Studio 2022 Developer Command Prompt v17.1.1",
+          "** Copyright (c) 2021 Microsoft Corporation",
+          "**********************************************************************",
+          "[vcvarsall.bat] Environment initialized for: 'x64'",
+          "[1/16] Building C object CMakeFiles\\zlib.dir\\compress.c.obj",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\compress.c(74) : warning C4711: function 'compress2' selected for automatic inline expansion",
+          "[2/16] Building C object CMakeFiles\\zlib.dir\\gzclose.c.obj",
+          "[3/16] Building C object CMakeFiles\\zlib.dir\\gzwrite.c.obj",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c(178) : warning C4711: function 'gz_comp' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c(592) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c(581) : note: index 'flush' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c(592) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c(460) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c(445) : note: index 'len' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c(460) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c(279) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c(273) : note: index 'len' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c(279) : note: feeds call on this line",
+          "[4/16] Building C object CMakeFiles\\zlib.dir\\adler32.c.obj",
+          "[5/16] Building C object CMakeFiles\\zlib.dir\\gzread.c.obj",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c(74) : warning C4711: function 'gz_load' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c(186) : warning C4711: function 'gz_avail' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c(284) : warning C4711: function 'gz_fetch' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c(349) : warning C4711: function 'gz_load' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c(35) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c(338) : note: index 'n' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c(35) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c(407) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c(394) : note: index 'len' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c(407) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c(400) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c(394) : note: index 'len' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c(400) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c(477) : warning C4711: function 'gzgetc' selected for automatic inline expansion",
+          "[6/16] Building C object CMakeFiles\\zlib.dir\\gzlib.c.obj",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c(479) : warning C4711: function 'gztell64' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c(512) : warning C4711: function 'gzoffset64' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c(613) : warning C4710: 'snprintf': function not inlined",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c(572) : warning C4711: function 'gz_error' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c(87) : warning C4711: function 'gz_error' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c(216) : warning C4710: 'snprintf': function not inlined",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c(409) : warning C4711: function 'gz_error' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c(87) : warning C4711: function 'gz_error' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c(363) : warning C4711: function 'gz_reset' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c(422) : warning C4711: function 'gzrewind' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c(87) : warning C4711: function 'gz_error' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c(265) : warning C4711: function 'gz_reset' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c(298) : warning C4710: 'snprintf': function not inlined",
+          "[7/16] Building C object CMakeFiles\\zlib.dir\\crc32.c.obj",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(575) : warning C4711: function 'multmodp' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(889) : warning C4711: function 'crc_word' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(891) : warning C4711: function 'crc_word' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(893) : warning C4711: function 'crc_word' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(895) : warning C4711: function 'crc_word' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(897) : warning C4711: function 'crc_word' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(1115) : warning C4711: function 'multmodp' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(928) : warning C4711: function 'byte_swap' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(1011) : warning C4711: function 'crc_word_big' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(1013) : warning C4711: function 'crc_word_big' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(1015) : warning C4711: function 'crc_word_big' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(1017) : warning C4711: function 'crc_word_big' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(1019) : warning C4711: function 'crc_word_big' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(1028) : warning C4711: function 'byte_swap' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(1080) : warning C4711: function 'multmodp' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(1080) : warning C4711: function 'multmodp' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(1106) : warning C4711: function 'crc32_combine_gen64' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c(1089) : warning C4711: function 'crc32_combine64' selected for automatic inline expansion",
+          "[8/16] Building C object CMakeFiles\\zlib.dir\\uncompr.c.obj",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\uncompr.c(92) : warning C4711: function 'uncompress2' selected for automatic inline expansion",
+          "[9/16] Building C object CMakeFiles\\zlib.dir\\inftrees.c.obj",
+          "[10/16] Building C object CMakeFiles\\zlib.dir\\inffast.c.obj",
+          "[11/16] Building C object CMakeFiles\\zlib.dir\\zutil.c.obj",
+          "[12/16] Building C object CMakeFiles\\zlib.dir\\infback.c.obj",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\infback.c(309) : warning C4711: function 'fixedtables' selected for automatic inline expansion",
+          "[13/16] Building C object CMakeFiles\\zlib.dir\\trees.c.obj",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c(724,40): warning C4242: '+=': conversion from 'int' to 'ush', possible loss of data",
+          "            s->bl_tree[curlen].Freq += count;",
+          "                                       ^",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c(1020,33): warning C4242: '=': conversion from 'unsigned int' to 'uchf', possible loss of data",
+          "    s->sym_buf[s->sym_next++] = dist;",
+          "                                ^",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c(1022,33): warning C4242: '=': conversion from 'unsigned int' to 'uchf', possible loss of data",
+          "    s->sym_buf[s->sym_next++] = lc;",
+          "                                ^",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c(382) : warning C4711: function 'tr_static_init' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c(600) : warning C4711: function 'bi_reverse' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c(870) : warning C4711: function 'bi_windup' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c(926) : warning C4711: function 'detect_data_type' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c(943) : warning C4711: function 'build_bl_tree' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c(972) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c(963) : note: index '' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c(972) : note: feeds call on this line",
+          "[14/16] Building C object CMakeFiles\\zlib.dir\\deflate.c.obj",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1735,42): warning C4242: '=': conversion from 'unsigned int' to 'Bytef', possible loss of data",
+          "        s->pending_buf[s->pending - 4] = len;",
+          "                                         ^",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1915,1): warning C4242: '=': conversion from 'ush' to 'uchf', possible loss of data",
+          "            _tr_tally_dist(s, s->strstart - s->match_start,",
+          "^",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(2040,1): warning C4242: '=': conversion from 'ush' to 'uchf', possible loss of data",
+          "            _tr_tally_dist(s, s->strstart -1 - s->prev_match,",
+          "^",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(2150,13): warning C4242: '=': conversion from 'ush' to 'uchf', possible loss of data",
+          "            _tr_tally_dist(s, 1, s->match_length - MIN_MATCH, bflush);",
+          "            ^",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(493) : warning C4711: function 'deflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1415) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1415) : note: index 'best_len' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1415) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(561) : warning C4711: function 'deflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(512) : warning C4711: function 'deflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(590) : warning C4711: function 'deflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1124) : warning C4711: function 'deflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(667) : warning C4711: function 'deflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(705) : warning C4711: function 'deflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1558) : warning C4711: function 'slide_hash' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1552) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1550) : note: index '' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1552) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1741) : warning C4711: function 'flush_pending' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(573) : warning C4711: function 'deflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(512) : warning C4711: function 'deflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(550) : warning C4711: function 'deflateResetKeep' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(552) : warning C4711: function 'lm_init' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1156) : warning C4711: function 'deflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1956) : warning C4711: function 'flush_pending' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(2162) : warning C4711: function 'flush_pending' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1799) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1783) : note: index 'used' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1799) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(2015) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(2009) : note: index '' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(2015) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1909) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1904) : note: index '' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1909) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(2201) : warning C4711: function 'flush_pending' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(427) : warning C4711: function 'deflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(811) : warning C4711: function 'deflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(874) : warning C4711: function 'putShortMSB' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(878) : warning C4711: function 'putShortMSB' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(879) : warning C4711: function 'putShortMSB' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1107) : warning C4711: function 'putShortMSB' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1108) : warning C4711: function 'putShortMSB' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1043) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(811) : note: index 'flush' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1043) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1009) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1009) : note: index 'beg' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(1009) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(987) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(987) : note: index 'beg' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(987) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(965) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(965) : note: index 'beg' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(965) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c(617) : warning C4711: function 'deflateStateCheck' selected for automatic inline expansion",
+          "[15/16] Building C object CMakeFiles\\zlib.dir\\inflate.c.obj",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(434) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(423) : note: index 'copy' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(434) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(124) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(431) : warning C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(423) : note: index 'copy' range checked by comparison on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(431) : note: feeds call on this line",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(255) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(1305) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(1380) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(1487) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(1502) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(1323) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(1577) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(150) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(124) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(155) : warning C4711: function 'inflateResetKeep' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(646) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(878) : warning C4711: function 'fixedtables' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(1563) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(1348) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(1545) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(166) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(1434) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(1450) : warning C4711: function 'syncsearch' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(1589) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(166) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(150) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(124) : warning C4711: function 'inflateStateCheck' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(155) : warning C4711: function 'inflateResetKeep' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(193) : warning C4711: function 'inflateReset' selected for automatic inline expansion",
+          "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c(232) : warning C4711: function 'inflateReset2' selected for automatic inline expansion",
+          "[16/16] Linking C static library zlib.lib"
+        ],
+        "stderr": [],
+        "translation_units": [
+          {
+            "compiler": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.31.31103\\bin\\Hostx64\\x64\\cl.exe",
+            "flags": [],
+            "sources": [
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\build\\CMakeFiles\\ShowIncludes\\main.c"
+            ]
+          },
+          {
+            "compiler": "C:\\PROGRA~2\\MICROS~1\\2022\\BUILDT~1\\VC\\Tools\\MSVC\\1431~1.311\\bin\\Hostx64\\x64\\cl.exe",
+            "flags": [
+              "-MD",
+              "-O2",
+              "-Ob2",
+              "-W3",
+              "-Wall",
+              "-diagnostics:caret"
+            ],
+            "defines": [
+              "NDEBUG",
+              "NO_FSEEKO",
+              "WIN32",
+              "_CRT_NONSTDC_NO_DEPRECATE",
+              "_CRT_SECURE_NO_DEPRECATE",
+              "_WINDOWS"
+            ],
+            "includes": [
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\build",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src"
+            ],
+            "sources": [
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\adler32.c",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\compress.c",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzclose.c",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\infback.c",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inffast.c",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inftrees.c",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\uncompr.c",
+              "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\zutil.c"
+            ]
+          }
+        ],
+        "warnings": [
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c",
+            "line": 581,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index 'flush' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c",
+            "line": 592,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c",
+            "line": 445,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index 'len' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c",
+            "line": 460,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c",
+            "line": 273,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index 'len' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c",
+            "line": 279,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c",
+            "line": 338,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index 'n' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c",
+            "line": 35,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c",
+            "line": 394,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index 'len' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c",
+            "line": 407,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c",
+            "line": 400,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c",
+            "line": 963,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index '' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c",
+            "line": 972,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1415,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index 'best_len' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1415,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1550,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index '' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1552,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1783,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index 'used' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1799,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 2009,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index '' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 2015,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1904,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index '' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1909,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 811,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index 'flush' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1043,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1009,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index 'beg' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1009,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 987,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index 'beg' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 987,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 965,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index 'beg' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 965,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 423,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "index 'copy' range checked by comparison on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 434,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "context": [],
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 431,
+            "column": null,
+            "severity": "note",
+            "info": [
+              "feeds call on this line"
+            ],
+            "category": null,
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\compress.c",
+            "line": 74,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'compress2' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c",
+            "line": 178,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'gz_comp' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c",
+            "line": 592,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c",
+            "line": 460,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzwrite.c",
+            "line": 279,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c",
+            "line": 74,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'gz_load' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c",
+            "line": 186,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'gz_avail' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c",
+            "line": 284,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'gz_fetch' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c",
+            "line": 349,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'gz_load' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c",
+            "line": 35,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c",
+            "line": 407,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c",
+            "line": 400,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzread.c",
+            "line": 477,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'gzgetc' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c",
+            "line": 479,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'gztell64' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c",
+            "line": 512,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'gzoffset64' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c",
+            "line": 613,
+            "column": null,
+            "severity": "warning",
+            "category": "C4710",
+            "info": [
+              "'snprintf': function not inlined"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c",
+            "line": 572,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'gz_error' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c",
+            "line": 87,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'gz_error' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c",
+            "line": 216,
+            "column": null,
+            "severity": "warning",
+            "category": "C4710",
+            "info": [
+              "'snprintf': function not inlined"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c",
+            "line": 409,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'gz_error' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c",
+            "line": 363,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'gz_reset' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c",
+            "line": 422,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'gzrewind' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c",
+            "line": 265,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'gz_reset' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\gzlib.c",
+            "line": 298,
+            "column": null,
+            "severity": "warning",
+            "category": "C4710",
+            "info": [
+              "'snprintf': function not inlined"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 575,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'multmodp' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 889,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'crc_word' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 891,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'crc_word' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 893,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'crc_word' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 895,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'crc_word' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 897,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'crc_word' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 1115,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'multmodp' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 928,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'byte_swap' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 1011,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'crc_word_big' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 1013,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'crc_word_big' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 1015,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'crc_word_big' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 1017,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'crc_word_big' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 1019,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'crc_word_big' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 1028,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'byte_swap' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 1080,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'multmodp' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 1106,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'crc32_combine_gen64' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\crc32.c",
+            "line": 1089,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'crc32_combine64' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\uncompr.c",
+            "line": 92,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'uncompress2' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\infback.c",
+            "line": 309,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'fixedtables' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c",
+            "line": 724,
+            "column": 40,
+            "severity": "warning",
+            "category": "C4242",
+            "info": [
+              "'+=': conversion from 'int' to 'ush', possible loss of data"
+            ],
+            "project": null,
+            "hint": [
+              "            s->bl_tree[curlen].Freq += count;",
+              "                                       ^"
+            ],
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c",
+            "line": 1020,
+            "column": 33,
+            "severity": "warning",
+            "category": "C4242",
+            "info": [
+              "'=': conversion from 'unsigned int' to 'uchf', possible loss of data"
+            ],
+            "project": null,
+            "hint": [
+              "    s->sym_buf[s->sym_next++] = dist;",
+              "                                ^"
+            ],
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c",
+            "line": 1022,
+            "column": 33,
+            "severity": "warning",
+            "category": "C4242",
+            "info": [
+              "'=': conversion from 'unsigned int' to 'uchf', possible loss of data"
+            ],
+            "project": null,
+            "hint": [
+              "    s->sym_buf[s->sym_next++] = lc;",
+              "                                ^"
+            ],
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c",
+            "line": 382,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'tr_static_init' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c",
+            "line": 600,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'bi_reverse' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c",
+            "line": 870,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'bi_windup' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c",
+            "line": 926,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'detect_data_type' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c",
+            "line": 943,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'build_bl_tree' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\trees.c",
+            "line": 972,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1735,
+            "column": 42,
+            "severity": "warning",
+            "category": "C4242",
+            "info": [
+              "'=': conversion from 'unsigned int' to 'Bytef', possible loss of data"
+            ],
+            "project": null,
+            "hint": [
+              "        s->pending_buf[s->pending - 4] = len;",
+              "                                         ^"
+            ],
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1915,
+            "column": 1,
+            "severity": "warning",
+            "category": "C4242",
+            "info": [
+              "'=': conversion from 'ush' to 'uchf', possible loss of data"
+            ],
+            "project": null,
+            "hint": [
+              "            _tr_tally_dist(s, s->strstart - s->match_start,",
+              "^"
+            ],
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 2040,
+            "column": 1,
+            "severity": "warning",
+            "category": "C4242",
+            "info": [
+              "'=': conversion from 'ush' to 'uchf', possible loss of data"
+            ],
+            "project": null,
+            "hint": [
+              "            _tr_tally_dist(s, s->strstart -1 - s->prev_match,",
+              "^"
+            ],
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 2150,
+            "column": 13,
+            "severity": "warning",
+            "category": "C4242",
+            "info": [
+              "'=': conversion from 'ush' to 'uchf', possible loss of data"
+            ],
+            "project": null,
+            "hint": [
+              "            _tr_tally_dist(s, 1, s->match_length - MIN_MATCH, bflush);",
+              "            ^"
+            ],
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 493,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'deflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1415,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 561,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'deflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 512,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'deflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 590,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'deflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1124,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'deflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 667,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'deflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 705,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'deflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1558,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'slide_hash' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1552,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1741,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'flush_pending' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 573,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'deflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 550,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'deflateResetKeep' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 552,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'lm_init' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1156,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'deflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1956,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'flush_pending' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 2162,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'flush_pending' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1799,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 2015,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1909,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 2201,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'flush_pending' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 427,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'deflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 811,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'deflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 874,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'putShortMSB' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 878,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'putShortMSB' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 879,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'putShortMSB' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1107,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'putShortMSB' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1108,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'putShortMSB' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1043,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 1009,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 987,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 965,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\deflate.c",
+            "line": 617,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'deflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 434,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 124,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 431,
+            "column": null,
+            "severity": "warning",
+            "category": "C5045",
+            "info": [
+              "Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 255,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 1305,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 1380,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 1487,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 1502,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 1323,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 1577,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 150,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 155,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateResetKeep' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 646,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 878,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'fixedtables' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 1563,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 1348,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 1545,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 166,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 1434,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 1450,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'syncsearch' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 1589,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateStateCheck' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 193,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateReset' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          },
+          {
+            "file": "C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\src\\inflate.c",
+            "line": 232,
+            "column": null,
+            "severity": "warning",
+            "category": "C4711",
+            "info": [
+              "function 'inflateReset2' selected for automatic inline expansion"
+            ],
+            "project": null,
+            "hint": null,
+            "from": "compilation"
+          }
+        ]
+      },
+      "package": [
+        "CMake command: cmake --install \"C:\\conan\\data\\zlib\\1.2.12\\_\\_\\build\\5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\\build\" --prefix \"C:/conan/data/zlib/1.2.12/_/_/package/5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b\"",
+        "**********************************************************************",
+        "** Visual Studio 2022 Developer Command Prompt v17.1.1",
+        "** Copyright (c) 2021 Microsoft Corporation",
+        "**********************************************************************",
+        "[vcvarsall.bat] Environment initialized for: 'x64'",
+        "-- Install configuration: \"Release\"",
+        "-- Installing: C:/conan/data/zlib/1.2.12/_/_/package/5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b/lib/zlib.lib",
+        "-- Installing: C:/conan/data/zlib/1.2.12/_/_/package/5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b/include/zconf.h",
+        "-- Installing: C:/conan/data/zlib/1.2.12/_/_/package/5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b/include/zlib.h",
+        "package(): Packaged 2 '.h' files: zconf.h, zlib.h",
+        "package(): Packaged 1 '.lib' file: zlib.lib",
+        "package(): Packaged 1 file: LICENSE"
+      ],
+      "actions": [
+        "GOT_RECIPE_FROM_LOCAL_CACHE",
+        "PACKAGE_BUILT_FROM_SOURCES"
+      ]
+    },
+    "ninja": {
+      "version": "1.11.0",
+      "user": null,
+      "channel": null,
+      "remote": "'conan-center'",
+      "package_id": "0a420ff5c47119e668867cdb51baff0eca1fdb68",
+      "package_revision": null,
+      "stdout": [
+        "ninja/1.11.0: Already installed!"
+      ],
+      "actions": [
+        "GOT_RECIPE_FROM_LOCAL_CACHE",
+        "GOT_PACKAGE_FROM_LOCAL_CACHE"
+      ]
+    }
+  },
+  "stdout": [
+    "Version ranges solved",
+    "    Version range '' required by 'virtual' resolved to 'zlib/1.2.12' in local cache",
+    "    Version range '^1.9' required by 'zlib/1.2.12' resolved to 'ninja/1.11.0' in local cache",
+    "",
+    "Installing package: zlib/[]",
+    "Requirements",
+    "    zlib/1.2.12 from 'conan-center' - Cache",
+    "Packages",
+    "    zlib/1.2.12:5a61a86bb3e07ce4262c80e1510f9c05e9b6d48b - Build",
+    "Build requirements",
+    "    ninja/1.11.0 from 'conan-center' - Cache",
+    "Build requirements packages",
+    "    ninja/1.11.0:0a420ff5c47119e668867cdb51baff0eca1fdb68 - Cache",
+    "",
+    "Installing (downloading, building) binaries...",
+    "Aggregating env generators"
+  ]
+}
