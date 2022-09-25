@@ -152,6 +152,8 @@ output = [
     "                ^",
     "source_subfolder/meson.build:1559:2: ERROR: Problem encountered: "
     "Could not determine size of size_t.",
+    'CMake Error: CMake was unable to find a build program corresponding to "MinGW Makefiles".  '
+    "CMAKE_MAKE_PROGRAM is not set.  You probably need to select a different build tool.",
     "",
 ]
 dataset = [
@@ -465,8 +467,7 @@ dataset = [
                 "line": None,
                 "function": None,
                 "info": ""
-                "  Manually-specified variables were not used by the project:\n"
-                "\n"
+                "Manually-specified variables were not used by the project:\n\n"
                 "    CMAKE_EXPORT_NO_PACKAGE_REGISTRY",
             },
             {
@@ -474,7 +475,7 @@ dataset = [
                 "line": "158",
                 "severity": "Warning",
                 "function": "MESSAGE",
-                "info": "  Could not find LDAP",
+                "info": "Could not find LDAP",
                 "context": ""
                 "Call Stack (most recent call first):\n"
                 "  CMakeListsOriginal.txt:1351 (MYSQL_CHECK_LDAP)\n"
@@ -486,7 +487,7 @@ dataset = [
                 "severity": "Warning",
                 "function": "MESSAGE",
                 "context": None,
-                "info": "  Skipping the LDAP client authentication plugin",
+                "info": "Skipping the LDAP client authentication plugin",
             },
             {
                 "context": None,
@@ -494,8 +495,8 @@ dataset = [
                 "file": None,
                 "line": None,
                 "function": None,
-                "info": "  Manually-specified variables were not used by the project:\n"
-                "\n"
+                "info": ""
+                "Manually-specified variables were not used by the project:\n\n"
                 "    CMAKE_EXPORT_NO_PACKAGE_REGISTRY\n"
                 "    CMAKE_INSTALL_BINDIR\n"
                 "    CMAKE_INSTALL_DATAROOTDIR\n"
@@ -504,6 +505,17 @@ dataset = [
                 "    CMAKE_INSTALL_LIBEXECDIR\n"
                 "    CMAKE_INSTALL_OLDINCLUDEDIR\n"
                 "    MAKE_INSTALL_SBINDIR",
+            },
+            {
+                "context": None,
+                "severity": "Error",
+                "file": None,
+                "line": None,
+                "function": None,
+                "info": ""
+                'CMake was unable to find a build program corresponding to "MinGW Makefiles".  '
+                "CMAKE_MAKE_PROGRAM is not set.  You probably need to select"
+                " a different build tool.",
             },
         ],
         id="cmake",

@@ -36,12 +36,14 @@ class Regex:
                 \ (?:in|at)\ (?P<file>(?:[A-Za-z]:)?[^\n:]+)
                 (?::(?P<line>\d+)\ \((?P<function>\w+)\))?
             )?:
+            \n? \ +
+            (?P<info> \ *[^\n]+(\n{1,2}\ +[^\n]+)* )
             \n
-            (?P<info> \ +[^\n]+(\n{1,2}\ +[^\n]+)* )
-            \n
-            (?P<context>Call\ Stack[^\n]+ (?:\n\ +[^\n]+)+)?
-            (?(context)\n)
-            \n{2}
+            (
+                (?P<context>Call\ Stack[^\n]+ (?:\n\ +[^\n]+)+)?
+                (?(context)\n)
+                \n{2}
+            )?
         """
     )
     GNU = re.compile(
