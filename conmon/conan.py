@@ -42,8 +42,8 @@ def config(section: Optional[str] = None) -> Dict[str, Any]:
         return config().get(section, {})
 
     parser = ClientConfigParser(allow_no_value=True)
-    with (CONFIG_FOLDER / "conan.conf").open(encoding="utf8") as fp:
-        parser.read_file(fp)
+    with (CONFIG_FOLDER / "conan.conf").open(encoding="utf8") as fh:
+        parser.read_file(fh)
 
     return {
         section: dict(parser.items_as_dict(section)) for section in parser.sections()

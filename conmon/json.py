@@ -17,6 +17,6 @@ class Encoder(JSONEncoder):
         return super().default(o)
 
 
-def dump(obj, fp: TextIO, *args, **kwargs):
+def dump(obj, fh: TextIO, *args, **kwargs):
     encoder = Encoder(*args, **kwargs)
-    fp.write(encoder.encode(obj))
+    fh.write(encoder.encode(obj))

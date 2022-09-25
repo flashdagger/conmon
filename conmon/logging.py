@@ -12,6 +12,7 @@ from colorlog.escape_codes import escape_codes
 from . import conan
 
 
+# pylint: disable=too-few-public-methods
 class _GLOBALS:
     initialized = False
     log_level = logging.WARNING

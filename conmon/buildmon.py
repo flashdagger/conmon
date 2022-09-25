@@ -185,7 +185,8 @@ class BuildMonitor(Thread):
             return
         self.stop()
         assert not self.is_alive()
-        self.__init__(self.proc)
+        # pylint: disable=unnecessary-dunder-call
+        self.__init__(self.proc)  # type: ignore
         super().start()
 
     def stop(self):
@@ -237,7 +238,11 @@ class BuildMonitor(Thread):
                 LOG_ONCE.warning("Missing response file %s", response_file)
                 new_cmdline.append(arg)
             else:
-                split = shlex.split if posix else WinShlex.split
+                split = (
+                    partial(shlex.split, comments=False, posix=True)
+                    if posix
+                    else partial(WinShlex.split)
+                )
                 encoding = "utf-16" if set(rsp_data[0:2]) == {0xFE, 0xFF} else "utf-8"
                 new_cmdline.extend(split(rsp_data.decode(encoding=encoding)))
                 LOG_ONCE.debug(
@@ -269,7 +274,7 @@ class BuildMonitor(Thread):
             posix = False
         else:
             assert compiler_type is not None
-            convert = str
+            convert = partial(str)
             posix = True
 
         process_map["cmdline"] = [
@@ -376,7 +381,7 @@ class BuildMonitor(Thread):
                 self.check_process(info_map)
                 # info_map["clean"], info_map["unknown"] =
                 # self.PARSER.cleanup_args(info_map["cmdline"])
-            except BaseException:
+            except BaseException:  # pylint: disable=broad-except
                 LOG.exception("Exception while processing...")
                 continue
 
