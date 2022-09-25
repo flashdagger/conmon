@@ -230,7 +230,7 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
             severity = mapping.get("severity")
             if severity not in {"warning", "error", "fatal error", "note", "message"}:
                 continue
-            if name == "cmake" and not mapping["file"]:
+            if name == "cmake" and severity != "error" and not mapping["file"]:
                 continue
 
             key = (
@@ -240,7 +240,11 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
                 else mapping["from"],
             )
 
-            if key not in stats and severity not in {"note", "message"}:
+            if (
+                key not in stats
+                and severity not in {"note", "message"}
+                or severity == "error"
+            ):
                 LOG.log(
                     loglevel_from_severity(severity),
                     shorten_per_line(
