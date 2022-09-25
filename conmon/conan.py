@@ -108,10 +108,10 @@ def call_cmd_and_version() -> Tuple[List[str], str]:
         pass
 
     # use the conan executable or python calling the module
-    conmon_conan_cmd = conmon_setting("conan_cmd", "conan")
+    conmon_conan_cmd = conmon_setting("conan_cmd") or "conan"
     try:
         LOG.debug("calling via %r", conmon_conan_cmd)
-        conan_command = shlex.split(conmon_conan_cmd)
+        conan_command = shlex.split(conmon_conan_cmd, posix=os.name == "posix")
         out = check_output(
             [*conan_command, "--version"],
             universal_newlines=True,
@@ -123,7 +123,7 @@ def call_cmd_and_version() -> Tuple[List[str], str]:
     except (FileNotFoundError, IndexError):
         pass
 
-    LOG.error("The %r command cannot be executed.", conmon_conan_cmd)
+    LOG.error("The command %r cannot be executed.", conmon_conan_cmd)
     sys.exit(1)
 
 
