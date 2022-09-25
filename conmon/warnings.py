@@ -107,7 +107,7 @@ class Regex:
         ^(?P<from>
             ar
             | libtool
-            | [\d\w/.-]+\.(?: m4 | asm )
+            | [\w/.-]+\.(?: m4 | asm )
             | auto([a-z]+)
             | aclocal(?:.\w+)?
             | config(?:ure)?(?:\.[a-z]+)?
@@ -124,7 +124,8 @@ class Regex:
     )
     CONAN = re.compile(
         rf"""(?xm)
-        ^(?:(?P<severity_l>ERROR|WARN(?:ING)?):\ )?
+        ^(?P<severity_l>ERROR|WARN(?:ING)?)?
+        (?(severity_l):\ )
         (?:
             {compact_pattern(REF_REGEX)[0]}
             (?: \ \([a-z ]+\) )?
