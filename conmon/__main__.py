@@ -691,6 +691,7 @@ class Build(State):
                     "info",
                     "hint",
                 ),
+                reorder_keys=True,
             )
         )
 

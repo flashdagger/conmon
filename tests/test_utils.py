@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from conmon.utils import (
     common_parent,
     human_readable_byte_size,
@@ -73,9 +75,27 @@ def test_compare_everything_2():
 
 def test_sorted_dicts():
     items = (dict(a=3, b=2), dict(a=2), dict(c=3, a=0), dict(a=2, c="x"))
+
+    with pytest.raises(AssertionError) as exc_info:
+        next(sorted_dicts(items, keys=("a", "b", "c", "b")))
+    assert exc_info.match("keys must be unique")
+
     assert tuple(sorted_dicts(items, keys=("a", "b", "c"))) == (
         {"a": 0, "c": 3},
         {"a": 2, "c": "x"},
         {"a": 2},
         {"a": 3, "b": 2},
     )
+
+
+def test_sorted_dicts_reordered():
+    items = (dict(a=2, b=2), dict(a=2), dict(c=3, a=0), dict(a=2, c="x"))
+    assert [
+        tuple(mapping.items())
+        for mapping in sorted_dicts(items, keys=("c", "a", "b"), reorder_keys=True)
+    ] == [
+        (("c", 3), ("a", 0)),
+        (("c", "x"), ("a", 2)),
+        (("a", 2), ("b", 2)),
+        (("a", 2),),
+    ]

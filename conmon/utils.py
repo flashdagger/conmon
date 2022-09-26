@@ -25,6 +25,7 @@ from typing import (
     List,
     Mapping,
     Optional,
+    Sequence,
     Set,
     Tuple,
     TypeVar,
@@ -375,10 +376,20 @@ def human_readable_byte_size(size: int) -> str:
     return human_readable_size(size, "Bytes", factor=1024)
 
 
-@cmp_to_key
-def compare_everything(obj, other):
+def _compare_everything(obj, other):
     if obj == other:
         return 0
+
+    if all(
+        isinstance(item, Sequence) and not isinstance(item, str)
+        for item in (obj, other)
+    ):
+        for _obj, _other in zip(obj, other):
+            ret = _compare_everything(_obj, _other)
+            if ret != 0:
+                return ret
+        return min(1, max(len(obj) - len(other), -1))
+
     with suppress(TypeError):
         if other is None or obj < other:
             return -1
@@ -388,11 +399,30 @@ def compare_everything(obj, other):
     return -1 if str(obj) < str(other) else 1
 
 
-def sorted_dicts(items: Iterable[Mapping], *, keys, reverse=False):
+# pylint: disable=invalid-name
+compare_everything = cmp_to_key(_compare_everything)
+
+
+def sorted_dicts(
+    items: Iterable[Mapping], *, keys: Sequence, reorder_keys=False, reverse=False
+):
     assert len(set(keys)) == len(keys), "keys must be unique"
 
+    def reorder(mapping: Mapping) -> Mapping:
+        new_mapping = {}
+        for key in keys:
+            if key not in mapping:
+                continue
+            new_mapping[key] = mapping[key]
+        for key in mapping.keys():
+            if key in new_mapping:
+                continue
+            new_mapping[key] = mapping[key]
+        return new_mapping
+
     def transform(mapping: Mapping):
-        return tuple((*(mapping.get(key) for key in keys), mapping))
+        sortable_keys = (mapping.get(key) for key in keys)
+        return tuple((*sortable_keys, reorder(mapping) if reorder_keys else mapping))
 
     for item in sorted(
         (transform(item) for item in items), key=compare_everything, reverse=reverse
