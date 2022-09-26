@@ -1,6 +1,12 @@
 from pathlib import Path
 
-from conmon.utils import common_parent, human_readable_byte_size, human_readable_size
+from conmon.utils import (
+    common_parent,
+    human_readable_byte_size,
+    human_readable_size,
+    compare_everything,
+    sorted_dicts,
+)
 
 
 def test_common_parent():
@@ -25,3 +31,51 @@ def test_human_readable_byte_size():
     assert human_readable_byte_size(3333333) == "3.18 MB"
     assert human_readable_byte_size(3333333333) == "3.10 GB"
     assert human_readable_byte_size(int(33e15)) == "30013 TB"
+
+
+def test_compare_everything():
+    assert tuple(
+        sorted((3, None, 2, None, 1, 2.5, "4", "3"), key=compare_everything)
+    ) == (
+        1,
+        2,
+        2.5,
+        3,
+        "3",
+        "4",
+        None,
+        None,
+    )
+
+
+def test_compare_everything_2():
+    assert tuple(
+        sorted(
+            (
+                (20, "A"),
+                (1, "BBB"),
+                (1, "A"),
+                (1, None),
+                (2, None, "X"),
+                (2, None, "S"),
+            ),
+            key=compare_everything,
+        )
+    ) == (
+        (1, "A"),
+        (1, "BBB"),
+        (1, None),
+        (2, None, "S"),
+        (2, None, "X"),
+        (20, "A"),
+    )
+
+
+def test_sorted_dicts():
+    items = (dict(a=3, b=2), dict(a=2), dict(c=3, a=0), dict(a=2, c="x"))
+    assert tuple(sorted_dicts(items, keys=("a", "b", "c"))) == (
+        {"a": 0, "c": 3},
+        {"a": 2, "c": "x"},
+        {"a": 2},
+        {"a": 3, "b": 2},
+    )

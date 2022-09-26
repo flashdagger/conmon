@@ -8,30 +8,32 @@ import sys
 import time
 from configparser import ConfigParser
 from contextlib import suppress
+from functools import cmp_to_key
 from inspect import stack, FrameInfo
 from io import TextIOBase
 from math import log
 from pathlib import Path
 from queue import Queue, Empty
-from select import select
 from threading import Thread
 from typing import (
-    Hashable,
     Any,
     Dict,
-    Set,
-    List,
-    Iterable,
-    TypeVar,
-    Iterator,
-    Tuple,
-    Optional,
-    Union,
+    Hashable,
     IO,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
 )
 
 import colorama
 from psutil import Popen
+from select import select
 
 T = TypeVar("T", bound=Hashable)
 
@@ -371,3 +373,28 @@ def human_readable_size(
 
 def human_readable_byte_size(size: int) -> str:
     return human_readable_size(size, "Bytes", factor=1024)
+
+
+@cmp_to_key
+def compare_everything(obj, other):
+    if obj == other:
+        return 0
+    with suppress(TypeError):
+        if other is None or obj < other:
+            return -1
+    with suppress(TypeError):
+        if obj is None or obj > other:
+            return 1
+    return -1 if str(obj) < str(other) else 1
+
+
+def sorted_dicts(items: Iterable[Mapping], *, keys, reverse=False):
+    assert len(set(keys)) == len(keys), "keys must be unique"
+
+    def transform(mapping: Mapping):
+        return tuple((*(mapping.get(key) for key in keys), mapping))
+
+    for item in sorted(
+        (transform(item) for item in items), key=compare_everything, reverse=reverse
+    ):
+        yield item[-1]
