@@ -62,6 +62,7 @@ from .utils import (
     get_terminal_width,
     shorten,
     unique,
+    sorted_dicts,
 )
 from .warnings import (
     LOG as BLOG,
@@ -677,7 +678,21 @@ class Build(State):
         build_stderr = filter_by_regex(
             build_stderr, match_map, **Regex.dict("gnu", "msvc", "cmake", "autotools")
         )
-        self.log["warnings"] = warnings_from_matches(**match_map)
+        self.log["warnings"] = list(
+            sorted_dicts(
+                warnings_from_matches(**match_map),
+                keys=(
+                    "from",
+                    "severity",
+                    "file",
+                    "line",
+                    "column",
+                    "category",
+                    "info",
+                    "hint",
+                ),
+            )
+        )
 
         build_stderr = filter_by_regex(
             build_stderr,

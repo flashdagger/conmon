@@ -8,20 +8,24 @@ from contextlib import suppress
 from itertools import groupby
 from typing import (
     Any,
+    Callable,
     Dict,
-    List,
-    Pattern,
-    Tuple,
-    Set,
+    Generator,
     Iterable,
     Match,
-    Callable,
     Optional,
+    Pattern,
+    Set,
+    Tuple,
 )
 
 from .logging import UniqueLogger, get_logger
 from .regex import REF_REGEX, compact_pattern, shorten_conan_path
-from .utils import added_first, shorten_per_line, get_terminal_width
+from .utils import (
+    added_first,
+    get_terminal_width,
+    shorten_per_line,
+)
 
 LOG = get_logger("BUILD")
 LOG_ONCE = UniqueLogger(LOG)
@@ -204,9 +208,10 @@ def show_stats(stats):
             LOG.info(" %4sx %s", value, key)
 
 
-def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
+def warnings_from_matches(
+    **kwargs: Iterable[Match],
+) -> Generator[Dict[str, Any], None, None]:
     stats: Dict[Tuple[str, str], int] = Counter()
-    warnings = []
 
     for name, matches in kwargs.items():
         for match in matches:
@@ -226,7 +231,7 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
                 mapping["from"] = "compilation"
             elif "from" not in mapping:
                 mapping["from"] = name
-            warnings.append(mapping)
+            yield mapping
 
             severity = mapping.get("severity")
             if severity not in {"warning", "error", "fatal error", "note", "message"}:
@@ -258,4 +263,3 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> List[Dict[str, Any]]:
             stats[key] += 1
 
     show_stats(stats)
-    return warnings
