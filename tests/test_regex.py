@@ -44,6 +44,9 @@ output = [
     "-IC:/conan/data/mingw-builds/11.2.0/_/_/package/6903a9d1b48b06f7fbe0929db654512c77e6cc32/"
     "include  -MMD -MF apps/app_rand.d.tmp -MT apps/app_rand.o -c "
     "-o apps/app_rand.o apps/app_rand.c",
+    "  CC       libmisc/walk_tree.lo",
+    "  CCLD     libacl.la",
+    "  CCLD     chacl",
 ]
 dataset = [
     pytest.param(
@@ -53,6 +56,8 @@ dataset = [
             ("[ 93%]", "CMakeFiles/zlib.dir/zutil.c.obj"),
             ("[100%]", "libz.a"),
             ("", "apps/app_rand.c"),
+            ("  CC", "libmisc/walk_tree.lo"),
+            ("  CCLD", "libacl.la"),
         ],
         id="BUILD_STATUS_REGEX",
     ),
