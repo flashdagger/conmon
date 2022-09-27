@@ -106,7 +106,7 @@ def scan_msys(ps_output: str):
         return root_process(parent_pid)
 
     for info in parse_ps(ps_output):
-        if info["COMMAND"].endswith("/ps"):
+        if info.get("COMMAND", "/ps").endswith("/ps"):
             continue
         try:
             ppid_map[int(info["PID"])] = int(info["PPID"]), int(info["WINPID"])
