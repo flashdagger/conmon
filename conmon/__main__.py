@@ -48,6 +48,8 @@ from .logging import (
     logger_escape_code,
 )
 from .regex import (
+    BUILD_STATUS_REGEX,
+    BUILD_STATUS_REGEX2,
     DECOLORIZE_REGEX,
     REF_REGEX,
     compact_pattern,
@@ -433,29 +435,6 @@ class Build(State):
     MAX_WIDTH = 65
     PROC_JSON_RESET = False
     _WARNINGS: Set[str] = set()
-    BUILD_STATUS_REGEX = re.compile(
-        r"""(?x)
-            (?:
-                (?P<status>
-                    \[\ {0,2}\d+(?:%|[/\d]+) ] | \ +(?:CC|CCLD|CPPAS)(?=\ )
-                )?  # ninja, cmake or automake
-                .*? # msbuild prints only the filename
-            )?
-            (?P<file>
-                [\-.\w/\\]+ (?(status) \.[a-z]{1,3}$ | \.(?:asm|cpp|cxx|cc?|[sS])$ )
-            )
-    """
-    )
-    BUILD_STATUS_REGEX2 = re.compile(
-        r"""(?x)
-            (?P<status>$)?    # should never match
-            .*\ [-/]c\ .*?    # compile but don't link
-            (?P<file>
-                (?:[a-zA-Z]:)? [\-.\w/\\]+ \. (?:asm|cpp|cxx|cc?|[sS])
-                \b
-            )
-        """
-    )
     REF_LOG_KEY = "build"
 
     def __init__(self, parser: "ConanParser"):
@@ -516,9 +495,7 @@ class Build(State):
             return
 
         self.log["stdout"].append(parsed_line.group())
-        match = self.BUILD_STATUS_REGEX.fullmatch(
-            line
-        ) or self.BUILD_STATUS_REGEX2.match(line)
+        match = BUILD_STATUS_REGEX.fullmatch(line) or BUILD_STATUS_REGEX2.match(line)
         if match:
             status, file = match.groups()
             if status:

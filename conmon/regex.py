@@ -35,6 +35,29 @@ REF_REGEX = re.compile(
      )
     """
 )
+BUILD_STATUS_REGEX = re.compile(
+    r"""(?x)
+        (?:
+            (?P<status>
+                \[\ {0,2}\d+(?:%|[/\d]+) ] | \ +(?:CC|CCLD|CPPAS)(?=\ )
+            )?  # ninja, cmake or automake
+            .*? # msbuild prints only the filename
+        )?
+        (?P<file>
+            [\-.\w/\\]+ (?(status) \.[a-z]{1,3}$ | \.(?:asm|cpp|cxx|cc?|[sS])$ )
+        )
+"""
+)
+BUILD_STATUS_REGEX2 = re.compile(
+    r"""(?x)
+        (?P<status>$)?    # should never match
+        .*\ [-/]c\ .*?    # compile but don't link
+        (?P<file>
+            (?:[a-zA-Z]:)? [\-.\w/\\]+ \. (?:asm|cpp|cxx|cc?|[sS])
+            \b
+        )
+    """
+)
 
 
 def shorten_conan_path(text: str, placeholder=r"...\g<sep>", count=0) -> str:
