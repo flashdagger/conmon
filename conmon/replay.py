@@ -5,10 +5,12 @@ import argparse
 import re
 import sys
 from typing import List
+from unittest.mock import patch
 
 import psutil
 
-from conmon import json
+from conmon import json, __version__
+from conmon.__main__ import main as conmon_main
 from conmon.buildmon import BuildMonitor
 
 
@@ -50,10 +52,14 @@ def find_tus(report):
     return mapping
 
 
-def main() -> int:
-    """main entry point for console script"""
-    args = parse_args(sys.argv[1:])
+def call_cmd_and_version():
+    return [sys.executable, "-m", "conmon.replay", "--detached"], __version__
+
+
+def run_process(args: argparse.Namespace) -> int:
+    returncode = 0
     replay_log(args.logfile)
+
     if args.procfile:
         parse_procs(args.procfile)
     if args.reportfile:
@@ -62,10 +68,20 @@ def main() -> int:
         with open("report_tus.json", mode="w", encoding="utf8") as fh:
             json.dump(find_tus(report), fh, indent=4)
         returncode = report["conan"]["returncode"]
-    else:
-        returncode = 0
 
     return returncode
+
+
+def main() -> int:
+    """main entry point for console script"""
+    args = sys.argv[1:]
+    parsed_args = parse_args(args=args)
+
+    if parsed_args.detached:
+        return run_process(parsed_args)
+
+    with patch("conmon.conan.call_cmd_and_version", call_cmd_and_version):
+        return conmon_main()
 
 
 def parse_args(args: List[str]):
@@ -75,6 +91,11 @@ def parse_args(args: List[str]):
     description = "Simulate a conmon run"
     parser = argparse.ArgumentParser(
         description=description, prog="replay", add_help=True
+    )
+    parser.add_argument(
+        "--detached",
+        action="store_true",
+        help="run the actual subprocess",
     )
     parser.add_argument(
         "logfile",
