@@ -535,6 +535,7 @@ class Build(State):
     ) -> Iterator[Dict[str, Any]]:
         src_filter = {
             None: lambda path: "meson-private" in path.parts,
+            "b2": lambda path: path.as_posix().endswith("/config/checks/test_case.cpp"),
             "cmake": lambda path: re.search(
                 r"/(cmake-[23].\d{2}|CMakeTmp|CMakeFiles/Check[a-zA-Z]+"
                 r"|CMakeFiles/[23](\.\d+){1,2})/",
