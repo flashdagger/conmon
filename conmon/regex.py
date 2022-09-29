@@ -6,7 +6,7 @@ from typing import Pattern, Tuple, Iterator, Match, Union, Optional, List, Dict
 
 from conmon.conan import storage_path
 
-DECOLORIZE_REGEX = re.compile(r"\[\d{1,2}m", re.UNICODE)
+DECOLORIZE_REGEX = re.compile(r"\x1B\[\d{1,2}m", re.UNICODE)
 CONAN_DATA_PATH = re.compile(
     r"""(?x)
         (?P<path>
