@@ -1004,7 +1004,7 @@ def parse_args(args: List[str]):
     """
     description = "Run conan as monitored process with parsed JSON output"
     parser = argparse.ArgumentParser(
-        description=description, prog="conmon", add_help=False
+        description=description, prog="conmon", add_help=True
     )
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s version {__version__}"
@@ -1018,6 +1018,10 @@ def parse_args(args: List[str]):
 
     known_args, unknown_args = parser.parse_known_args(args)
     known_args.cmd.extend(unknown_args)
+
+    if not known_args.cmd:
+        parser.print_help()
+        parser.exit()
 
     return known_args
 
