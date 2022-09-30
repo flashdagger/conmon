@@ -1,12 +1,15 @@
+from collections import namedtuple
+from functools import partial
 from pathlib import Path
 
 import pytest
 
 from conmon.utils import (
     common_parent,
+    compare_everything,
     human_readable_byte_size,
     human_readable_size,
-    compare_everything,
+    shorten,
     sorted_dicts,
 )
 
@@ -99,3 +102,40 @@ def test_sorted_dicts_reordered():
         (("a", 2), ("b", 2)),
         (("a", 2),),
     ]
+
+
+def shorten_cases():
+    TestCase = namedtuple("TestCase", "text strip expected")
+    text = "the quick brown fox jumps over the lazy dog"
+    subtests = {
+        "left": "*[...]k brown fox jumps over the lazy dog*",
+        "right": "*the quick brown fox jumps over the [...]*",
+        "middle": "*the quick brown fo[...]over the lazy dog*",
+        "outer": "*[...]ck brown fox jumps over the la[...]*",
+    }
+
+    return (TestCase(text, strip, expected) for strip, expected in subtests.items())
+
+
+@pytest.mark.parametrize("testcase", shorten_cases(), ids=lambda val: val.strip)
+def test_shorten(testcase):
+    text, strip, expected = testcase
+    text_len = len(text)
+    placeholder = "[...]"
+    template = "*{}*"
+    shorten_default = partial(shorten, placeholder=placeholder, template=template)
+
+    # do not shorten
+    fulltext = template.format(text)
+    stripped_text = shorten_default(text, strip=strip, width=len(fulltext))
+    assert stripped_text == fulltext
+
+    # shorten text
+    stripped_text = shorten_default(text, width=text_len - 1, strip=strip)
+    assert len(stripped_text) == text_len - 1
+    assert stripped_text == expected
+
+    # return only placeholder
+    width = (2 if strip == "outer" else 1) * len(placeholder) + 2
+    stripped_text = shorten_default(text, strip=strip, width=width)
+    assert stripped_text == template.format(placeholder)

@@ -281,13 +281,15 @@ def merge_mapping(mapping: Dict[Hashable, Set], value_key: str) -> List[Dict[str
 def shorten(
     string: str, width: int, *, template="{}", strip="right", placeholder="[...]"
 ):
-    assert strip in {"left", "right", "middle"}
     full_text = template.format(string)
     diff_size = width - len(full_text)
     if diff_size >= 0 or width < 0:
         return full_text
     diff_size -= len(placeholder)
-    if strip == "right":
+
+    if strip == "left":
+        stripped_string = f"{placeholder}{string[-diff_size:]}"
+    elif strip == "right":
         stripped_string = f"{string[:diff_size]}{placeholder}"
     elif strip == "middle":
         diff_size += len(string)
@@ -297,8 +299,16 @@ def shorten(
             if diff_size > 0
             else placeholder
         )
+    elif strip == "outer":
+        diff_size = len(placeholder) - diff_size
+        div, res = divmod(diff_size, 2)
+        stripped_string = (
+            f"{placeholder}{string[div+res:-div]}{placeholder}"
+            if diff_size < len(string)
+            else placeholder
+        )
     else:
-        stripped_string = f"{placeholder}{string[-diff_size:]}"
+        raise ValueError(f"strip={strip!r} is not supported")
 
     return template.format(stripped_string)
 
@@ -306,12 +316,14 @@ def shorten(
 def shorten_per_line(
     string: str, width: int, *, strip="right", placeholder="[...]", keep_first=False
 ):
-    return "".join(
+    lines = [
         line
         if idx == 0 and keep_first
         else shorten(line, width=width, strip=strip, placeholder=placeholder)
         for idx, line in enumerate(string.splitlines(keepends=True))
-    )
+    ]
+
+    return "".join(lines)
 
 
 def added_first(container: Set, item: Hashable) -> bool:
