@@ -77,7 +77,7 @@ from .warnings import (
 CONMON_LOG = get_logger("CONMON")
 CONAN_LOG_ONCE = UniqueLogger(CONAN_LOG)
 PARENT_PROCS = [parent.name() for parent in Process(os.getppid()).parents()]
-LOG_HINTS: Dict[str, None] = {}
+LOG_HINTS: Dict[str, Optional[int]] = {}
 
 
 def filehandler(key: str, mode="w", hint="") -> TextIO:
@@ -85,7 +85,7 @@ def filehandler(key: str, mode="w", hint="") -> TextIO:
     if isinstance(path, str):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         if hint:
-            LOG_HINTS.setdefault(f"saved {hint} to {path!r}")
+            LOG_HINTS.setdefault(f"saved {hint} to {path!r}", logging.DEBUG)
     elif hint:
         env_key = f"CONMON_{key.upper()}"
         hint_path = key.replace("_", ".")
@@ -990,8 +990,8 @@ def monitor(args: List[str]) -> int:
     returncode = process.wait()
     if returncode:
         CONMON_LOG.error("conan exited with code %s", returncode)
-    for hint in LOG_HINTS:
-        CONMON_LOG.info(hint)
+    for hint, level in LOG_HINTS.items():
+        CONMON_LOG.log(level or logging.INFO, hint)
 
     return returncode
 
