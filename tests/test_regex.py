@@ -68,7 +68,7 @@ dataset = [
 def test_build_status_regex(expected, request):
     regex_name = request.node.callspec.id
     regex = getattr(conmon.regex, regex_name, None)
-    assert isinstance(regex, re.Pattern), f"invalid regex {regex_name!r}"
+    assert isinstance(regex, type(re.compile(""))), f"invalid regex {regex_name!r}"
     pattern, flags = conmon.regex.compact_pattern(regex)
     matches = list(
         match_tuple
