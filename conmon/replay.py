@@ -15,6 +15,7 @@ import psutil
 from conmon import json, __version__
 from conmon.__main__ import main as conmon_main
 from conmon.buildmon import BuildMonitor
+from conmon.conan import conmon_setting
 
 
 def replay_log(filename: str):
@@ -39,8 +40,8 @@ def parse_procs(filename):
         proc_list = json.load(fh)
     for proc in proc_list:
         buildmon.check_process(proc)
-    with open("replayed_tus.json", mode="w", encoding="utf8") as fh:
-        json.dump({"build": buildmon.translation_units}, fh, indent=4)
+    # with open("replayed_tus.json", mode="w", encoding="utf8") as fh:
+    #    json.dump({"build": buildmon.translation_units}, fh, indent=4)
 
 
 def find_tus(report):
@@ -68,31 +69,43 @@ def run_process(args: argparse.Namespace) -> int:
     if args.reportfile:
         with open(args.reportfile, encoding="utf8") as fh:
             report = json.load(fh)
-        with open("report_tus.json", mode="w", encoding="utf8") as fh:
-            json.dump(find_tus(report), fh, indent=4)
-        returncode = report["conan"]["returncode"]
+            returncode = report["conan"]["returncode"]
+        # with open("report_tus.json", mode="w", encoding="utf8") as fh:
+        #     json.dump(find_tus(report), fh, indent=4)
 
     return returncode
 
 
 def main() -> int:
     """main entry point for console script"""
-    sys.argv, args = sys.argv[:1], sys.argv[1:]
-    parsed_args = parse_args(args=args)
+    parsed_args = parse_args(args=sys.argv[1:])
 
     if parsed_args.detached:
         return run_process(parsed_args)
 
+    sys.argv = sys.argv[:1]
     with TemporaryDirectory() as temp_dir:
         # we copy the log files to a temporary directory
-        for item in args:
-            if os.path.isfile(item):
-                shutil.copy2(item, temp_dir)
-                item = os.path.join(temp_dir, os.path.basename(item))
-            sys.argv.append(item)
+        for key in ("logfile", "--procfile", "--reportfile"):
+            value = getattr(parsed_args, key.lstrip("-"))
+            if value is None:
+                continue
+            if not os.path.isfile(value):
+                raise ValueError(f"{key} {value!r} is not a file")
+            shutil.copy2(value, temp_dir)
+            if key.startswith("--"):
+                sys.argv.append(key)
+            sys.argv.append(os.path.join(temp_dir, os.path.basename(value)))
 
         with patch("conmon.conan.call_cmd_and_version", call_cmd_and_version):
             return conmon_main()
+
+
+class FileAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        if values and not os.path.isfile(values):
+            raise argparse.ArgumentError(self, f"{values!r} is not a file")
+        setattr(namespace, self.dest, values)
 
 
 def parse_args(args: List[str]):
@@ -101,24 +114,39 @@ def parse_args(args: List[str]):
     """
     description = "Simulate a conmon run"
     parser = argparse.ArgumentParser(
-        description=description, prog="replay", add_help=True
+        description=description,
+        prog="replay",
+        add_help=True,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    logfile_default = conmon_setting("conan_log")
+    extra_kwargs = {"nargs": "?"} if logfile_default else {}
+    parser.add_argument(
+        "logfile",
+        action=FileAction,
+        default=logfile_default,
+        help="the conan output logfile created by conmon",
+        **extra_kwargs,
+    )
+    parser.add_argument(
+        "--procfile",
+        "-p",
+        action=FileAction,
+        default=conmon_setting("proc_json"),
+        help="the debug process JSON file created by conmon",
+    )
+    parser.add_argument(
+        "--reportfile",
+        "-r",
+        action=FileAction,
+        default=conmon_setting("report_json"),
+        help="the report JSON file created by conmon",
     )
     parser.add_argument(
         "--detached",
         action="store_true",
         help="run the actual subprocess",
-    )
-    parser.add_argument(
-        "logfile",
-        help="the conan output logfile created by conmon",
-    )
-    parser.add_argument(
-        "--procfile",
-        help="the debug process JSON file created by conmon",
-    )
-    parser.add_argument(
-        "--reportfile",
-        help="the report JSON file created by conmon",
     )
 
     return parser.parse_args(args)
