@@ -314,12 +314,24 @@ def shorten(
 
 
 def shorten_per_line(
-    string: str, width: int, *, strip="right", placeholder="[...]", keep_first=False
+    string: str,
+    width: int,
+    *,
+    strip="right",
+    placeholder="[...]",
+    indent="",
+    keep_first=False,
 ):
     lines = [
         line
         if idx == 0 and keep_first
-        else shorten(line, width=width, strip=strip, placeholder=placeholder)
+        else shorten(
+            line,
+            width=width,
+            strip=strip,
+            placeholder=placeholder,
+            template="{}" if idx == 0 else f"{indent}{{}}",
+        )
         for idx, line in enumerate(string.splitlines(keepends=True))
     ]
 

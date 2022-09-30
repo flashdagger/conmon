@@ -63,8 +63,9 @@ from .utils import (
     added_first,
     get_terminal_width,
     shorten,
-    unique,
+    shorten_per_line,
     sorted_dicts,
+    unique,
 )
 from .warnings import (
     LOG as BLOG,
@@ -807,9 +808,16 @@ class ConanParser:
             if loglevel in {logging.ERROR, logging.CRITICAL}:
                 _lines = processed
             else:
-                _lines = map(
-                    partial(shorten, width=max_width, strip="middle"), processed
-                )
+                _lines = [
+                    shorten_per_line(
+                        "\n".join(processed),
+                        width=max_width,
+                        strip="middle",
+                        placeholder=" [...] ",
+                        indent="  ",
+                        keep_first=False,
+                    )
+                ]
             CONAN_LOG_ONCE.log(loglevel, "\n".join(_lines))
             self.getdefaultlog(ref).setdefault("stderr", []).extend(stderr)
 
