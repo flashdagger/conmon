@@ -2,8 +2,11 @@
 # -*- coding: UTF-8 -*-
 
 import argparse
+import os
 import re
+import shutil
 import sys
+from tempfile import TemporaryDirectory
 from typing import List
 from unittest.mock import patch
 
@@ -74,14 +77,22 @@ def run_process(args: argparse.Namespace) -> int:
 
 def main() -> int:
     """main entry point for console script"""
-    args = sys.argv[1:]
+    sys.argv, args = sys.argv[:1], sys.argv[1:]
     parsed_args = parse_args(args=args)
 
     if parsed_args.detached:
         return run_process(parsed_args)
 
-    with patch("conmon.conan.call_cmd_and_version", call_cmd_and_version):
-        return conmon_main()
+    with TemporaryDirectory() as temp_dir:
+        # we copy the log files to a temporary directory
+        for item in args:
+            if os.path.isfile(item):
+                shutil.copy2(item, temp_dir)
+                item = os.path.join(temp_dir, os.path.basename(item))
+            sys.argv.append(item)
+
+        with patch("conmon.conan.call_cmd_and_version", call_cmd_and_version):
+            return conmon_main()
 
 
 def parse_args(args: List[str]):
