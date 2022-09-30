@@ -7,7 +7,7 @@ import re
 import shutil
 import sys
 from tempfile import TemporaryDirectory
-from typing import List
+from typing import Any, List
 from unittest.mock import patch
 
 import psutil
@@ -37,9 +37,10 @@ def replay_log(filename: str):
 def parse_procs(filename):
     buildmon = BuildMonitor(psutil.Process())
     with open(filename, encoding="utf8") as fh:
-        proc_list = json.load(fh)
-    for proc in proc_list:
-        buildmon.check_process(proc)
+        procs = json.load(fh)
+    for _requirement, proc_list in procs.items():
+        for proc in proc_list:
+            buildmon.check_process(proc)
     # with open("replayed_tus.json", mode="w", encoding="utf8") as fh:
     #    json.dump({"build": buildmon.translation_units}, fh, indent=4)
 
@@ -121,7 +122,7 @@ def parse_args(args: List[str]):
     )
 
     logfile_default = conmon_setting("conan_log")
-    extra_kwargs = {"nargs": "?"} if logfile_default else {}
+    extra_kwargs: Any = {"nargs": "?"} if logfile_default else {}
     parser.add_argument(
         "logfile",
         action=FileAction,
