@@ -107,7 +107,7 @@ class CompilerParser(argparse.ArgumentParser):
             action="store_true",
         )
 
-    def cleanup_args(self, args):
+    def cleanup_args(self, args: List[str]) -> List[str]:
         options: Set[str] = set()
 
         for action in self._actions:
