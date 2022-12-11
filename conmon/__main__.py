@@ -538,7 +538,7 @@ class Build(State):
             None: lambda path: "meson-private" in path.parts,
             "b2": lambda path: path.as_posix().endswith("/config/checks/test_case.cpp"),
             "cmake": lambda path: re.search(
-                r"/(cmake-[23].\d{2}|CMakeTmp|CMakeFiles/Check[a-zA-Z]+"
+                r"/(cmake-[23].\d{2}|CMakeTmp|CMakeFiles/(Check[a-zA-Z]+|CMakeScratch)"
                 r"|CMakeFiles/[23](\.\d+){1,2})/",
                 path.as_posix(),
             )
