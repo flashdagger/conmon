@@ -4,10 +4,10 @@
 import sys
 from contextlib import suppress
 from pathlib import Path
-from subprocess import Popen, PIPE, TimeoutExpired
-from typing import Union, Iterator, Dict, Optional, Tuple, Set
+from subprocess import PIPE, Popen, TimeoutExpired
+from typing import Dict, Iterator, Optional, Set, Tuple, Union
 
-from psutil import Process, NoSuchProcess
+from psutil import NoSuchProcess, Process
 
 from conmon.utils import AsyncPipeReader
 

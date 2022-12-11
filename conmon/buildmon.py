@@ -10,21 +10,22 @@ from functools import partial
 from pathlib import Path
 from statistics import mean, median
 from threading import Event, Thread
-from typing import Any, Dict, List, Optional, Set, Hashable, Union
+from typing import Any, Dict, Hashable, List, Optional, Sequence, Set, Union
 
-from psutil import AccessDenied, Process, NoSuchProcess
+from psutil import AccessDenied, NoSuchProcess, Process
 
 from conmon.utils import (
     WinShlex,
     append_to_set,
     freeze_json_object,
-    human_readable_size,
     human_readable_byte_size,
+    human_readable_size,
     merge_mapping,
     unfreeze_json_object,
 )
+
 from .bash import Bash, BashError, scan_msys
-from .logging import get_logger, UniqueLogger
+from .logging import UniqueLogger, get_logger
 from .regex import shorten_conan_path
 from .utils import shorten
 
@@ -107,7 +108,7 @@ class CompilerParser(argparse.ArgumentParser):
             action="store_true",
         )
 
-    def cleanup_args(self, args: List[str]) -> List[str]:
+    def cleanup_args(self, args: Sequence[str]) -> List[str]:
         options: Set[str] = set()
 
         for action in self._actions:

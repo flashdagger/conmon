@@ -21,11 +21,7 @@ from typing import (
 
 from .logging import UniqueLogger, get_logger
 from .regex import REF_REGEX, compact_pattern, shorten_conan_path
-from .utils import (
-    added_first,
-    get_terminal_width,
-    shorten_per_line,
-)
+from .utils import added_first, get_terminal_width, shorten_per_line
 
 LOG = get_logger("BUILD")
 LOG_ONCE = UniqueLogger(LOG)

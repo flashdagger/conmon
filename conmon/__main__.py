@@ -35,18 +35,12 @@ from typing import (
 
 from psutil import Popen, Process
 
-from . import __version__
-from . import conan
-from . import json
+from . import __version__, conan, json
 from .buildmon import BuildMonitor
 from .conan import LOG as CONAN_LOG
-from .logging import (
-    UniqueLogger,
-    get_logger,
-    init as initialize_logging,
-    level_from_name,
-    logger_escape_code,
-)
+from .logging import UniqueLogger, get_logger
+from .logging import init as initialize_logging
+from .logging import level_from_name, logger_escape_code
 from .regex import (
     BUILD_STATUS_REGEX,
     BUILD_STATUS_REGEX2,
@@ -67,12 +61,8 @@ from .utils import (
     sorted_dicts,
     unique,
 )
-from .warnings import (
-    LOG as BLOG,
-    Regex,
-    levelname_from_severity,
-    warnings_from_matches,
-)
+from .warnings import LOG as BLOG
+from .warnings import Regex, levelname_from_severity, warnings_from_matches
 
 CONMON_LOG = get_logger("CONMON")
 CONAN_LOG_ONCE = UniqueLogger(CONAN_LOG)

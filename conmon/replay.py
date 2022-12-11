@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 import psutil
 
-from conmon import json, __version__
+from conmon import __version__, json
 from conmon.__main__ import main as conmon_main
 from conmon.buildmon import BuildMonitor
 from conmon.conan import conmon_setting

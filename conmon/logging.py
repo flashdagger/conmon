@@ -3,10 +3,10 @@
 
 import logging
 import os
-from typing import Dict, Mapping, Set, Optional
+from typing import Dict, Mapping, Optional, Set
 
 import colorama
-from colorlog import default_log_colors, ColoredFormatter
+from colorlog import ColoredFormatter, default_log_colors
 from colorlog.escape_codes import escape_codes
 
 from . import conan

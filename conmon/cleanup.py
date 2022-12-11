@@ -13,7 +13,8 @@ from pathlib import Path
 from typing import Callable, List
 
 from . import conan
-from .logging import get_logger, init as init_logging
+from .logging import get_logger
+from .logging import init as init_logging
 from .utils import human_readable_byte_size
 
 LOG = get_logger("CLEANUP")

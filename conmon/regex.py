@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 import re
-from typing import Pattern, Tuple, Iterator, Match, Union, Optional, List, Dict
+from typing import Dict, Iterator, List, Match, Optional, Pattern, Tuple, Union
 
 from conmon.conan import storage_path
 

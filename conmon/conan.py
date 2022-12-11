@@ -13,8 +13,8 @@ from functools import lru_cache
 from importlib import import_module
 from importlib.util import find_spec
 from pathlib import Path
-from subprocess import check_output, CalledProcessError, PIPE
-from typing import Dict, Any, Optional, Tuple, List
+from subprocess import PIPE, CalledProcessError, check_output
+from typing import Any, Dict, List, Optional, Tuple
 
 LOG = logging.getLogger("CONAN")
 USER_HOME = Path(os.getenv("CONAN_USER_HOME", "~")).expanduser().absolute()

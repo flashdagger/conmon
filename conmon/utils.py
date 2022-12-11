@@ -9,17 +9,18 @@ import time
 from configparser import ConfigParser
 from contextlib import suppress
 from functools import cmp_to_key
-from inspect import stack, FrameInfo
+from inspect import FrameInfo, stack
 from io import TextIOBase
 from math import log
 from pathlib import Path
-from queue import Queue, Empty
+from queue import Empty, Queue
+from select import select
 from threading import Thread
 from typing import (
+    IO,
     Any,
     Dict,
     Hashable,
-    IO,
     Iterable,
     Iterator,
     List,
@@ -34,7 +35,6 @@ from typing import (
 
 import colorama
 from psutil import Popen
-from select import select
 
 T = TypeVar("T", bound=Hashable)
 
