@@ -547,16 +547,15 @@ class Build(State):
         set_counter = 0
         discarded_files: Set[str] = set()
 
+        no_object_flags = {"-M", "-MM", "-MF", "-MT"}
         for unit in tu_list:
-            discarded = "RC_INVOKED" in unit.get("defines", ())
-            # these GCC flags don't generate object files
-            if set(unit.get("flags", ())) & {"-M", "-MM", "-MMD", "-MF", "-MT"}:
-                discarded = True
+            flagset = set(unit.get("flags", ()))
+            discarded = "RC_INVOKED" in unit.get(
+                "defines", ()
+            ) or not flagset.isdisjoint(no_object_flags)
             for test in active_filters.values():
-                if discarded:
-                    break
                 sources = unit["sources"]
-                if any(test(Path(src)) for src in sources):
+                if not discarded and any(test(Path(src)) for src in sources):
                     src_counter += len(sources)
                     set_counter += 1
                     discarded_files.update(src.name for src in sources)
