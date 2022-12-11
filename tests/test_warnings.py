@@ -154,6 +154,9 @@ output = [
     "Could not determine size of size_t.",
     'CMake Error: CMake was unable to find a build program corresponding to "MinGW Makefiles".  '
     "CMAKE_MAKE_PROGRAM is not set.  You probably need to select a different build tool.",
+    "CMake Deprecation Warning at CMakeLists.txt:79 (CMAKE_POLICY):",
+    "  The OLD behavior for policy CMP0026 will be removed from a future version",
+    "  of CMake.",
     "",
 ]
 dataset = [
@@ -516,6 +519,16 @@ dataset = [
                 'CMake was unable to find a build program corresponding to "MinGW Makefiles".  '
                 "CMAKE_MAKE_PROGRAM is not set.  You probably need to select"
                 " a different build tool.",
+            },
+            {
+                "context": None,
+                "severity": "Deprecation Warning",
+                "file": "CMakeLists.txt",
+                "line": "79",
+                "function": "CMAKE_POLICY",
+                "info": ""
+                "The OLD behavior for policy CMP0026 will be removed from a future version\n"
+                "  of CMake.",
             },
         ],
         id="cmake",

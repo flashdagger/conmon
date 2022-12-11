@@ -31,7 +31,7 @@ _PROCESSED: Set[str] = set()
 class Regex:
     CMAKE = re.compile(
         r"""(?xm)
-            ^CMake\ (?P<severity>\w+)
+            ^CMake\ (?P<severity>[\w ]+)
             (?:
                 \ (?:in|at)\ (?P<file>(?:[A-Za-z]:)?[^\n:]+)
                 (?::(?P<line>\d+)\ \((?P<function>\w+)\))?
@@ -161,7 +161,7 @@ class Regex:
 def levelname_from_severity(severity: Optional[str], default="NOTSET") -> str:
     severity = severity.lower() if severity else ""
 
-    if severity.startswith("warn"):
+    if severity.startswith("warn") or severity.endswith("warning"):
         return "WARNING"
     if severity == "fatal error":
         return "CRITICAL"
@@ -230,7 +230,10 @@ def warnings_from_matches(
             yield mapping
 
             severity = mapping.get("severity")
-            if severity not in {"warning", "error", "fatal error", "note", "message"}:
+            if not (
+                severity
+                and severity.split()[-1] in {"warning", "error", "note", "message"}
+            ):
                 continue
             if name == "cmake" and severity != "error" and not mapping["file"]:
                 continue
