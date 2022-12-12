@@ -48,16 +48,7 @@ class Regex:
     )
     GNU = re.compile(
         r"""(?xm)
-        ^(?P<context>
-            (?:
-                (?:
-                    (?:In\ file\ included|\ +)\ from\ [^\n]+:\d+[:,]\n
-                )*
-                (?:
-                    (?:[A-Za-z]: )? [^\n:]+:\ In\ (?:member\ )? function\ [^\n]+:\n
-                )?
-            )+
-        )?
+        ^(?P<context> (?: .+:(?:\d+,)?\n)* )?
         \ *
         (?P<file>(?:[A-Za-z]:)?[^\n:]+?)
         (?:

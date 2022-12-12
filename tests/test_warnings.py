@@ -157,6 +157,10 @@ output = [
     "CMake Deprecation Warning at CMakeLists.txt:79 (CMAKE_POLICY):",
     "  The OLD behavior for policy CMP0026 will be removed from a future version",
     "  of CMake.",
+    "source_subfolder/locks/unix/proc_mutex.c: At top level:",
+    'source_subfolder/locks/unix/proc_mutex.c:932:5: warning: this use of "defined" may not be portable [-Wexpansion-to-defined]',
+    "  932 | #if APR_USE_PROC_PTHREAD_MUTEX_COND",
+    "      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
     "",
 ]
 dataset = [
@@ -419,6 +423,18 @@ dataset = [
                 "info": "Problem encountered: Could not determine size of size_t.",
                 "project": None,
                 "hint": None,
+            },
+            {
+                "category": "-Wexpansion-to-defined",
+                "column": "5",
+                "context": "source_subfolder/locks/unix/proc_mutex.c: At top level:\n",
+                "file": "source_subfolder/locks/unix/proc_mutex.c",
+                "hint": "  932 | #if APR_USE_PROC_PTHREAD_MUTEX_COND\n"
+                "      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+                "info": 'this use of "defined" may not be portable',
+                "line": "932",
+                "project": None,
+                "severity": "warning",
             },
         ],
         id="gnu",
