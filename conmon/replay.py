@@ -7,7 +7,7 @@ import re
 import shutil
 import sys
 import time
-from tempfile import TemporaryDirectory
+from pathlib import Path
 from typing import Any, List
 from unittest.mock import patch
 
@@ -17,6 +17,13 @@ from conmon import __version__, json
 from conmon.__main__ import main as conmon_main
 from conmon.buildmon import BuildMonitor
 from conmon.conan import conmon_setting
+
+
+DEFAULT_LOG = {
+    "logfile": conmon_setting("conan_log"),
+    "--procfile": conmon_setting("proc_json"),
+    "--reportfile": conmon_setting("report_json"),
+}
 
 
 def replay_log(filename: str):
@@ -97,22 +104,27 @@ def main() -> int:
     if parsed_args.detached:
         return run_process(parsed_args)
 
+    # we copy the log files if they can be overwritten
     sys.argv = sys.argv[:1]
-    with TemporaryDirectory() as temp_dir:
-        # we copy the log files to a temporary directory
-        for key in ("logfile", "--procfile", "--reportfile"):
-            value = getattr(parsed_args, key.lstrip("-"))
-            if value is None:
-                continue
-            if not os.path.isfile(value):
-                raise ValueError(f"{key} {value!r} is not a file")
-            shutil.copy2(value, temp_dir)
-            if key.startswith("--"):
-                sys.argv.append(key)
-            sys.argv.append(os.path.join(temp_dir, os.path.basename(value)))
+    for key in ("logfile", "--procfile", "--reportfile"):
+        value = getattr(parsed_args, key.lstrip("-"))
+        if value is None:
+            continue
+        path = Path(value)
+        if not path.is_file():
+            raise ValueError(f"{key} {value!r} is not an existing file")
+        if path == Path(DEFAULT_LOG[key]):
+            replay_path = path.with_stem(f"{path.stem}.replay")
+            if not replay_path.exists():
+                shutil.copy2(path, replay_path)
+        else:
+            replay_path = path
+        if key.startswith("--"):
+            sys.argv.append(key)
+        sys.argv.append(str(replay_path))
 
-        with patch("conmon.conan.call_cmd_and_version", call_cmd_and_version):
-            return conmon_main()
+    with patch("conmon.conan.call_cmd_and_version", call_cmd_and_version):
+        return conmon_main()
 
 
 class FileAction(argparse.Action):
@@ -135,7 +147,7 @@ def parse_args(args: List[str]):
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
-    logfile_default = conmon_setting("conan_log")
+    logfile_default = DEFAULT_LOG["logfile"]
     extra_kwargs: Any = {"nargs": "?"} if logfile_default else {}
     parser.add_argument(
         "logfile",
@@ -148,14 +160,14 @@ def parse_args(args: List[str]):
         "--procfile",
         "-p",
         action=FileAction,
-        default=conmon_setting("proc_json"),
+        default=DEFAULT_LOG["--procfile"],
         help="the debug process JSON file created by conmon",
     )
     parser.add_argument(
         "--reportfile",
         "-r",
         action=FileAction,
-        default=conmon_setting("report_json"),
+        default=DEFAULT_LOG["--reportfile"],
         help="the report JSON file created by conmon",
     )
     parser.add_argument(
