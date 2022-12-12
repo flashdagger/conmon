@@ -11,19 +11,31 @@ from pathlib import Path
 from typing import Any, List
 from unittest.mock import patch
 
-import psutil
-
 from conmon import __version__, json
 from conmon.__main__ import main as conmon_main
-from conmon.buildmon import BuildMonitor
+from conmon.buildmon import BuildMonitor as BuildMonitorOrig
 from conmon.conan import conmon_setting
-
+from conmon.utils import freeze_json_object
 
 DEFAULT_LOG = {
     "logfile": conmon_setting("conan_log"),
     "--procfile": conmon_setting("proc_json"),
     "--reportfile": conmon_setting("report_json"),
 }
+
+
+class BuildMonitor(BuildMonitorOrig):
+    _PROC_FILE = None
+
+    def __init__(self, proc):
+        super().__init__(proc)
+        if not self._PROC_FILE:
+            return
+        with open(self._PROC_FILE, encoding="utf8") as fh:
+            procs = json.load(fh)
+        for proc_list in procs.values():
+            for proc_info in proc_list:
+                self.proc_cache[freeze_json_object(proc_info)] = None
 
 
 def replay_log(filename: str):
@@ -54,17 +66,6 @@ def replay_log(filename: str):
             print(logline, file=sys.stderr)
 
 
-def parse_procs(filename):
-    buildmon = BuildMonitor(psutil.Process())
-    with open(filename, encoding="utf8") as fh:
-        procs = json.load(fh)
-    for _requirement, proc_list in procs.items():
-        for proc in proc_list:
-            buildmon.check_process(proc)
-    # with open("replayed_tus.json", mode="w", encoding="utf8") as fh:
-    #    json.dump({"build": buildmon.translation_units}, fh, indent=4)
-
-
 def find_tus(report):
     mapping = {}
     for name, log in report["requirements"].items():
@@ -85,14 +86,10 @@ def run_process(args: argparse.Namespace) -> int:
     returncode = 0
     replay_log(args.logfile)
 
-    if args.procfile:
-        parse_procs(args.procfile)
     if args.reportfile:
         with open(args.reportfile, encoding="utf8") as fh:
             report = json.load(fh)
             returncode = report["conan"]["returncode"]
-        # with open("report_tus.json", mode="w", encoding="utf8") as fh:
-        #     json.dump(find_tus(report), fh, indent=4)
 
     return returncode
 
@@ -114,16 +111,23 @@ def main() -> int:
         if not path.is_file():
             raise ValueError(f"{key} {value!r} is not an existing file")
         if path == Path(DEFAULT_LOG[key]):
-            replay_path = path.with_stem(f"{path.stem}.replay")
+            replay_path = path.with_suffix(f".replay{path.suffix}")
             if not replay_path.exists():
                 shutil.copy2(path, replay_path)
         else:
             replay_path = path
+
+        if key == "--procfile":
+            setattr(BuildMonitor, "_PROC_FILE", str(replay_path))
+
         if key.startswith("--"):
             sys.argv.append(key)
         sys.argv.append(str(replay_path))
 
-    with patch("conmon.conan.call_cmd_and_version", call_cmd_and_version):
+    with (
+        patch("conmon.conan.call_cmd_and_version", call_cmd_and_version),
+        patch("conmon.buildmon.BuildMonitor", BuildMonitor),
+    ):
         return conmon_main()
 
 

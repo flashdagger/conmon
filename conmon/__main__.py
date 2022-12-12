@@ -35,8 +35,7 @@ from typing import (
 
 from psutil import Popen, Process
 
-from . import __version__, conan, json
-from .buildmon import BuildMonitor
+from . import __version__, buildmon, conan, json
 from .conan import LOG as CONAN_LOG
 from .logging import UniqueLogger, get_logger
 from .logging import init as initialize_logging
@@ -432,7 +431,7 @@ class Build(State):
         super().__init__(parser)
         self.parser = parser
         self.warnings = 0
-        self.buildmon = BuildMonitor(self.parser.process)
+        self.buildmon = buildmon.BuildMonitor(self.parser.process)
         self.log = parser.defaultlog
         self.ref = "???"
         self.force_status = False
@@ -958,9 +957,9 @@ def monitor(args: List[str]) -> int:
     )
     cycle_time_s = conan.conmon_setting("build.monitor", True)
     if isinstance(cycle_time_s, float):
-        BuildMonitor.CYCLE_TIME_S = cycle_time_s
+        buildmon.BuildMonitor.CYCLE_TIME_S = cycle_time_s
     elif not cycle_time_s:
-        BuildMonitor.ACTIVE = False
+        buildmon.BuildMonitor.ACTIVE = False
     parser = ConanParser(process)
     with filehandler("conan_log", hint="raw conan output") as fh:
         parser.process_streams(fh)

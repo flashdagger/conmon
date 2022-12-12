@@ -347,11 +347,7 @@ class BuildMonitor(Thread):
                         self.bash = False
                         self.bash = Bash(path)
                 name = info["name"] = path.stem.lower()
-                if not identify_compiler(name):
-                    self.executables.add(name)
-                    continue
-
-                if info["exe"] == "/bin/dash":
+                if not identify_compiler(name) and info["exe"] == "/bin/dash":
                     LOG.warning(
                         "Async capture (%r)",
                         shorten(" ".join(info["cmdline"]), width=60, strip="middle"),
@@ -378,10 +374,12 @@ class BuildMonitor(Thread):
 
         for frozen_info in self.proc_cache:
             info_map = self.proc_cache[frozen_info] = unfreeze_json_object(frozen_info)
+            name = info_map["name"]
+            if not identify_compiler(name):
+                self.executables.add(name)
+                continue
             try:
                 self.check_process(info_map)
-                # info_map["clean"], info_map["unknown"] =
-                # self.PARSER.cleanup_args(info_map["cmdline"])
             except BaseException:  # pylint: disable=broad-except
                 LOG.exception("Exception while processing...")
                 continue
