@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import sys
+import time
 from tempfile import TemporaryDirectory
 from typing import Any, List
 from unittest.mock import patch
@@ -21,17 +22,29 @@ from conmon.conan import conmon_setting
 def replay_log(filename: str):
     with open(filename, encoding="utf8") as fh:
         output = sys.stdout
+        errlines: List[str] = []
         for line in fh.readlines():
             match = re.fullmatch(
-                r"^(?P<state>\[[A-Z][a-z]+] )?(?:-+ <(?P<pipe>[a-z]+)> -+)?(?P<line>.*)\n$",
+                r"^(?P<state>\[[A-Z][a-z]+] )?(?:-+ <(?P<pipe>[a-z]+)> -+)?(?P<line>.*\n)$",
                 line,
             )
             assert match
             pipe, logline = match.group("pipe", "line")
             if pipe:
                 output = sys.stderr if pipe == "stderr" else sys.stdout
-                continue
-            print(logline, file=output)
+                if output is sys.stdout and errlines:
+                    sys.stderr.write("".join(errlines))
+                    sys.stderr.flush()
+                    errlines.clear()
+            elif output is sys.stderr:
+                errlines.append(logline)
+            else:
+                sys.stdout.flush()
+                time.sleep(0.002)
+                sys.stdout.write(logline)
+
+        if errlines:
+            print(logline, file=sys.stderr)
 
 
 def parse_procs(filename):
@@ -109,6 +122,7 @@ class FileAction(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
+# noinspection PyTypeChecker
 def parse_args(args: List[str]):
     """
     parsing commandline parameters
