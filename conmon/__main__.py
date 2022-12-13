@@ -932,7 +932,7 @@ class ConanParser:
             self.log["conan"]["returncode"] = self.process.wait()
 
 
-def monitor(args: List[str]) -> int:
+def monitor(args: List[str], replay=False) -> int:
     # prevent MsBuild from allocating workers
     # which are not children of the parent process
     os.environ["MSBUILDDISABLENODEREUSE"] = "1"
@@ -958,7 +958,7 @@ def monitor(args: List[str]) -> int:
     cycle_time_s = conan.conmon_setting("build.monitor", True)
     if isinstance(cycle_time_s, float):
         buildmon.BuildMonitor.CYCLE_TIME_S = cycle_time_s
-    elif not cycle_time_s:
+    if not cycle_time_s or replay:
         buildmon.BuildMonitor.ACTIVE = False
     parser = ConanParser(process)
     with filehandler("conan_log", hint="raw conan output") as fh:
@@ -992,7 +992,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if os.getenv("CI"):
         CONMON_LOG.info("Running in Gitlab CI")
 
-    return monitor(args.cmd)
+    return monitor(args.cmd, args.replay)
 
 
 def parse_args(args: List[str]):
@@ -1001,10 +1001,15 @@ def parse_args(args: List[str]):
     """
     description = "Run conan as monitored process with parsed JSON output"
     parser = argparse.ArgumentParser(
-        description=description, prog="conmon", add_help=True
+        description=description, prog="conmon", add_help=True, allow_abbrev=False
     )
     parser.add_argument(
         "--version", action="version", version=f"%(prog)s version {__version__}"
+    )
+    parser.add_argument(
+        "--replay",
+        action="store_true",
+        help="simulate last run based on written logs",
     )
     parser.add_argument(
         "cmd",
@@ -1014,9 +1019,9 @@ def parse_args(args: List[str]):
     )
 
     known_args, unknown_args = parser.parse_known_args(args)
-    known_args.cmd.extend(unknown_args)
+    known_args.cmd[:0] = unknown_args
 
-    if not known_args.cmd:
+    if not (known_args.cmd or known_args.replay):
         parser.print_help()
         parser.exit()
 
