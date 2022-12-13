@@ -984,10 +984,10 @@ def monitor(args: List[str]) -> int:
     return returncode
 
 
-def main() -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     """main entry point for console script"""
     initialize_logging()
-    args = parse_args(sys.argv[1:])
+    args = parse_args(argv or sys.argv[1:])
 
     if os.getenv("CI"):
         CONMON_LOG.info("Running in Gitlab CI")

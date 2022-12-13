@@ -347,7 +347,7 @@ class BuildMonitor(Thread):
                         self.bash = False
                         self.bash = Bash(path)
                 name = info["name"] = path.stem.lower()
-                if not identify_compiler(name) and info["exe"] == "/bin/dash":
+                if identify_compiler(name) and info["exe"] == "/bin/dash":
                     LOG.warning(
                         "Async capture (%r)",
                         shorten(" ".join(info["cmdline"]), width=60, strip="middle"),

@@ -42,6 +42,23 @@ def replay_log(filename: str):
     with open(filename, encoding="utf8") as fh:
         output = sys.stdout
         errlines: List[str] = []
+        stdlines: List[str] = []
+        start, count = time.monotonic(), 0
+
+        def flush():
+            nonlocal count
+            if errlines:
+                delay = (1.1e-3 * count) - (time.monotonic() - start)
+                if delay > 0:
+                    time.sleep(delay)
+                sys.stderr.write("".join(errlines))
+                errlines.clear()
+            if stdlines:
+                sys.stdout.write("".join(stdlines[:-1]))
+                sys.stdout.flush()
+                count += len(stdlines)
+                stdlines[:-1] = ()
+
         for line in fh.readlines():
             match = re.fullmatch(
                 r"^(?P<state>\[[A-Z][a-z]+] )?(?:-+ <(?P<pipe>[a-z]+)> -+)?(?P<line>.*\n)$",
@@ -51,19 +68,14 @@ def replay_log(filename: str):
             pipe, logline = match.group("pipe", "line")
             if pipe:
                 output = sys.stderr if pipe == "stderr" else sys.stdout
-                if output is sys.stdout and errlines:
-                    sys.stderr.write("".join(errlines))
-                    sys.stderr.flush()
-                    errlines.clear()
+                flush()
             elif output is sys.stderr:
                 errlines.append(logline)
             else:
-                sys.stdout.flush()
-                time.sleep(0.002)
-                sys.stdout.write(logline)
+                stdlines.append(logline)
 
-        if errlines:
-            print(logline, file=sys.stderr)
+        stdlines.append("\n")
+        flush()
 
 
 def find_tus(report):
@@ -76,10 +88,6 @@ def find_tus(report):
             mapping[key] = log[build]["translation_units"]
 
     return mapping
-
-
-def call_cmd_and_version():
-    return [sys.executable, "-m", "conmon.replay", "--detached"], __version__
 
 
 def run_process(args: argparse.Namespace) -> int:
@@ -98,11 +106,8 @@ def main() -> int:
     """main entry point for console script"""
     parsed_args = parse_args(args=sys.argv[1:])
 
-    if parsed_args.detached:
-        return run_process(parsed_args)
-
     # we copy the log files if they can be overwritten
-    sys.argv = sys.argv[:1]
+    argv = []
     for key in ("logfile", "--procfile", "--reportfile"):
         value = getattr(parsed_args, key.lstrip("-"))
         if value is None:
@@ -121,14 +126,20 @@ def main() -> int:
             setattr(BuildMonitor, "_PROC_FILE", str(replay_path))
 
         if key.startswith("--"):
-            sys.argv.append(key)
-        sys.argv.append(str(replay_path))
+            argv.append(key)
+        argv.append(str(replay_path))
+
+    if parsed_args.detached:
+        return run_process(parse_args(argv))
+
+    def call_cmd_and_version():
+        return [sys.executable, "-m", "conmon.replay", "--detached"], __version__
 
     with (
         patch("conmon.conan.call_cmd_and_version", call_cmd_and_version),
         patch("conmon.buildmon.BuildMonitor", BuildMonitor),
     ):
-        return conmon_main()
+        return conmon_main(argv)
 
 
 class FileAction(argparse.Action):
