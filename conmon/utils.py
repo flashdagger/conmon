@@ -201,7 +201,6 @@ class AsyncPipeReader:
 
 class ProcessStreamHandler:
     def __init__(self, proc: Popen):
-        assert proc.stdout and proc.stderr, "stdout and stderr must be set"
         self.stdout = AsyncPipeReader(proc.stdout)
         self.stderr = AsyncPipeReader(proc.stderr)
         self.select = (

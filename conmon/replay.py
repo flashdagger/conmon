@@ -1,27 +1,96 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-import argparse
-import os
 import re
 import shutil
-import sys
-import time
 from pathlib import Path
-from typing import Any, List
-from unittest.mock import patch
+from typing import Any, Dict, List, Optional
 
-from conmon import __version__, json
-from conmon.__main__ import main as conmon_main
+from psutil import Process
+
+from conmon import json
 from conmon.buildmon import BuildMonitor as BuildMonitorOrig
 from conmon.conan import conmon_setting
 from conmon.utils import freeze_json_object
 
-DEFAULT_LOG = {
-    "logfile": conmon_setting("conan_log"),
-    "--procfile": conmon_setting("proc_json"),
-    "--reportfile": conmon_setting("report_json"),
-}
+
+def replay_logfile(setting: str) -> Optional[Path]:
+    logfile = conmon_setting(setting)
+    if logfile is None:
+        return None
+    path = Path(logfile)
+    replay_path = path.with_suffix(f".replay{path.suffix}")
+    if replay_path.exists():
+        return replay_path
+    if path.is_file():
+        shutil.copy2(path, replay_path)
+        return replay_path
+    raise Exception(f"missing conan logfile {path}")
+
+
+def replay_json(setting: str) -> Dict[str, Any]:
+    logfile = replay_logfile(setting)
+    if logfile is None:
+        return {}
+    with logfile.open("r", encoding="utf8") as fh:
+        return json.load(fh)
+
+
+class ReplayStreamHandler:
+    def __init__(self):
+        self.exhausted = False
+        self.loglines = self._readlines(replay_logfile("conan_log"))
+
+    @staticmethod
+    def _readlines(logfile: Optional[Path]):
+        if logfile is None:
+            return
+
+        loglines: List[str] = []
+        pipe = "stdout"
+        with logfile.open("r", encoding="utf8") as fh:
+            for line in fh.readlines():
+                match = re.fullmatch(
+                    r"^(?P<state>\[[A-Z][a-z]+] )?(?:-+ <(?P<pipe>[a-z]+)> -+)?(?P<line>.*\n)$",
+                    line,
+                )
+                assert match
+                logline = match.group("line")
+                if match.group("pipe"):
+                    if loglines:
+                        yield pipe, tuple(loglines)
+                        loglines.clear()
+                    pipe = match.group("pipe")
+                else:
+                    loglines.append(logline)
+
+            loglines.append("")
+            yield pipe, tuple(loglines)
+
+    def readboth(self):
+        pipe, loglines = next(self.loglines, (None, ()))
+        if not loglines:
+            self.exhausted = True
+            return (), ()
+        if pipe == "stderr":
+            return (), loglines
+        return loglines, ()
+
+    def readmerged(self):
+        stdout, stderr = self.readboth()
+        return stdout or stderr
+
+
+class ReplayProcess(Process):
+    def __init__(self, _pid=None):
+        super().__init__(None)
+        self.proc_json = replay_json("proc_json")
+        self.log_json = replay_json("report_json")
+        self._exitcode = self.log_json.get("conan", {}).get("returncode", -1)
+
+    def cmdline(self):
+        default = super().cmdline()
+        return self.log_json.get("conan", {}).get("command", default)
 
 
 class BuildMonitor(BuildMonitorOrig):
@@ -36,163 +105,3 @@ class BuildMonitor(BuildMonitorOrig):
         for proc_list in procs.values():
             for proc_info in proc_list:
                 self.proc_cache[freeze_json_object(proc_info)] = None
-
-
-def replay_log(filename: str):
-    with open(filename, encoding="utf8") as fh:
-        output = sys.stdout
-        errlines: List[str] = []
-        stdlines: List[str] = []
-        start, count = time.monotonic(), 0
-
-        def flush():
-            nonlocal count
-            if errlines:
-                delay = (1.1e-3 * count) - (time.monotonic() - start)
-                if delay > 0:
-                    time.sleep(delay)
-                sys.stderr.write("".join(errlines))
-                errlines.clear()
-            if stdlines:
-                sys.stdout.write("".join(stdlines[:-1]))
-                sys.stdout.flush()
-                count += len(stdlines)
-                stdlines[:-1] = ()
-
-        for line in fh.readlines():
-            match = re.fullmatch(
-                r"^(?P<state>\[[A-Z][a-z]+] )?(?:-+ <(?P<pipe>[a-z]+)> -+)?(?P<line>.*\n)$",
-                line,
-            )
-            assert match
-            pipe, logline = match.group("pipe", "line")
-            if pipe:
-                output = sys.stderr if pipe == "stderr" else sys.stdout
-                flush()
-            elif output is sys.stderr:
-                errlines.append(logline)
-            else:
-                stdlines.append(logline)
-
-        stdlines.append("\n")
-        flush()
-
-
-def find_tus(report):
-    mapping = {}
-    for name, log in report["requirements"].items():
-        for build in ("build", "test_build"):
-            if build not in log:
-                continue
-            key = f"{name}.{build}"
-            mapping[key] = log[build]["translation_units"]
-
-    return mapping
-
-
-def run_process(args: argparse.Namespace) -> int:
-    returncode = 0
-    replay_log(args.logfile)
-
-    if args.reportfile:
-        with open(args.reportfile, encoding="utf8") as fh:
-            report = json.load(fh)
-            returncode = report["conan"]["returncode"]
-
-    return returncode
-
-
-def main() -> int:
-    """main entry point for console script"""
-    parsed_args = parse_args(args=sys.argv[1:])
-
-    # we copy the log files if they can be overwritten
-    argv = []
-    for key in ("logfile", "--procfile", "--reportfile"):
-        value = getattr(parsed_args, key.lstrip("-"))
-        if value is None:
-            continue
-        path = Path(value)
-        if not path.is_file():
-            raise ValueError(f"{key} {value!r} is not an existing file")
-        if path == Path(DEFAULT_LOG[key]):
-            replay_path = path.with_suffix(f".replay{path.suffix}")
-            if not replay_path.exists():
-                shutil.copy2(path, replay_path)
-        else:
-            replay_path = path
-
-        if key == "--procfile":
-            setattr(BuildMonitor, "_PROC_FILE", str(replay_path))
-
-        if key.startswith("--"):
-            argv.append(key)
-        argv.append(str(replay_path))
-
-    if parsed_args.detached:
-        return run_process(parse_args(argv))
-
-    def call_cmd_and_version():
-        return [sys.executable, "-m", "conmon.replay", "--detached"], __version__
-
-    with (
-        patch("conmon.conan.call_cmd_and_version", call_cmd_and_version),
-        patch("conmon.buildmon.BuildMonitor", BuildMonitor),
-    ):
-        return conmon_main(argv)
-
-
-class FileAction(argparse.Action):
-    def __call__(self, parser, namespace, values, option_string=None):
-        if values and not os.path.isfile(values):
-            raise argparse.ArgumentError(self, f"{values!r} is not a file")
-        setattr(namespace, self.dest, values)
-
-
-# noinspection PyTypeChecker
-def parse_args(args: List[str]):
-    """
-    parsing commandline parameters
-    """
-    description = "Simulate a conmon run"
-    parser = argparse.ArgumentParser(
-        description=description,
-        prog="replay",
-        add_help=True,
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-
-    logfile_default = DEFAULT_LOG["logfile"]
-    extra_kwargs: Any = {"nargs": "?"} if logfile_default else {}
-    parser.add_argument(
-        "logfile",
-        action=FileAction,
-        default=logfile_default,
-        help="the conan output logfile created by conmon",
-        **extra_kwargs,
-    )
-    parser.add_argument(
-        "--procfile",
-        "-p",
-        action=FileAction,
-        default=DEFAULT_LOG["--procfile"],
-        help="the debug process JSON file created by conmon",
-    )
-    parser.add_argument(
-        "--reportfile",
-        "-r",
-        action=FileAction,
-        default=DEFAULT_LOG["--reportfile"],
-        help="the report JSON file created by conmon",
-    )
-    parser.add_argument(
-        "--detached",
-        action="store_true",
-        help="run the actual subprocess",
-    )
-
-    return parser.parse_args(args)
-
-
-if __name__ == "__main__":
-    sys.exit(main())

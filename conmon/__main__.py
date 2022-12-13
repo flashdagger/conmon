@@ -35,11 +35,16 @@ from typing import (
 
 from psutil import Popen, Process
 
-from . import __version__, buildmon, conan, json
+from . import __version__, conan, json
+from .buildmon import BuildMonitor
 from .conan import LOG as CONAN_LOG
-from .logging import UniqueLogger, get_logger
-from .logging import init as initialize_logging
-from .logging import level_from_name, logger_escape_code
+from .logging import (
+    UniqueLogger,
+    get_logger,
+    level_from_name,
+    logger_escape_code,
+    init as initialize_logging,
+)
 from .regex import (
     BUILD_STATUS_REGEX,
     BUILD_STATUS_REGEX2,
@@ -49,11 +54,13 @@ from .regex import (
     filter_by_regex,
     shorten_conan_path,
 )
+from .replay import ReplayProcess, ReplayStreamHandler, replay_logfile
 from .utils import (
     ProcessStreamHandler,
     ScreenWriter,
     StrictConfigParser,
     added_first,
+    freeze_json_object,
     get_terminal_width,
     shorten,
     shorten_per_line,
@@ -431,7 +438,7 @@ class Build(State):
         super().__init__(parser)
         self.parser = parser
         self.warnings = 0
-        self.buildmon = buildmon.BuildMonitor(self.parser.process)
+        self.buildmon = BuildMonitor(self.parser.process)
         self.log = parser.defaultlog
         self.ref = "???"
         self.force_status = False
@@ -463,6 +470,9 @@ class Build(State):
             )
             self.log.setdefault("stdout", [])
             self.buildmon.start()
+            proc_json = getattr(self.parser.process, "proc_json", {})
+            for proc_info in proc_json.get(ref, ()):
+                self.buildmon.proc_cache[freeze_json_object(proc_info)] = None
             return True
         return False
 
@@ -492,7 +502,7 @@ class Build(State):
                 self.force_status = True
             elif self.force_status:
                 return
-            self.flush_warning_count()
+            # self.flush_warning_count()
             with suppress(ValueError, AttributeError):
                 _current, _total = status.strip("[]").split("/")
                 status = f"[{_current:>{len(_total)}}/{_total}]"
@@ -626,7 +636,7 @@ class Build(State):
 
     def _deactivate(self, final=False):
         self.force_status = False
-        self.flush_warning_count()
+        # self.flush_warning_count()
         self.parser.screen.reset()
         self.buildmon.stop()
         self.dump_debug_proc()
@@ -735,7 +745,7 @@ class ConanParser:
         rf"(?:{compact_pattern(REF_REGEX)[0]}(?:: ?| ))?(?P<rest>[^\r\n]*)"
     )
 
-    def __init__(self, process: Popen):
+    def __init__(self, process: Process):
         self.process = process
         self.log: Dict[str, Any] = defaultdict(dict)
         self.defaultlog: Dict[str, Any] = self.log
@@ -847,7 +857,11 @@ class ConanParser:
         self.states.process_hooks(parsed_line)
 
     def process_streams(self, raw_fh: TextIO):
-        streams = ProcessStreamHandler(self.process)
+        streams: Any = (
+            ProcessStreamHandler(self.process)
+            if isinstance(self.process, Popen)
+            else ReplayStreamHandler()
+        )
         marker = "{:-^120}\n"
         stderr_marker_start = marker.format(" <stderr> ")
         stdout_marker_start = marker.format(" <stdout> ")
@@ -952,15 +966,21 @@ def monitor(args: List[str], replay=False) -> int:
 
     conan_command, ConanParser.CONAN_VERSION = conan.call_cmd_and_version()
     conan_command.extend(args)
-    process = Popen(
-        conan_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
+    process = (
+        ReplayProcess()
+        if replay
+        else Popen(
+            conan_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
+        )
     )
     cycle_time_s = conan.conmon_setting("build.monitor", True)
     if isinstance(cycle_time_s, float):
-        buildmon.BuildMonitor.CYCLE_TIME_S = cycle_time_s
-    if not cycle_time_s or replay:
-        buildmon.BuildMonitor.ACTIVE = False
+        BuildMonitor.CYCLE_TIME_S = cycle_time_s
+    elif not cycle_time_s:
+        BuildMonitor.ACTIVE = False
     parser = ConanParser(process)
+    if replay:
+        replay_logfile("conan_log")  # copy replay file before opening
     with filehandler("conan_log", hint="raw conan output") as fh:
         parser.process_streams(fh)
     parser.finalize()
