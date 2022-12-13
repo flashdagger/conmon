@@ -917,9 +917,15 @@ class ConanParser:
                 self.process_errors(stderr)
 
     def process_tracelog(self, trace_path: Path):
-        self.log["conan"]["tracelog"] = tracelog = []
+        actions = []
         for line in trace_path.read_text(encoding="utf-8").splitlines():
             action = json.loads(line)
+            if action.get("_action") == "COMMAND":
+                actions.clear()
+            actions.append(action)
+
+        self.log["conan"]["tracelog"] = tracelog = []
+        for action in actions:
             if action["_action"] in {"REST_API_CALL", "UNZIP"}:
                 continue
             ref_id = action.get("_id")
