@@ -150,23 +150,27 @@ class State:
 
 
 class StateMachine:
-    def __init__(self, parser: "ConanParser"):
+    def __init__(
+        self,
+        parser: "ConanParser",
+        *states: Type[State],
+        default: Optional[Type[State]] = None,
+    ):
         self.screen = parser.screen
         self.parser = parser
         self._active: Set[State] = set()  # currently active
         self._running: List[State] = []  # can be executed
-        self._default: Optional[State] = None
+        self._default = default(parser) if default else None
+
+        if self._default:
+            self.add(self._default)
+        for state in states:
+            self.add(state(parser))
 
     def add(self, state: State):
         assert not state.stopped
-        assert state not in self.running_instances()
+        assert state not in self._running
         self._running.append(state)
-        return state
-
-    def setdefault(self, state: Optional[State]):
-        self._default = state
-        if state:
-            self.add(state)
 
     @property
     def active_classes(self) -> Tuple[Type[State], ...]:
@@ -780,16 +784,18 @@ class ConanParser:
             command=process.cmdline(),
         )
 
-        self.states = StateMachine(self)
-        self.states.setdefault(Default(self))
-        self.states.add(Export(self))
-        self.states.add(Config(self))
-        self.states.add(Requirements(self))
-        self.states.add(Packages(self))
-        self.states.add(Build(self))
-        self.states.add(Package(self))
-        self.states.add(BuildTest(self))
-        self.states.add(RunTest(self))
+        self.states = StateMachine(
+            self,
+            Export,
+            Config,
+            Requirements,
+            Packages,
+            Build,
+            Package,
+            BuildTest,
+            RunTest,
+            default=Default,
+        )
 
     def parse_line(self, line) -> Match:
         match = self.LINE_REGEX.match(line)
