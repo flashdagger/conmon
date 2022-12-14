@@ -1012,8 +1012,12 @@ def monitor(args: List[str], replay=False) -> int:
     elif not cycle_time_s:
         BuildMonitor.ACTIVE = False
     parser = ConanParser(process)
-    if replay:
-        replay_logfile("conan_log")  # copy replay file before opening
+    for item in ("conan_log", "report_json", "proc_json"):
+        path = replay_logfile(
+            item, create_if_not_exists=replay
+        )  # copy replay file before opening
+        if not replay and path.is_file():
+            path.unlink()
     with filehandler("conan_log", hint="raw conan output") as fh:
         parser.process_streams(fh)
     parser.finalize()

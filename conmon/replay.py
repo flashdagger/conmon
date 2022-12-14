@@ -14,18 +14,15 @@ from conmon.conan import conmon_setting
 from conmon.utils import freeze_json_object
 
 
-def replay_logfile(setting: str) -> Optional[Path]:
+def replay_logfile(setting: str, create_if_not_exists=True) -> Optional[Path]:
     logfile = conmon_setting(setting)
     if logfile is None:
         return None
     path = Path(logfile)
     replay_path = path.with_suffix(f".replay{path.suffix}")
-    if replay_path.exists():
-        return replay_path
-    if path.is_file():
+    if not replay_path.is_file() and create_if_not_exists:
         shutil.copy2(path, replay_path)
-        return replay_path
-    raise Exception(f"missing conan logfile {path}")
+    return replay_path
 
 
 def replay_json(setting: str) -> Dict[str, Any]:
