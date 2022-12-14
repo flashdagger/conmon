@@ -15,7 +15,6 @@ from itertools import count
 from math import log
 from pathlib import Path
 from queue import Empty, Queue
-from select import select
 from threading import Thread
 from typing import (
     IO,
@@ -36,6 +35,7 @@ from typing import (
 
 import colorama
 from psutil import Popen
+from select import select
 
 T = TypeVar("T", bound=Hashable)
 
@@ -236,6 +236,22 @@ class ProcessStreamHandler:
 
 class MappingPair(tuple):
     pass
+
+
+class NullList(list):
+    def __init__(self, _iterable=None):
+        super().__init__()
+
+    def _ignore(self, *args):
+        """this method takes no action"""
+
+    def __add__(self, other):
+        return self
+
+    __iadd__ = __add__
+    append = _ignore
+    extend = _ignore
+    insert = _ignore
 
 
 def freeze_json_object(obj) -> Hashable:

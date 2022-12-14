@@ -56,6 +56,7 @@ from .regex import (
 )
 from .replay import ReplayProcess, ReplayStreamHandler, replay_logfile
 from .utils import (
+    NullList,
     ProcessStreamHandler,
     ScreenWriter,
     StrictConfigParser,
@@ -99,6 +100,14 @@ def filehandler(key: str, mode="w", hint="") -> TextIO:
         LOG_HINTS.setdefault(template.format(env_key, hint_path, hint))
 
     return open(path or os.devnull, mode=mode, encoding="utf-8")
+
+
+def assert_loglist(mapping: Dict[str, Any], key: str) -> list:
+    loglist = mapping.get(key)
+    if loglist is None:
+        list_type = list if conan.conmon_setting(f"report.{key}", True) else NullList
+        loglist = mapping[key] = list_type()
+    return loglist
 
 
 class State:
@@ -225,7 +234,7 @@ class Default(State):
             log = self.parser.log
             self.screen.print(f"{line} ", overwrite=self.overwrite)
 
-        log.setdefault("stdout", []).append(line)
+        assert_loglist(log, "stdout").append(line)
         self.deactivate()
 
 
@@ -233,7 +242,7 @@ class Requirements(State):
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
         self.log = parser.log.setdefault("requirements", defaultdict(dict))
-        self.stdout = parser.log.setdefault("stdout", [])
+        self.stdout = assert_loglist(parser.log, "stdout")
         pattern, flags = compact_pattern(REF_REGEX)
         self.regex = re.compile(
             rf" +{pattern} from (?P<remote>'?[\w\- ]+'?) +- +(?P<status>\w+)", flags
@@ -283,7 +292,7 @@ class Packages(State):
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
         self.log = parser.log.setdefault("requirements", defaultdict(dict))
-        self.stdout = parser.log.setdefault("stdout", [])
+        self.stdout = assert_loglist(parser.log, "stdout")
         pattern, flags = compact_pattern(REF_REGEX)
         self.regex = re.compile(
             rf" +{pattern}:(?P<package_id>[a-z0-9]+) +- +(?P<status>\w+)", flags
@@ -375,7 +384,7 @@ class Package(State):
         line, ref, rest = parsed_line.group(0, "ref", "rest")
         if rest == "Calling package()":
             self.screen.print(f"Packaging {ref}")
-            self.parser.setdefaultlog(ref).setdefault("stdout", []).append(line)
+            assert_loglist(self.parser.log, "stdout").append(line)
             return True
         return False
 
@@ -464,11 +473,11 @@ class Build(State):
         full_line, ref = parsed_line.group(0, "ref")
         if self._activated(parsed_line):
             defaultlog = self.parser.getdefaultlog(ref)
-            defaultlog.setdefault("stdout", []).append(full_line)
+            assert_loglist(defaultlog, "stdout").append(full_line)
             self.log = self.parser.defaultlog = defaultlog.setdefault(
                 self.REF_LOG_KEY, {}
             )
-            self.log.setdefault("stdout", [])
+            assert_loglist(self.log, "stdout")
             self.buildmon.start()
             proc_json = getattr(self.parser.process, "proc_json", {})
             for proc_info in proc_json.get(ref, ()):
@@ -727,7 +736,7 @@ class RunTest(State):
         return False
 
     def process(self, parsed_line: Match) -> None:
-        self.log.setdefault("stdout", []).append(parsed_line.group(0))
+        assert_loglist(self.log, "stdout").append(parsed_line.group(0))
 
     def _deactivate(self, final=False):
         stderr_lines = self.log.pop("stderr_lines", ())
@@ -917,7 +926,7 @@ class ConanParser:
                 self.process_errors(stderr)
 
     def process_tracelog(self, trace_path: Path):
-        actions = []
+        actions: List[Dict[str, Any]] = []
         for line in trace_path.read_text(encoding="utf-8").splitlines():
             action = json.loads(line)
             if action.get("_action") == "COMMAND":
