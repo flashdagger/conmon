@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-
+from collections import UserDict
 from json import JSONEncoder, load, loads
 from pathlib import Path
 from typing import TextIO
@@ -13,6 +13,8 @@ class Encoder(JSONEncoder):
     def default(self, o):
         if isinstance(o, Path):
             return str(o)
+        if isinstance(o, UserDict):
+            return o.data
         # Let the base class default method raise the TypeError
         return super().default(o)
 

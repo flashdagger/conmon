@@ -8,7 +8,7 @@ import platform
 import re
 import sys
 import tempfile
-from collections import defaultdict
+from collections import UserDict
 from contextlib import suppress
 from functools import partial
 from io import StringIO
@@ -102,12 +102,29 @@ def filehandler(key: str, mode="w", hint="") -> TextIO:
     return open(path or os.devnull, mode=mode, encoding="utf-8")
 
 
-def assert_loglist(mapping: Dict[str, Any], key: str) -> list:
-    loglist = mapping.get(key)
-    if loglist is None:
-        list_type = list if conan.conmon_setting(f"report.{key}", True) else NullList
-        loglist = mapping[key] = list_type()
-    return loglist
+class DefaultDict(UserDict):
+    STDOUT_LIST = list if conan.conmon_setting("report.stdout", True) else NullList
+    STDERR_LIST = list if conan.conmon_setting("report.stderr", True) else NullList
+    DEFAULT = {
+        "stdout": STDOUT_LIST,
+        "stderr": STDERR_LIST,
+        "package": STDOUT_LIST,
+        "export": STDOUT_LIST,
+        "stderr_lines": list,
+    }
+
+    def __getitem__(self, item):
+        data = self.data
+        if item not in data:
+            defaultcls = self.DEFAULT.get(item, self.__class__)
+            value = data[item] = defaultcls()
+            return value
+        return data[item]
+
+    def setdefault(self, key, *args):
+        if args:
+            return self.data.setdefault(key, *args)
+        return self[key]
 
 
 class State:
@@ -234,15 +251,15 @@ class Default(State):
             log = self.parser.log
             self.screen.print(f"{line} ", overwrite=self.overwrite)
 
-        assert_loglist(log, "stdout").append(line)
+        log["stdout"].append(line)
         self.deactivate()
 
 
 class Requirements(State):
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
-        self.log = parser.log.setdefault("requirements", defaultdict(dict))
-        self.stdout = assert_loglist(parser.log, "stdout")
+        self.log = parser.log["requirements"]
+        self.stdout = parser.log["stdout"]
         pattern, flags = compact_pattern(REF_REGEX)
         self.regex = re.compile(
             rf" +{pattern} from (?P<remote>'?[\w\- ]+'?) +- +(?P<status>\w+)", flags
@@ -273,7 +290,7 @@ class Requirements(State):
             if key not in {"ref", "status"}
         }
         name = mapping.pop("name")
-        self.log.setdefault(name, {}).update(mapping)
+        self.log[name].update(mapping)
 
     def _deactivate(self, final=False):
         self.indent_ref = max(
@@ -291,8 +308,8 @@ class Requirements(State):
 class Packages(State):
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
-        self.log = parser.log.setdefault("requirements", defaultdict(dict))
-        self.stdout = assert_loglist(parser.log, "stdout")
+        self.log = parser.log["requirements"]
+        self.stdout = parser.log["stdout"]
         pattern, flags = compact_pattern(REF_REGEX)
         self.regex = re.compile(
             rf" +{pattern}:(?P<package_id>[a-z0-9]+) +- +(?P<status>\w+)", flags
@@ -318,9 +335,7 @@ class Packages(State):
         self.pkg.append(match.groupdict())
         self.stdout.append(line)
         name, package_id = match.group("name", "package_id")
-        self.log.setdefault(name, {}).update(
-            dict(package_id=package_id, package_revision=None)
-        )
+        self.log[name].update(dict(package_id=package_id, package_revision=None))
 
     def _deactivate(self, final=False):
         self.indent_ref = max(
@@ -367,7 +382,7 @@ class Config(State):
         buffer = StringIO("\n".join(self.lines))
         config = StrictConfigParser()
         config.read_file(buffer, "profile.ini")
-        log = self.log.setdefault(self.profile_type, {})
+        log = self.log[self.profile_type]
 
         for section in config.sections():
             log[section] = dict(config.items(section))
@@ -384,7 +399,7 @@ class Package(State):
         line, ref, rest = parsed_line.group(0, "ref", "rest")
         if rest == "Calling package()":
             self.screen.print(f"Packaging {ref}")
-            assert_loglist(self.parser.log, "stdout").append(line)
+            self.parser.log["stdout"].append(line)
             return True
         return False
 
@@ -395,7 +410,7 @@ class Package(State):
         )
         log = self.parser.defaultlog
         if not match:
-            log.setdefault("package", []).append(line)
+            log["package"].append(line)
             return
 
         if match.group("prefix") == "Created package revision":
@@ -430,7 +445,7 @@ class Export(State):
             log.update(match.groupdict())
             self.deactivate()
         else:
-            log.setdefault("export", []).append(line)
+            log["export"].append(line)
 
     def _deactivate(self, final=False):
         self.parser.setdefaultlog()
@@ -473,11 +488,8 @@ class Build(State):
         full_line, ref = parsed_line.group(0, "ref")
         if self._activated(parsed_line):
             defaultlog = self.parser.getdefaultlog(ref)
-            assert_loglist(defaultlog, "stdout").append(full_line)
-            self.log = self.parser.defaultlog = defaultlog.setdefault(
-                self.REF_LOG_KEY, {}
-            )
-            assert_loglist(self.log, "stdout")
+            defaultlog["stdout"].append(full_line)
+            self.log = self.parser.defaultlog = defaultlog[self.REF_LOG_KEY]
             self.buildmon.start()
             proc_json = getattr(self.parser.process, "proc_json", {})
             for proc_info in proc_json.get(ref, ()):
@@ -651,7 +663,7 @@ class Build(State):
         self.dump_debug_proc()
 
         stderr_lines = self.log.pop("stderr_lines", ())
-        self.log.setdefault("stderr", []).extend(chain(*stderr_lines))
+        self.log["stderr"].extend(chain(*stderr_lines))
         self.log["translation_units"] = list(
             self.processed_tus(self.buildmon.translation_units)
         )
@@ -730,17 +742,17 @@ class RunTest(State):
         if line == "(test package): Running test()":
             self.screen.print(f"Running test for {ref}")
             defaultlog = self.parser.getdefaultlog(ref)
-            defaultlog.setdefault("stdout", []).append(full_line)
-            self.log = self.parser.defaultlog = defaultlog.setdefault("test_run", {})
+            defaultlog["stdout"].append(full_line)
+            self.log = self.parser.defaultlog = defaultlog["test_run"]
             return True
         return False
 
     def process(self, parsed_line: Match) -> None:
-        assert_loglist(self.log, "stdout").append(parsed_line.group(0))
+        self.log["stdout"].append(parsed_line.group(0))
 
     def _deactivate(self, final=False):
         stderr_lines = self.log.pop("stderr_lines", ())
-        self.log.setdefault("stderr", []).extend(chain(*stderr_lines))
+        self.log["stderr"].extend(chain(*stderr_lines))
         self.parser.setdefaultlog()
         super()._deactivate(final=True)
 
@@ -756,8 +768,8 @@ class ConanParser:
 
     def __init__(self, process: Process):
         self.process = process
-        self.log: Dict[str, Any] = defaultdict(dict)
-        self.defaultlog: Dict[str, Any] = self.log
+        self.log = DefaultDict()
+        self.defaultlog = self.log
         self.screen = ScreenWriter()
 
         self.log["conan"] = dict(
@@ -784,16 +796,16 @@ class ConanParser:
         assert match
         return match
 
-    def getdefaultlog(self, name: Optional[str] = None) -> Dict[str, Any]:
+    def getdefaultlog(self, name: Optional[str] = None) -> DefaultDict:
         if name is None:
             log = self.log
         else:
             name, *_ = name.split("/", maxsplit=1)
-            log = self.log["requirements"].setdefault(name, {})
+            log = self.log["requirements"][name]
 
         return log
 
-    def setdefaultlog(self, name: Optional[str] = None) -> Dict[str, Any]:
+    def setdefaultlog(self, name: Optional[str] = None) -> DefaultDict:
         log = self.getdefaultlog(name)
         self.defaultlog = log
         return log
@@ -826,7 +838,7 @@ class ConanParser:
                     )
                 ]
             CONAN_LOG_ONCE.log(loglevel, "\n".join(_lines))
-            self.getdefaultlog(ref).setdefault("stderr", []).extend(stderr)
+            self.getdefaultlog(ref)["stderr"].extend(stderr)
 
         if not "".join(lines).rstrip():
             return
@@ -852,7 +864,7 @@ class ConanParser:
 
         flush()
         if residue:
-            self.defaultlog.setdefault("stderr_lines", []).append(residue)
+            self.defaultlog["stderr_lines"].append(residue)
 
     def process_line(self, line: str):
         line = line.rstrip()
