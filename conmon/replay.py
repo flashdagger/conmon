@@ -54,7 +54,7 @@ class ReplayStreamHandler:
                     r"^(?P<state>\[[A-Z][a-z]+] )?(?:-+ <(?P<pipe>[a-z]+)> -+)?(?P<line>.*\n)$",
                     line,
                 )
-                assert match
+                assert match, repr(line)
                 logline = match.group("line")
                 if match.group("pipe"):
                     if loglines:

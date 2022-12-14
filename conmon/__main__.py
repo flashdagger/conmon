@@ -895,7 +895,7 @@ class ConanParser:
 
                 for line in decolorize(stdout):
                     self.process_line(line)
-                    if log_states:
+                    if log_states and line:
                         state = self.states.active_instance()
                         name = state and type(state).__name__
                         raw_fh.write(f"[{name}] {line}")
