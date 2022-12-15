@@ -85,7 +85,7 @@ def filehandler(key: str, mode="w", hint="") -> TextIO:
         if hint:
             LOG_HINTS.setdefault(f"saved {hint} to {path!r}", logging.DEBUG)
     elif hint:
-        env_key = f"CONMON_{key.upper()}"
+        env_key = f"CONMON_{key.upper().replace('.', '_')}"
         hint_path = key.replace("_", ".")
         fmt = "export {}={}"
         for name in PARENT_PROCS:
