@@ -36,7 +36,7 @@ def replay_json(setting: str) -> Dict[str, Any]:
 class ReplayStreamHandler:
     def __init__(self):
         self.exhausted = False
-        self.loglines = self._readlines(replay_logfile("conan_log"))
+        self.loglines = self._readlines(replay_logfile("conan.log"))
 
     @staticmethod
     def _readlines(logfile: Optional[Path]):
@@ -80,8 +80,8 @@ class ReplayStreamHandler:
 class ReplayProcess(Process):
     def __init__(self, _pid=None):
         super().__init__(None)
-        self.proc_json = replay_json("proc_json")
-        self.log_json = replay_json("report_json")
+        self.proc_json = replay_json("proc.json")
+        self.log_json = replay_json("report.json")
         self._exitcode = self.log_json.get("conan", {}).get("returncode", -1)
 
     def cmdline(self):

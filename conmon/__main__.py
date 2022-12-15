@@ -371,7 +371,7 @@ class Build(State):
         self.ref = "???"
         self.force_status = False
         if not Build.PROC_JSON_RESET:
-            with filehandler("proc_json", hint="process debug json") as fh:
+            with filehandler("proc.json", hint="process debug json") as fh:
                 fh.write("{}")
             Build.PROC_JSON_RESET = True
 
@@ -547,12 +547,12 @@ class Build(State):
         proc_obj = {}
         with suppress(ValueError, OSError, TypeError):
             with filehandler(
-                "proc_json", mode="r", hint="process debug json"
+                "proc.json", mode="r", hint="process debug json"
             ) as proc_fh:
                 proc_obj.update(json.load(proc_fh))
 
         proc_obj[self.ref] = list(self.buildmon.proc_cache.values())
-        with filehandler("proc_json", hint="process debug json") as proc_fh:
+        with filehandler("proc.json", hint="process debug json") as proc_fh:
             json.dump(
                 proc_obj,
                 proc_fh,
@@ -793,7 +793,7 @@ class ConanParser:
         stderr_marker_start = marker.format(" <stderr> ")
         stdout_marker_start = marker.format(" <stdout> ")
         stderr_written = True
-        log_states = conmon_setting("log_states", False)
+        log_states = conmon_setting("conan.log.states", False)
         decolorize = cast(
             Callable[[Iterable[str]], Iterator[str]],
             partial(map, partial(DECOLORIZE_REGEX.sub, "")),
@@ -908,12 +908,12 @@ def monitor(args: List[str], replay=False) -> int:
     elif not cycle_time_s:
         BuildMonitor.ACTIVE = False
     parser = ConanParser(process)
-    for item in ("conan_log", "report_json", "proc_json"):
+    for item in ("conan.log", "report.json", "proc.json"):
         # copy replay file before opening or delete old ones
         path = replay_logfile(item, create_if_not_exists=replay)
         if not replay and path and path.is_file():
             path.unlink()
-    with filehandler("conan_log", hint="raw conan output") as fh:
+    with filehandler("conan.log", hint="raw conan output") as fh:
         parser.process_streams(fh)
     parser.finalize()
 
@@ -926,7 +926,7 @@ def monitor(args: List[str], replay=False) -> int:
                 with suppress(FileNotFoundError):
                     path.unlink()
 
-    with filehandler("report_json", hint="report json") as fh:
+    with filehandler("report.json", hint="report json") as fh:
         json.dump(parser.log, fh, indent=2)
 
     returncode = process.wait()
