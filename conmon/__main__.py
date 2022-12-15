@@ -75,6 +75,7 @@ CONMON_LOG = get_logger("CONMON")
 CONAN_LOG_ONCE = UniqueLogger(CONAN_LOG)
 PARENT_PROCS = [parent.name() for parent in Process(os.getppid()).parents()]
 LOG_HINTS: Dict[str, Optional[int]] = {}
+LOG_WARNING_COUNT = conan.conmon_setting("log.warning_count", True)
 
 
 def filehandler(key: str, mode="w", hint="") -> TextIO:
@@ -527,7 +528,7 @@ class Build(State):
                 self.force_status = True
             elif self.force_status:
                 return
-            # self.flush_warning_count()
+            self.flush_warning_count()
             with suppress(ValueError, AttributeError):
                 _current, _total = status.strip("[]").split("/")
                 status = f"[{_current:>{len(_total)}}/{_total}]"
@@ -552,7 +553,7 @@ class Build(State):
             if level_name in {"ERROR", "CRITICAL"}:
                 esc = logger_escape_code(BLOG, level_name)
                 self.screen.print(f"{esc}E {line}")
-            elif level_name == "WARNING":
+            elif LOG_WARNING_COUNT and level_name == "WARNING":
                 self.warnings += 1
 
     def filtered_tus(
@@ -661,7 +662,7 @@ class Build(State):
 
     def _deactivate(self, final=False):
         self.force_status = False
-        # self.flush_warning_count()
+        self.flush_warning_count()
         self.parser.screen.reset()
         self.buildmon.stop()
         self.dump_debug_proc()
@@ -1013,9 +1014,8 @@ def monitor(args: List[str], replay=False) -> int:
         BuildMonitor.ACTIVE = False
     parser = ConanParser(process)
     for item in ("conan_log", "report_json", "proc_json"):
-        path = replay_logfile(
-            item, create_if_not_exists=replay
-        )  # copy replay file before opening
+        # copy replay file before opening or delete old ones
+        path = replay_logfile(item, create_if_not_exists=replay)
         if not replay and path.is_file():
             path.unlink()
     with filehandler("conan_log", hint="raw conan output") as fh:
