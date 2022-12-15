@@ -11,7 +11,6 @@ from contextlib import suppress
 from functools import cmp_to_key
 from inspect import FrameInfo, stack
 from io import TextIOBase
-from itertools import count
 from math import log
 from pathlib import Path
 from queue import Empty, Queue
@@ -214,15 +213,9 @@ class ProcessStreamHandler:
         return self.stdout.exhausted and self.stderr.exhausted
 
     def readboth(self) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
-        stderr_lines = []
-        stdout_lines = []
-
-        with suppress(Empty):
-            for _ in count():
-                stderr_lines.append(self.stderr.queue.get(block=False))
-        if not stderr_lines:
-            stdout_lines.append(self.stdout.queue.get())
-        return tuple(stdout_lines), tuple(filter(bool, stderr_lines))
+        stdout_lines = tuple(self.stdout.readlines(block_first=True))
+        stderr_lines = tuple(self.stderr.readlines())
+        return stdout_lines, stderr_lines
 
     def readmerged(self) -> Tuple[str, ...]:
         while not self.exhausted:
