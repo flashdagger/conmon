@@ -61,7 +61,6 @@ class ReplayStreamHandler:
                 else:
                     loglines.append(logline)
 
-            loglines.append("")
             yield pipe, tuple(loglines)
 
     def readboth(self):

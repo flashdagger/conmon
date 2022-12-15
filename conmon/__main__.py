@@ -129,6 +129,8 @@ class DefaultDict(UserDict):
 
 
 class State:
+    SKIP_NEXT = False
+
     def __init__(self, parser: "ConanParser"):
         self.finished = False
         self.stopped = False
@@ -201,14 +203,18 @@ class StateMachine:
             self.deactivate(state)
 
     def process_hooks(self, parsed_line: Match) -> None:
-        activated = []
-
+        skip_next = []
         for state in tuple(self._active):
             if not state.finished:
                 state.process(parsed_line)
             if state.finished:
                 self.deactivate(state)
+                skip_next.append(state.SKIP_NEXT)
 
+        if any(skip_next):
+            return
+
+        activated = []
         for state in tuple(self._running):
             if state not in self._active and state.activated(parsed_line):
                 activated.append(state)
@@ -355,6 +361,8 @@ class Packages(State):
 
 
 class Config(State):
+    SKIP_NEXT = True
+
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
         self.lines: List[str] = []
@@ -374,11 +382,7 @@ class Config(State):
 
     def process(self, parsed_line: Match) -> None:
         line = parsed_line.group(0)
-        if (
-            "[env]" in self.lines
-            and not re.match(r"\w+=|$", line)
-            or not re.match(r"(\[[\w.-]+]$)|[^\s:]+\s*[:=]|$", line)
-        ):
+        if not line:
             self.deactivate()
         else:
             self.lines.append(line)
