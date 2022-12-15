@@ -993,14 +993,10 @@ def monitor(args: List[str], replay=False) -> int:
     # set conan logging level
     os.environ["CONAN_LOGGING_LEVEL"] = "FATAL"
 
-    trace_path = Path(os.getenv("CONAN_TRACE_FILE", "."))
-    if trace_path == Path("."):
+    if conan.conmon_setting("tracelog", False) and not os.getenv("CONAN_TRACE_FILE"):
         tmp_file, tmp_name = tempfile.mkstemp()
-        trace_path = Path(tmp_name)
         os.environ["CONAN_TRACE_FILE"] = tmp_name
         os.close(tmp_file)
-    elif not trace_path.is_absolute():
-        os.environ["CONAN_TRACE_FILE"] = str(trace_path.absolute())
 
     conan_command, ConanParser.CONAN_VERSION = conan.call_cmd_and_version()
     conan_command.extend(args)
@@ -1026,11 +1022,13 @@ def monitor(args: List[str], replay=False) -> int:
         parser.process_streams(fh)
     parser.finalize()
 
-    if trace_path.exists():
-        parser.process_tracelog(trace_path)
+    if conan.conmon_setting("tracelog", False):
+        trace_path = Path(os.getenv("CONAN_TRACE_FILE", "."))
+        if trace_path.is_file():
+            parser.process_tracelog(trace_path)
         if trace_path.name.startswith("tmp"):
-            for path in (trace_path, Path(str(trace_path) + ".lock")):
-                if path.exists():
+            for path in (trace_path, Path(f"{trace_path}.lock")):
+                with suppress(FileNotFoundError):
                     path.unlink()
 
     with filehandler("report_json", hint="report json") as fh:
