@@ -9,6 +9,7 @@ import re
 import sys
 import tempfile
 from collections import UserDict
+from configparser import ParsingError
 from contextlib import suppress
 from functools import partial
 from io import StringIO
@@ -262,6 +263,7 @@ class Config(State):
         self.lines: List[str] = []
         self.profile_type = "host"
         self.log = parser.log["profile"]
+        self._final = False
 
     def activated(self, parsed_line: Match) -> bool:
         match = re.fullmatch(
@@ -271,6 +273,7 @@ class Config(State):
         if match:
             self.lines.clear()
             self.profile_type = match.group("ptype") or self.profile_type
+            self._final = match.group("ptype") in (None, "build")
             return True
         return False
 
@@ -284,13 +287,18 @@ class Config(State):
     def _deactivate(self, final=False):
         buffer = StringIO("\n".join(self.lines))
         config = StrictConfigParser()
-        config.read_file(buffer, "profile.ini")
-        log = self.log[self.profile_type]
+        try:
+            config.read_file(buffer, "profile.ini")
+            log = self.log[self.profile_type]
 
-        for section in config.sections():
-            log[section] = dict(config.items(section))
+            for section in config.sections():
+                log[section] = dict(config.items(section))
+        except ParsingError as exc:
+            CONMON_LOG.error("Config parsing error: %s", exc.message, exc_info=exc)
+            for line in buffer.readlines():
+                print(repr(line))
 
-        super()._deactivate(final=False)
+        super()._deactivate(final=self._final)
 
 
 class Package(State):
