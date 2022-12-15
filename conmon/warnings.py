@@ -5,7 +5,7 @@ import logging
 import re
 from collections import Counter
 from contextlib import suppress
-from itertools import groupby
+from itertools import groupby, islice
 from typing import (
     Any,
     Callable,
@@ -189,10 +189,16 @@ def show_stats(stats):
         )
         if severity != "warning":
             continue
-        for _, key, value in sorted(
+        sorted_stats = sorted(
             stat_list, key=lambda item: (item[1][0], item[2]), reverse=True
-        ):
-            LOG.info(" %4sx %s", value, key)
+        )
+        for key, grp in groupby(sorted_stats, key=lambda item: item[2]):
+            values = (item[1] for item in grp)
+            while True:
+                value = ", ".join((islice(values, 5)))
+                if not value:
+                    break
+                LOG.info(" %4sx %s", key, value)
 
 
 def warnings_from_matches(
