@@ -34,9 +34,9 @@ from typing import (
 
 from psutil import Popen, Process
 
-from . import __version__, conan, json
+from . import __version__, json
 from .buildmon import BuildMonitor
-from .conan import LOG as CONAN_LOG
+from .conan import LOG as CONAN_LOG, call_cmd_and_version, conmon_setting
 from .logging import (
     UniqueLogger,
     get_logger,
@@ -75,11 +75,11 @@ CONMON_LOG = get_logger("CONMON")
 CONAN_LOG_ONCE = UniqueLogger(CONAN_LOG)
 PARENT_PROCS = [parent.name() for parent in Process(os.getppid()).parents()]
 LOG_HINTS: Dict[str, Optional[int]] = {}
-LOG_WARNING_COUNT = conan.conmon_setting("log.warning_count", True)
+LOG_WARNING_COUNT = conmon_setting("log.warning_count", True)
 
 
 def filehandler(key: str, mode="w", hint="") -> TextIO:
-    path = conan.conmon_setting(key)
+    path = conmon_setting(key)
     if isinstance(path, str):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         if hint:
@@ -104,8 +104,8 @@ def filehandler(key: str, mode="w", hint="") -> TextIO:
 
 
 class DefaultDict(UserDict):
-    STDOUT_LIST = list if conan.conmon_setting("report.stdout", True) else NullList
-    STDERR_LIST = list if conan.conmon_setting("report.stderr", True) else NullList
+    STDOUT_LIST = list if conmon_setting("report.stdout", True) else NullList
+    STDERR_LIST = list if conmon_setting("report.stderr", True) else NullList
     DEFAULT = {
         "stdout": STDOUT_LIST,
         "stderr": STDERR_LIST,
@@ -792,13 +792,13 @@ class ConanParser:
         stderr_marker_start = marker.format(" <stderr> ")
         stdout_marker_start = marker.format(" <stdout> ")
         stderr_written = True
-        log_states = conan.conmon_setting("log_states", False)
+        log_states = conmon_setting("log_states", False)
         decolorize = cast(
             Callable[[Iterable[str]], Iterator[str]],
             partial(map, partial(DECOLORIZE_REGEX.sub, "")),
         )
 
-        readmerged = os.name == "posix" and conan.conmon_setting(
+        readmerged = os.name == "posix" and conmon_setting(
             "build.merge_stderr", default=False
         )
         while not streams.exhausted:
@@ -887,12 +887,12 @@ def monitor(args: List[str], replay=False) -> int:
     # set conan logging level
     os.environ["CONAN_LOGGING_LEVEL"] = "FATAL"
 
-    if conan.conmon_setting("tracelog", False) and not os.getenv("CONAN_TRACE_FILE"):
+    if conmon_setting("tracelog", False) and not os.getenv("CONAN_TRACE_FILE"):
         tmp_file, tmp_name = tempfile.mkstemp()
         os.environ["CONAN_TRACE_FILE"] = tmp_name
         os.close(tmp_file)
 
-    conan_command, ConanParser.CONAN_VERSION = conan.call_cmd_and_version()
+    conan_command, ConanParser.CONAN_VERSION = call_cmd_and_version()
     conan_command.extend(args)
     process = (
         ReplayProcess()
@@ -901,7 +901,7 @@ def monitor(args: List[str], replay=False) -> int:
             conan_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
         )
     )
-    cycle_time_s = conan.conmon_setting("build.monitor", True)
+    cycle_time_s = conmon_setting("build.monitor", True)
     if isinstance(cycle_time_s, float):
         BuildMonitor.CYCLE_TIME_S = cycle_time_s
     elif not cycle_time_s:
@@ -916,7 +916,7 @@ def monitor(args: List[str], replay=False) -> int:
         parser.process_streams(fh)
     parser.finalize()
 
-    if conan.conmon_setting("tracelog", False):
+    if conmon_setting("tracelog", False):
         trace_path = Path(os.getenv("CONAN_TRACE_FILE", "."))
         if trace_path.is_file():
             parser.process_tracelog(trace_path)
