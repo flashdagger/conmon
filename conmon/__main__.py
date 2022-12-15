@@ -297,12 +297,14 @@ class Package(State):
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
         self.parser = parser
+        self.log = parser.defaultlog
 
     def activated(self, parsed_line: Match) -> bool:
         line, ref, rest = parsed_line.group(0, "ref", "rest")
         if rest == "Calling package()":
             self.screen.print(f"Packaging {ref}")
-            self.parser.log["stdout"].append(line)
+            self.log = self.parser.getdefaultlog(ref)
+            self.log["stdout"].append(line)
             return True
         return False
 
@@ -311,17 +313,16 @@ class Package(State):
         match = re.match(
             r"(?P<prefix>[\w ]+) '?(?P<id>[a-z0-9]{32,40})(?:[' ]|$)", line
         )
-        log = self.parser.defaultlog
         if not match:
-            log["package"].append(line)
+            self.log["package"].append(line)
             return
 
         if match.group("prefix") == "Created package revision":
-            log["package_revision"] = match.group("id")
+            self.log["package_revision"] = match.group("id")
             self.deactivate()
             return
 
-        log["package_id"] = match.group("id")
+        self.log["package_id"] = match.group("id")
 
     def _deactivate(self, final=False):
         self.parser.setdefaultlog()
