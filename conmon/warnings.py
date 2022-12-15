@@ -48,7 +48,7 @@ class Regex:
     )
     GNU = re.compile(
         r"""(?xm)
-        ^(?P<context> (?: .+:(?:\d+,)?\n)* )?
+        ^(?P<context> (?: .+[:,]\n)* )?
         \ *
         (?P<file>(?:[A-Za-z]:)?[^\n:]+?)
         (?:

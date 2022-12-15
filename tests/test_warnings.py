@@ -161,6 +161,13 @@ output = [
     'source_subfolder/locks/unix/proc_mutex.c:932:5: warning: this use of "defined" may not be portable [-Wexpansion-to-defined]',
     "  932 | #if APR_USE_PROC_PTHREAD_MUTEX_COND",
     "      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+    "In file included from /usr/include/string.h:495,",
+    "                 from /src/share/grabbag/picture.c:29:",
+    "In function \u2018strncpy\u2019,",
+    "    inlined from \u2018grabbag__picture_from_specification\u2019 at /src/include/share/safe_str.h:63:8:",
+    "/usr/include/x86_64-linux-gnu/bits/string_fortified.h:106:10: warning: \u2018__builtin_strncpy\u2019 specified bound 64 equals destination size [-Wstringop-truncation]",
+    "  106 |   return __builtin___strncpy_chk (__dest, __src, __len, __bos (__dest));",
+    "      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
     "",
 ]
 dataset = [
@@ -433,6 +440,25 @@ dataset = [
                 "      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
                 "info": 'this use of "defined" may not be portable',
                 "line": "932",
+                "project": None,
+                "severity": "warning",
+            },
+            {
+                "category": "-Wstringop-truncation",
+                "column": "10",
+                "context": ""
+                "In file included from /usr/include/string.h:495,\n"
+                "                 from /src/share/grabbag/picture.c:29:\n"
+                "In function \u2018strncpy\u2019,\n"
+                "    inlined from \u2018grabbag__picture_from_specification\u2019 at "
+                "/src/include/share/safe_str.h:63:8:\n",
+                "file": "/usr/include/x86_64-linux-gnu/bits/string_fortified.h",
+                "hint": "  106 |   return __builtin___strncpy_chk (__dest, __src, __len, "
+                "__bos (__dest));\n"
+                "      |          "
+                "^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+                "info": "‘__builtin_strncpy’ specified bound 64 equals destination size",
+                "line": "106",
                 "project": None,
                 "severity": "warning",
             },
