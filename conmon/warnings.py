@@ -192,13 +192,15 @@ def show_stats(stats):
         sorted_stats = sorted(
             stat_list, key=lambda item: (item[1][0], item[2]), reverse=True
         )
+        width = len(str(max(item[2] for item in stat_list)))
+        template = f" %{width}sx %s"
         for key, grp in groupby(sorted_stats, key=lambda item: item[2]):
             values = (item[1] for item in grp)
             while True:
                 value = ", ".join((islice(values, 5)))
                 if not value:
                     break
-                LOG.info(" %4sx %s", key, value)
+                LOG.info(template, key, value)
 
 
 def warnings_from_matches(
@@ -237,7 +239,7 @@ def warnings_from_matches(
 
             key = (
                 severity,
-                repr(mapping["category"])
+                repr(mapping["category"] or "<undefined>")
                 if mapping["from"] == "compilation"
                 else mapping["from"],
             )
