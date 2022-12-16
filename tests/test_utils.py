@@ -10,6 +10,7 @@ from conmon.utils import (
     human_readable_byte_size,
     human_readable_size,
     shorten,
+    shorten_lines,
     sorted_dicts,
 )
 
@@ -139,3 +140,12 @@ def test_shorten(testcase):
     width = (2 if strip == "outer" else 1) * len(placeholder) + 2
     stripped_text = shorten_default(text, strip=strip, width=width)
     assert stripped_text == template.format(placeholder)
+
+
+def test_shorten_lines():
+    test_string = "a\nb\nc\nd"
+    assert shorten_lines(test_string, 1) == "a\n\n[ 3 more line(s) ]\n"
+    assert shorten_lines(test_string, 2) == "a\nb\n\n[ 2 more line(s) ]\n"
+    assert shorten_lines(test_string, 3) == "a\nb\nc\n\n[ 1 more line(s) ]\n"
+    assert shorten_lines(test_string, 4) == "a\nb\nc\nd"
+    assert shorten_lines(test_string, 5) == "a\nb\nc\nd"

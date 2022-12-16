@@ -68,6 +68,7 @@ from .utils import (
     shorten_per_line,
     sorted_dicts,
     unique,
+    shorten_lines,
 )
 from .warnings import LOG as BLOG
 from .warnings import Regex, levelname_from_severity, warnings_from_matches
@@ -616,7 +617,9 @@ class Build(State):
             ),
             msvc_tools=re.compile(r"(?m)^(Microsoft|Copyright) \([RC]\) .+\n"),
         )
-        build_stderr = "".join(unique(build_stderr.splitlines(keepends=True))).rstrip()
+        build_stderr = "".join(
+            unique(shorten_lines(build_stderr, 20).splitlines(keepends=True))
+        ).rstrip()
         if build_stderr:
             CONMON_LOG.debug(
                 "unprocessed stderr:\n%s",

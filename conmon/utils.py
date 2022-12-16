@@ -353,6 +353,16 @@ def shorten_per_line(
     return "".join(lines)
 
 
+def shorten_lines(text: str, maxlines: int) -> str:
+    total_lines = text.count("\n") + 1
+    offset = 0
+    with suppress(ValueError):
+        for _ in range(maxlines):
+            offset = text.index("\n", offset) + 1
+        return f"{text[:offset]}\n[ {total_lines-maxlines} more line(s) ]\n"
+    return text
+
+
 def added_first(container: Set, item: Hashable) -> bool:
     if item in container:
         return False
