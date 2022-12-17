@@ -50,28 +50,26 @@ class Regex:
         r"""(?xm)
         ^(?P<context> (?: .+[:,]\n)* )?
         \ *
-        (?P<file>(?:[A-Za-z]:)?[^\n:]+?)
+        (?!\d+:)
+        (?P<file>(?:[A-Za-z]:)?[\w()/\\. -]*\w)
         (?:
             [:(]
             (?P<line>\d+)
             (?:
                 [:.,]
-                (?P<column>\d+(?:-\d+)?)
+                (?P<column>[\d-]+)
             )?
+            (?:\)\ ?)?
         )?
-        (?:\)\ ?)?:\ #
+        :\ #
         (?P<severity>warning|error|ERROR|note|message|fatal\ error)\ ?:\ #
         (?P<info>.*?)
         (\ \[(?P<category>[\w#=+\-]+)])?
         (\ \[ (?P<project>[^]\n]+) ])?
         \n
-        (
-            (?P<hint>
-                [^\n]+\n
-                (?: [^\^\n]*\^[^\^\n]* | \ +\|[^\n]+ )
-                (?:\n\ +[^\n]+)*
-            )
-            \n
+        (?P<hint>
+            (?:\ +\d*\ \|[^\n]+\n)+ 
+            | .+\n[ ~]*\^[ ~]*(?:\n\ +\w+.+)?\n
         )?
         """
     )

@@ -168,6 +168,12 @@ output = [
     "/usr/include/x86_64-linux-gnu/bits/string_fortified.h:106:10: warning: \u2018__builtin_strncpy\u2019 specified bound 64 equals destination size [-Wstringop-truncation]",
     "  106 |   return __builtin___strncpy_chk (__dest, __src, __len, __bos (__dest));",
     "      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+    "In file included from source_subfolder/vp9/ratectrl_rtc.cc:10:",
+    "In file included from source_subfolder/vp9/ratectrl_rtc.h:19:",
+    "source_subfolder/vp9/common/vp9_onyxc_int.h:316:51: warning: zero as null pointer constant [-Wzero-as-null-pointer-constant]",
+    "  if (index < 0 || index >= FRAME_BUFFERS) return NULL;",
+    "                                                  ^~~~",
+    "                                                  nullptr",
     "",
 ]
 dataset = [
@@ -185,7 +191,7 @@ dataset = [
                 "project": None,
                 "hint": ""
                 "     memset(&reicevedSignals, 0, sizeof(reicevedSignals));\n"
-                "     ^~~~~~",
+                "     ^~~~~~\n",
             },
             {
                 "context": "",
@@ -210,7 +216,7 @@ dataset = [
                 "project": None,
                 "hint": ""
                 "ZEXTERN z_off64_t ZEXPORT gzseek64 OF((gzFile, z_off64_t, int));\n"
-                "                                               ^",
+                "                                               ^\n",
             },
             {
                 "context": "/build/source_subfolder/bzip2.c: In function "
@@ -225,7 +231,7 @@ dataset = [
                 "project": None,
                 "hint": ""
                 " 1073 |    (void) fchown ( fd, fileMetaInfo.st_uid, fileMetaInfo.st_gid );\n"
-                "      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+                "      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",
             },
             {
                 "context": "",
@@ -239,8 +245,7 @@ dataset = [
                 "project": None,
                 "hint": ""
                 '   35 | %name-prefix "constexpYY"\n'
-                "      | ^~~~~~~~~~~~~~~~~~~~~~~~~      | %define api.prefix "
-                "{constexpYY}",
+                "      | ^~~~~~~~~~~~~~~~~~~~~~~~~      | %define api.prefix {constexpYY}\n",
             },
             {
                 "context": "",
@@ -267,7 +272,7 @@ dataset = [
                 "project": None,
                 "hint": ""
                 "  772 | #define PG_INT128_TYPE __int128\n"
-                "      |                        ^~~~~~~~",
+                "      |                        ^~~~~~~~\n",
             },
             {
                 "context": ""
@@ -288,7 +293,7 @@ dataset = [
                 "project": None,
                 "hint": ""
                 " 1640 | G_DEFINE_BOXED_TYPE (AtkTextRange, atk_text_range, atk_text_range_copy,\n"
-                "      |                                                    ^~~~~~~~~~~~~~~~~~~",
+                "      |                                                    ^~~~~~~~~~~~~~~~~~~\n",
             },
             {
                 "context": "",
@@ -309,7 +314,7 @@ dataset = [
                 "  216 |       &start, &end, perm, &offset, dev, &inode, file);\n"
                 "      |                                         ~~~~~~\n"
                 "      |                                         |\n"
-                "      |                                         long unsigned int *",
+                "      |                                         long unsigned int *\n",
             },
             {
                 "context": ""
@@ -348,7 +353,7 @@ dataset = [
                 "info": "ISO C forbids an empty translation unit",
                 "category": "-Wpedantic",
                 "project": None,
-                "hint": "  284 | #endif\n      | ",
+                "hint": "  284 | #endif\n      | \n",
             },
             {
                 "context": "./src/graph.cc: In member function "
@@ -366,7 +371,7 @@ dataset = [
                 '  409 |   printf("] 0x%p\\n", this);\n'
                 "      |               ~^\n"
                 "      |                |\n"
-                "      |                void*",
+                "      |                void*\n",
             },
             {
                 "context": "",
@@ -403,8 +408,7 @@ dataset = [
                 "severity": "error",
                 "category": None,
                 "info": "<stdatomic.h> is not yet supported when compiling as C",
-                "hint": "#error <stdatomic.h> is not yet supported when compiling as C\n"
-                " ^",
+                "hint": "#error <stdatomic.h> is not yet supported when compiling as C\n ^\n",
                 "project": None,
             },
             {
@@ -418,7 +422,7 @@ dataset = [
                 "project": None,
                 "hint": "        #pragma message (OPENSSL_VERSION_TEXT "
                 "POCO_INTERNAL_OPENSSL_BUILD)\n"
-                "                ^",
+                "                ^\n",
             },
             {
                 "context": "",
@@ -437,7 +441,7 @@ dataset = [
                 "context": "source_subfolder/locks/unix/proc_mutex.c: At top level:\n",
                 "file": "source_subfolder/locks/unix/proc_mutex.c",
                 "hint": "  932 | #if APR_USE_PROC_PTHREAD_MUTEX_COND\n"
-                "      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+                "      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",
                 "info": 'this use of "defined" may not be portable',
                 "line": "932",
                 "project": None,
@@ -456,9 +460,23 @@ dataset = [
                 "hint": "  106 |   return __builtin___strncpy_chk (__dest, __src, __len, "
                 "__bos (__dest));\n"
                 "      |          "
-                "^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+                "^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",
                 "info": "‘__builtin_strncpy’ specified bound 64 equals destination size",
                 "line": "106",
+                "project": None,
+                "severity": "warning",
+            },
+            {
+                "category": "-Wzero-as-null-pointer-constant",
+                "column": "51",
+                "context": "In file included from source_subfolder/vp9/ratectrl_rtc.cc:10:\n"
+                "In file included from source_subfolder/vp9/ratectrl_rtc.h:19:\n",
+                "file": "source_subfolder/vp9/common/vp9_onyxc_int.h",
+                "hint": "  if (index < 0 || index >= FRAME_BUFFERS) return NULL;\n"
+                "                                                  ^~~~\n"
+                "                                                  nullptr\n",
+                "info": "zero as null pointer constant",
+                "line": "316",
                 "project": None,
                 "severity": "warning",
             },
