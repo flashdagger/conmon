@@ -469,7 +469,8 @@ class Build(State):
         self, tu_list: Iterable[Dict[str, Any]]
     ) -> Iterator[Dict[str, Any]]:
         src_filter = {
-            None: lambda path: "meson-private" in path.parts,
+            None: lambda path: "meson-private" in path.parts
+            or Path(tempfile.gettempdir()) in path.parents,
             "b2": lambda path: path.as_posix().endswith("/config/checks/test_case.cpp"),
             "cmake": lambda path: re.search(
                 r"/(cmake-[23].\d{2}|CMakeTmp|CMakeFiles/(Check[a-zA-Z]+|CMakeScratch)"
@@ -481,10 +482,10 @@ class Build(State):
             "make": lambda path: path.stem in {"conftest", "dummy"}
             or path.parent.as_posix().endswith("/tools/build/feature"),
         }
+        key_set = {None}
+        key_set.update(self.buildmon.executables)
         active_filters = {
-            key: value
-            for key, value in src_filter.items()
-            if key in self.buildmon.executables or key is None
+            key: value for key, value in src_filter.items() if key in key_set
         }
 
         src_counter = 0
