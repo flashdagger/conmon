@@ -33,6 +33,7 @@ def replay_json(setting: str) -> Dict[str, Any]:
         return json.load(fh)
 
 
+# pylint: disable=too-few-public-methods
 class ReplayStreamHandler:
     def __init__(self):
         self.exhausted = False
@@ -71,10 +72,6 @@ class ReplayStreamHandler:
         if pipe == "stderr":
             return (), loglines
         return loglines, ()
-
-    def readmerged(self):
-        stdout, stderr = self.readboth()
-        return stdout or stderr
 
 
 class ReplayProcess(Process):

@@ -156,7 +156,7 @@ class AsyncPipeReader:
 
     @staticmethod
     def reader(pipe: TextIOBase, queue: Queue) -> None:
-        with suppress(ValueError):
+        with suppress(ValueError, AttributeError):
             for line in iter(pipe.readline, ""):
                 queue.put(line)
         queue.put("")
@@ -216,15 +216,6 @@ class ProcessStreamHandler:
         stdout_lines = tuple(self.stdout.readlines(block_first=True))
         stderr_lines = tuple(self.stderr.readlines())
         return stdout_lines, stderr_lines
-
-    def readmerged(self) -> Tuple[str, ...]:
-        while not self.exhausted:
-            stdout_lines = tuple(self.stdout.readlines())
-            stderr_lines = tuple(self.stderr.readlines())
-            if stderr_lines or stdout_lines:
-                return stdout_lines + stderr_lines
-            self.select()
-        return ()
 
 
 class MappingPair(tuple):

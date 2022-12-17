@@ -16,7 +16,7 @@ from io import StringIO
 from itertools import chain
 from operator import itemgetter
 from pathlib import Path
-from subprocess import PIPE
+from subprocess import PIPE, STDOUT
 from textwrap import indent
 from typing import (
     Any,
@@ -29,7 +29,6 @@ from typing import (
     Optional,
     Set,
     TextIO,
-    Tuple,
     cast,
 )
 
@@ -107,7 +106,7 @@ def filehandler(key: str, mode="w", hint="") -> TextIO:
 
 class DefaultDict(UserDict):
     STDOUT_LIST = list if conmon_setting("report.stdout", True) else NullList
-    STDERR_LIST = list if conmon_setting("report.stderr", True) else NullList
+    STDERR_LIST = list if conmon_setting("report.stderr", True) is True else NullList
     DEFAULT = {
         "stdout": STDOUT_LIST,
         "stderr": STDERR_LIST,
@@ -482,7 +481,7 @@ class Build(State):
             "make": lambda path: path.stem in {"conftest", "dummy"}
             or path.parent.as_posix().endswith("/tools/build/feature"),
         }
-        key_set = {None}
+        key_set: Set = {None}
         key_set.update(self.buildmon.executables)
         active_filters = {
             key: value for key, value in src_filter.items() if key in key_set
@@ -812,16 +811,9 @@ class ConanParser:
             partial(map, partial(DECOLORIZE_REGEX.sub, "")),
         )
 
-        readmerged = os.name == "posix" and conmon_setting(
-            "build.merge_stderr", default=False
-        )
         while not streams.exhausted:
             try:
-                if readmerged and isinstance(self.states.active_instance(), Build):
-                    stderr: Tuple[str, ...] = ()
-                    stdout = streams.readmerged()
-                else:
-                    stdout, stderr = streams.readboth()
+                stdout, stderr = streams.readboth()
             except KeyboardInterrupt:
                 with suppress(KeyboardInterrupt):
                     self.screen.reset()
@@ -912,7 +904,15 @@ def monitor(args: List[str], replay=False) -> int:
         ReplayProcess()
         if replay
         else Popen(
-            conan_command, stdout=PIPE, stderr=PIPE, universal_newlines=True, bufsize=0
+            conan_command,
+            stdout=PIPE,
+            stderr=(
+                STDOUT
+                if str(conmon_setting("report.stderr")).lower() == "stdout"
+                else PIPE
+            ),
+            universal_newlines=True,
+            bufsize=0,
         )
     )
     cycle_time_s = conmon_setting("build.monitor", True)

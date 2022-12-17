@@ -29,6 +29,7 @@ log.warning_count = False   # during build show number of warnings per translati
                             # works only if compiler warnings are sent to stdout
 report.stdout = True        # enable/disable processing of stdout stream
 report.stderr = True        # enable/disable processing of stderr stream
+                            # set to 'stdout' to redirect stderr to stdout stream
 report.json = report.json   # path where the JSON report will be saved
 tracelog = False            # enable and process conan tracelog file (see CONAN_TRACELOG_FILE)
 proc.json = proc.json       # path where the JSON with the called compiler processes will be saved
