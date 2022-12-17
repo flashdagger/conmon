@@ -156,7 +156,7 @@ def identify_compiler(name: str) -> Optional[str]:
     if parts == {"cl"} or parts & {"rc"}:
         return "msvc"
 
-    if parts & {"gcc", "g", "cc", "c", "clang", "nasm"}:
+    if parts & {"gcc", "g", "cc", "c", "clang", "nasm", "yasm"}:
         return "gnu"
 
     return None
