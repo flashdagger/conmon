@@ -74,8 +74,8 @@ class CompilerParser(argparse.ArgumentParser):
         )
         self.add_argument(
             "-f",
-            help="specifying the output file format (nasm specific)",
-            dest="nasm_output",
+            help="specifying the output file format (nasm/yasm specific)",
+            dest="object_format",
             default=None,
             action="store",
         )
@@ -306,7 +306,7 @@ class BuildMonitor(Thread):
                 continue
             if key in ("forced_includes", "system_includes", "includes"):
                 data[key] = {self.make_absolute(path, proc["cwd"]) for path in value}
-            elif key in {"defines", "undefines", "nasm_output"}:
+            elif key in {"defines", "undefines", "object_format"}:
                 data[key] = set(value) if isinstance(value, list) else value
 
         for file in reversed(unknown_args):

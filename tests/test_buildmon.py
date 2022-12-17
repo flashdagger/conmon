@@ -77,7 +77,7 @@ cases = [
             "system_includes": ["source/system_include"],
             "includes": ["source", "source/include"],
             "sources": ["source/power.cpp"],
-            "nasm_output": "win",
+            "object_format": "win",
         },
     }
 ]
