@@ -398,14 +398,15 @@ class Build(State):
         return bool(match) or line.startswith("ERROR:")
 
     def activated(self, parsed_line: Match) -> bool:
-        full_line, ref = parsed_line.group(0, "ref")
+        full_line = parsed_line.group(0)
         if self._activated(parsed_line):
-            defaultlog = self.parser.getdefaultlog(ref)
+            assert self.ref
+            defaultlog = self.parser.getdefaultlog(self.ref)
             defaultlog["stdout"].append(full_line)
             self.log = self.parser.defaultlog = defaultlog[self.REF_LOG_KEY]
             self.buildmon.start()
             proc_json = getattr(self.parser.process, "proc_json", {})
-            for proc_info in proc_json.get(ref, ()):
+            for proc_info in proc_json.get(self.ref, ()):
                 self.buildmon.proc_cache[freeze_json_object(proc_info)] = None
             return True
         return False
