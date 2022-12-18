@@ -63,24 +63,23 @@ class Regex:
         (\ \[ (?P<project>[^]\n]+) ])?
         \n
         (?P<hint>
-            (?:\ +\d*\ \|[^\n]+\n)+ 
-            | .+\n[ ~]*\^[ ~]*(?:\n\ +\w+.+)?\n
+            (?:\ +\d*\ \|[^\n]+\n)+
+            | .+\n[ ~]*\^[ ~]*(?:\n\ *[\w ();]+)?\n
         )?
         """
     )
     MSVC = re.compile(
         r"""(?xm)
-            (?P<file>^[^\n(]+(?<!\ ))
-            (?:
-              \( (?P<line>\d+) (?:, (?P<column>\d+) )? \)
-            )?
+            (?P<file>(?:[A-Za-z]:)?[\w()/\\. -]*\w)
+            (?:\(
+              (?P<line>\d+)
+              (?:, (?P<column>\d+))?
+            \))?
             \ ?:\ #
-            (?P<severity>[a-z\s]+)  \ #
-            (?P<category>[A-Z]+\d+):\ #
+            (?P<severity>[A-Za-z\s]+)  \ #
+            (?P<category>[A-Z]+\d+)\ ?:\ #
             (?P<info>.+?)
-            (
-                \ \[ (?P<project>[^]]+) ]
-            )?
+            (\ \[(?P<project>[^]]+)])?
             \n
             (?P<hint>[^\n]+\n\s*\^\n)?
         """

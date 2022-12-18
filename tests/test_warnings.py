@@ -176,6 +176,7 @@ output = [
     "  if (index < 0 || index >= FRAME_BUFFERS) return NULL;",
     "                                                  ^~~~",
     "                                                  nullptr",
+    "cl : Command line warning D9002 : ignoring unknown option '/diagnostics:caret/Wall'",
     "",
 ]
 dataset = [
@@ -515,8 +516,18 @@ dataset = [
                 "column": None,
                 "severity": "fatal error",
                 "category": "U1077",
-                "info": "'C:\\Users\\marcel\\applications\\LLVM\\bin\\clang-cl.EXE' : return "
-                "code '0x1'",
+                "info": "'C:\\Users\\marcel\\applications\\LLVM\\bin\\clang-cl.EXE' : "
+                "return code '0x1'",
+                "project": None,
+                "hint": None,
+            },
+            {
+                "file": "cl",
+                "line": None,
+                "column": None,
+                "severity": "Command line warning",
+                "category": "D9002",
+                "info": "ignoring unknown option '/diagnostics:caret/Wall'",
                 "project": None,
                 "hint": None,
             },
