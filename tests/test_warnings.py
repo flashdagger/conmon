@@ -71,9 +71,9 @@ output = [
     "  CMakeLists.txt:7 (include)",
     "",
     "",
-    "CMake Warning at libmysql/authentication_ldap/CMakeLists.txt:30 (MESSAGE):",
+    "CMake Warning (dev) at libmysql/authentication_ldap/CMakeLists.txt:30 (MESSAGE):",
     "  Skipping the LDAP client authentication plugin",
-    "",
+    "This warning is for project developers.  Use -Wno-dev to suppress it.",
     "",
     "In file included from /package/include/glib-2.0/gobject/gobject.h:24,",
     "                 from /package/include/glib-2.0/gobject/gbinding.h:29,",
@@ -154,9 +154,12 @@ output = [
     "Could not determine size of size_t.",
     'CMake Error: CMake was unable to find a build program corresponding to "MinGW Makefiles".  '
     "CMAKE_MAKE_PROGRAM is not set.  You probably need to select a different build tool.",
-    "CMake Deprecation Warning at CMakeLists.txt:79 (CMAKE_POLICY):",
-    "  The OLD behavior for policy CMP0026 will be removed from a future version",
-    "  of CMake.",
+    "CMake Deprecation Warning at CMakeLists.txt:78 (CMAKE_MINIMUM_REQUIRED):",
+    "  Compatibility with CMake < 2.8.12 will be removed from a future version of",
+    "  CMake.",
+    "",
+    "  Update the VERSION argument <min> value or use a ...<max> suffix to tell",
+    "  CMake that the project does not need compatibility with older versions.",
     "",
     "",
     "source_subfolder/locks/unix/proc_mutex.c: At top level:",
@@ -596,11 +599,13 @@ dataset = [
             {
                 "severity": "Deprecation Warning",
                 "file": "CMakeLists.txt",
-                "line": "79",
-                "function": "CMAKE_POLICY",
+                "line": "78",
+                "function": "CMAKE_MINIMUM_REQUIRED",
                 "info": ""
-                "The OLD behavior for policy CMP0026 will be removed from a future version\n"
-                "  of CMake.\n",
+                "Compatibility with CMake < 2.8.12 will be removed from a future version of\n"
+                "  CMake.\n\n"
+                "  Update the VERSION argument <min> value or use a ...<max> suffix to tell\n"
+                "  CMake that the project does not need compatibility with older versions.\n",
                 "context": None,
             },
         ],

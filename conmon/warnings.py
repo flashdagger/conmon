@@ -32,12 +32,13 @@ class Regex:
     CMAKE = re.compile(
         r"""(?xm)
             ^CMake\ (?P<severity>[\w ]+)
+            (?: \ \(\w+\) )?
             (?:
                 \ (?:in|at)\ (?P<file>(?:[A-Za-z]:)?[^\n:]+)
                 (?::(?P<line>\d+)\ \((?P<function>\w+)\))?
-            )?:
-            \n?\ {1,2}
-            (?P<info>.+\n(?:\n?(\ {2}.*\n)+)?)
+            )?
+            :(?:\n\ )?\ #
+            (?P<info>.+\n(?:(?:\n?\ {2}|This warning).*\n)*)
             (?P<context>Call\ Stack.+ (?:\n\ +.+)+\n)?
         """
     )
