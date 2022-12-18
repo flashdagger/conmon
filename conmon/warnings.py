@@ -206,7 +206,9 @@ def warnings_from_matches(
             convert(mapping, int, "line", "column")
             convert(
                 mapping,
-                lambda v: v.rstrip("\n").splitlines(keepends=False),
+                lambda v: v.rstrip("\n").splitlines(keepends=False)
+                if isinstance(v, str)
+                else [],
                 "context",
                 "hint",
                 "info",
