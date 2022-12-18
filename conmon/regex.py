@@ -57,6 +57,24 @@ BUILD_STATUS_REGEX2 = re.compile(
     """
 )
 
+CMAKE_BUILD_PATH_REGEX = re.compile(
+    r"""(?x)
+        (^|/)
+        (
+          cmake-[23]\.\d{2}/
+          # | cmake/test_[a-z]+\.c
+          | CMakeFiles/
+            (
+              [23](\.\d+){1,2}/
+              | CMakeScratch/
+              | ShowIncludes/
+              | CMakeTmp/
+              # | Check[a-zA-Z]+
+            )
+        )
+    """
+)
+
 
 def shorten_conan_path(text: str, placeholder=r"...\g<sep>", count=0) -> str:
     storage = str(storage_path())

@@ -47,6 +47,7 @@ from .logging import (
 from .regex import (
     BUILD_STATUS_REGEX,
     BUILD_STATUS_REGEX2,
+    CMAKE_BUILD_PATH_REGEX,
     DECOLORIZE_REGEX,
     REF_REGEX,
     compact_pattern,
@@ -471,12 +472,7 @@ class Build(State):
             None: lambda path: "meson-private" in path.parts
             or Path(tempfile.gettempdir()) in path.parents,
             "b2": lambda path: path.as_posix().endswith("/config/checks/test_case.cpp"),
-            "cmake": lambda path: re.search(
-                r"/(cmake-[23].\d{2}|CMakeTmp|CMakeFiles/(Check[a-zA-Z]+|CMakeScratch)"
-                r"|CMakeFiles/[23](\.\d+){1,2})/",
-                path.as_posix(),
-            )
-            or re.search(r"/cmake/test_[a-z]+\.c", path.as_posix()),
+            "cmake": lambda path: CMAKE_BUILD_PATH_REGEX.search(path.as_posix()),
             "conftest": lambda path: path.stem == "conftest",
             "make": lambda path: path.stem in {"conftest", "dummy"}
             or path.parent.as_posix().endswith("/tools/build/feature"),

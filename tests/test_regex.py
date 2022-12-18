@@ -1,11 +1,13 @@
 import re
+from pathlib import Path
 
 import pytest
 import conmon.regex
 
 from conmon.regex import (
-    shorten_conan_path,
+    CMAKE_BUILD_PATH_REGEX,
     REF_REGEX,
+    shorten_conan_path,
 )
 
 valid_refs = [
@@ -137,3 +139,18 @@ paths = [
 def test_shorten_conan_data_path(path_pair):
     path, expected = path_pair
     assert shorten_conan_path(path) == expected
+
+
+cmake_build_path = [
+    Path("site-packages/cmake/data/share/cmake-3.25/Modules/CMakeCCompilerABI.c"),
+    Path("CMakeFiles\\ShowIncludes\\main.c"),
+    Path("Release/CMakeFiles/3.25.0/CompilerIdC"),
+    Path("Release/CMakeFiles/CMakeScratch/TryCompile-MSORCG/CheckIncludeFile.c"),
+    Path("CMakeFiles/CMakeTmp/check_crypto_md.c"),
+]
+
+
+@pytest.mark.parametrize("path", cmake_build_path)
+def test_cmake_build_path_regex(path):
+    match = CMAKE_BUILD_PATH_REGEX.search(path.as_posix())
+    assert match, f"{path!r} did not match"
