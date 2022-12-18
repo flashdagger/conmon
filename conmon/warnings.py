@@ -36,14 +36,9 @@ class Regex:
                 \ (?:in|at)\ (?P<file>(?:[A-Za-z]:)?[^\n:]+)
                 (?::(?P<line>\d+)\ \((?P<function>\w+)\))?
             )?:
-            \n? \ +
-            (?P<info> \ *[^\n]+(\n{1,2}\ +[^\n]+)* )
-            \n
-            (
-                (?P<context>Call\ Stack[^\n]+ (?:\n\ +[^\n]+)+)?
-                (?(context)\n)
-                \n{2}
-            )?
+            \n?\ {1,2}
+            (?P<info>.+\n(?:\n?(\ {2}.*\n)+)?)
+            (?P<context>Call\ Stack.+ (?:\n\ +.+)+\n)?
         """
     )
     GNU = re.compile(
@@ -87,8 +82,7 @@ class Regex:
                 \ \[ (?P<project>[^]]+) ]
             )?
             \n
-            (?P<hint>[^\n]+\n\s*\^)?
-            (?(hint)\n)
+            (?P<hint>[^\n]+\n\s*\^\n)?
         """
     )
     AUTOTOOLS = re.compile(
@@ -107,8 +101,7 @@ class Regex:
             :\ (?P<severity>(?i:warning|error))
         )?
         :\ ?#
-        (?P<info>.*(?:\n[ *]+[^\n]+)*)
-        \n
+        (?P<info>.*\n(?:[ *]+.+\n)*)
         """
     )
     CONAN = re.compile(
@@ -128,8 +121,7 @@ class Regex:
     BUILD = re.compile(
         r"""(?xm)
         ^(?P<severity>error|warning):\ #
-        (?P<info>.*)
-        \n
+        (?P<info>.*\n)
         """
     )
 

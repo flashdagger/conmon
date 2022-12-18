@@ -157,6 +157,8 @@ output = [
     "CMake Deprecation Warning at CMakeLists.txt:79 (CMAKE_POLICY):",
     "  The OLD behavior for policy CMP0026 will be removed from a future version",
     "  of CMake.",
+    "",
+    "",
     "source_subfolder/locks/unix/proc_mutex.c: At top level:",
     'source_subfolder/locks/unix/proc_mutex.c:932:5: warning: this use of "defined" may not be portable [-Wexpansion-to-defined]',
     "  932 | #if APR_USE_PROC_PTHREAD_MUTEX_COND",
@@ -505,7 +507,7 @@ dataset = [
                 "strcat_s instead. To disable deprecation, use "
                 "_CRT_SECURE_NO_WARNINGS. See online help for details.",
                 "project": None,
-                "hint": '   strcat(mode2,"b");   /* binary mode */\n         ^',
+                "hint": '   strcat(mode2,"b");   /* binary mode */\n         ^\n',
             },
             {
                 "file": "NMAKE",
@@ -524,36 +526,35 @@ dataset = [
     pytest.param(
         [
             {
-                "context": None,
                 "severity": "Warning",
                 "file": None,
                 "line": None,
                 "function": None,
                 "info": ""
                 "Manually-specified variables were not used by the project:\n\n"
-                "    CMAKE_EXPORT_NO_PACKAGE_REGISTRY",
+                "    CMAKE_EXPORT_NO_PACKAGE_REGISTRY\n",
+                "context": None,
             },
             {
+                "severity": "Warning",
                 "file": "cmake/ldap.cmake",
                 "line": "158",
-                "severity": "Warning",
                 "function": "MESSAGE",
-                "info": "Could not find LDAP",
+                "info": "Could not find LDAP\n",
                 "context": ""
                 "Call Stack (most recent call first):\n"
                 "  CMakeListsOriginal.txt:1351 (MYSQL_CHECK_LDAP)\n"
-                "  CMakeLists.txt:7 (include)",
+                "  CMakeLists.txt:7 (include)\n",
             },
             {
+                "severity": "Warning",
                 "file": "libmysql/authentication_ldap/CMakeLists.txt",
                 "line": "30",
-                "severity": "Warning",
                 "function": "MESSAGE",
+                "info": "Skipping the LDAP client authentication plugin\n",
                 "context": None,
-                "info": "Skipping the LDAP client authentication plugin",
             },
             {
-                "context": None,
                 "severity": "Warning",
                 "file": None,
                 "line": None,
@@ -567,10 +568,10 @@ dataset = [
                 "    CMAKE_INSTALL_LIBDIR\n"
                 "    CMAKE_INSTALL_LIBEXECDIR\n"
                 "    CMAKE_INSTALL_OLDINCLUDEDIR\n"
-                "    MAKE_INSTALL_SBINDIR",
+                "    MAKE_INSTALL_SBINDIR\n",
+                "context": None,
             },
             {
-                "context": None,
                 "severity": "Error",
                 "file": None,
                 "line": None,
@@ -578,17 +579,18 @@ dataset = [
                 "info": ""
                 'CMake was unable to find a build program corresponding to "MinGW Makefiles".  '
                 "CMAKE_MAKE_PROGRAM is not set.  You probably need to select"
-                " a different build tool.",
+                " a different build tool.\n",
+                "context": None,
             },
             {
-                "context": None,
                 "severity": "Deprecation Warning",
                 "file": "CMakeLists.txt",
                 "line": "79",
                 "function": "CMAKE_POLICY",
                 "info": ""
                 "The OLD behavior for policy CMP0026 will be removed from a future version\n"
-                "  of CMake.",
+                "  of CMake.\n",
+                "context": None,
             },
         ],
         id="cmake",
@@ -598,7 +600,7 @@ dataset = [
             {
                 "from": "Makefile.config",
                 "info": "No sys/sdt.h found, no SDT events are defined, please install "
-                "systemtap-sdt-devel or systemtap-sdt-dev",
+                "systemtap-sdt-devel or systemtap-sdt-dev\n",
                 "line": "565",
                 "severity": None,
             },
@@ -606,12 +608,12 @@ dataset = [
                 "from": "configure",
                 "line": None,
                 "severity": "WARNING",
-                "info": ""
-                "\n*** Without Bison you will not be able to build PostgreSQL from Git nor"
-                "\n*** change any of the parser definition files.  You can obtain Bison from"
-                "\n*** a GNU mirror site.  (If you are using the official distribution of"
-                "\n*** PostgreSQL then you do not need to worry about this, because the Bison"
-                "\n*** output is pre-generated.)",
+                "info": "\n"
+                "*** Without Bison you will not be able to build PostgreSQL from Git nor\n"
+                "*** change any of the parser definition files.  You can obtain Bison from\n"
+                "*** a GNU mirror site.  (If you are using the official distribution of\n"
+                "*** PostgreSQL then you do not need to worry about this, because the Bison\n"
+                "*** output is pre-generated.)\n",
             },
         ],
         id="autotools",
@@ -665,7 +667,7 @@ dataset = [
         [
             {
                 "severity": "warning",
-                "info": "Boost.Build engine (b2) is 4.8.0",
+                "info": "Boost.Build engine (b2) is 4.8.0\n",
             },
         ],
         id="build",
