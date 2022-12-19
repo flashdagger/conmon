@@ -218,7 +218,7 @@ class Packages(State):
         self.stdout = parser.log["stdout"]
         pattern, flags = compact_pattern(REF_REGEX)
         self.regex = re.compile(
-            rf" +{pattern}:(?P<package_id>[a-z0-9]+) +- +(?P<status>\w+)", flags
+            rf" +{pattern}:(?P<package_id>[a-zA-Z0-9]+) +- +(?P<status>\w+)", flags
         )
         self.pkg: List[Dict[str, Optional[str]]] = []
         self.indent_ref = 0
