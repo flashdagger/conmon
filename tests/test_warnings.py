@@ -200,7 +200,7 @@ dataset = [
                 "     ^~~~~~\n",
             },
             {
-                "context": "",
+                "context": None,
                 "file": "C:\\source_subfolder\\source\\common\\x86\\seaintegral.asm",
                 "line": "92",
                 "column": None,
@@ -240,7 +240,7 @@ dataset = [
                 "      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",
             },
             {
-                "context": "",
+                "context": None,
                 "file": "/source_subfolder/src/constexp.y",
                 "line": "35",
                 "column": "1-25",
@@ -254,7 +254,7 @@ dataset = [
                 "      | ^~~~~~~~~~~~~~~~~~~~~~~~~      | %define api.prefix {constexpYY}\n",
             },
             {
-                "context": "",
+                "context": None,
                 "file": "/source_subfolder/src/constexp.y",
                 "line": None,
                 "column": None,
@@ -302,7 +302,7 @@ dataset = [
                 "      |                                                    ^~~~~~~~~~~~~~~~~~~\n",
             },
             {
-                "context": "",
+                "context": None,
                 "file": "source_subfolder/src/tramp.c",
                 "line": "215",
                 "column": "52",
@@ -340,7 +340,7 @@ dataset = [
                 "hint": None,
             },
             {
-                "context": "",
+                "context": None,
                 "file": "C:\\src\\bzlib.c",
                 "line": "161",
                 "column": None,
@@ -351,7 +351,7 @@ dataset = [
                 "hint": None,
             },
             {
-                "context": "",
+                "context": None,
                 "file": "ebcdic.c",
                 "line": "284",
                 "column": None,
@@ -380,7 +380,7 @@ dataset = [
                 "      |                void*\n",
             },
             {
-                "context": "",
+                "context": None,
                 "file": "src/port/pg_crc32c_sse42_choose.c",
                 "line": "41",
                 "column": "10",
@@ -392,7 +392,7 @@ dataset = [
                 "hint": None,
             },
             {
-                "context": "",
+                "context": None,
                 "file": "clang-cl",
                 "severity": "warning",
                 "info": "/: 'linker' input unused",
@@ -418,7 +418,7 @@ dataset = [
                 "project": None,
             },
             {
-                "context": "",
+                "context": None,
                 "file": "C:\\conan\\source_subfolder\\Crypto\\src\\OpenSSLInitializer.cpp",
                 "line": "35",
                 "column": "10",
@@ -431,7 +431,7 @@ dataset = [
                 "                ^\n",
             },
             {
-                "context": "",
+                "context": None,
                 "file": "source_subfolder/meson.build",
                 "line": "1559",
                 "column": "2",

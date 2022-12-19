@@ -44,7 +44,7 @@ class Regex:
     )
     GNU = re.compile(
         r"""(?xm)
-        ^(?P<context> (?: .+[:,]\n)* )?
+        ^(?P<context>(?: .+[:,]\n)+)?
         \ *
         (?!\d+:)
         (?P<file>(?:[A-Za-z]:)?[\w()/\\. -]*\w)
@@ -202,7 +202,13 @@ def warnings_from_matches(
         for match in matches:
             if not added_first(_PROCESSED, match.group().lstrip()):
                 continue
-            mapping = match.groupdict()
+            mapping = {
+                key: value
+                for key, value in match.groupdict().items()
+                if not (
+                    value is None and key in {"column", "hint", "context", "project"}
+                )
+            }
             convert(mapping, int, "line", "column")
             convert(
                 mapping,
