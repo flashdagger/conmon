@@ -232,8 +232,6 @@ def warnings_from_matches(
                 and severity.split()[-1] in {"warning", "error", "note", "message"}
             ):
                 continue
-            if name == "cmake" and severity != "error" and not mapping["file"]:
-                continue
 
             key = (
                 severity,
