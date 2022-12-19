@@ -331,11 +331,6 @@ class Package(State):
             self.deactivate()
             return
 
-        # TODO: delete
-        assert self.parser.getdefaultlog(parsed_line["ref"])[
-            "package_id"
-        ] == match.group("id")
-
     def _deactivate(self, final=False):
         stderr_lines = self.log.pop("stderr_lines", ())
         self.log["stderr"].extend(chain(*stderr_lines))
@@ -488,24 +483,21 @@ class Build(State):
             key: value for key, value in src_filter.items() if key in key_set
         }
 
-        src_counter = 0
-        set_counter = 0
+        src_counter = set_counter = 0
         discarded_files: Set[str] = set()
-
-        no_object_flags = {"-M", "-MM", "-MF", "-MT"}
         for unit in tu_list:
-            flagset = set(unit.get("flags", ()))
-            discarded = "RC_INVOKED" in unit.get(
-                "defines", ()
-            ) or not flagset.isdisjoint(no_object_flags)
+            discarded = "RC_INVOKED" in unit.get("defines", ()) or not {
+                "-M",
+                "-MM",
+            }.isdisjoint(unit.get("flags", ()))
             for test in active_filters.values():
                 sources = unit["sources"]
-                if not discarded and any(test(Path(src)) for src in sources):
+                if discarded or any(test(Path(src)) for src in sources):
                     src_counter += len(sources)
                     set_counter += 1
                     discarded_files.update(src.name for src in sources)
-                    discarded = True
-            if not discarded:
+                    break
+            else:
                 yield unit
 
         if src_counter:
