@@ -70,6 +70,7 @@ CMAKE_BUILD_PATH_REGEX = re.compile(
               | CMakeScratch/
               | ShowIncludes/
               | CMakeTmp/
+              | [\w/-]+\.c(c|pp|xx)?$
               # | Check[a-zA-Z]+
             )
         )

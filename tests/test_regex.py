@@ -147,6 +147,7 @@ cmake_build_path = [
     Path("Release/CMakeFiles/3.25.0/CompilerIdC"),
     Path("Release/CMakeFiles/CMakeScratch/TryCompile-MSORCG/CheckIncludeFile.c"),
     Path("CMakeFiles/CMakeTmp/check_crypto_md.c"),
+    Path("Release/CMakeFiles/_CMakeLTOTest-CXX/src/foo.cpp"),
 ]
 
 
