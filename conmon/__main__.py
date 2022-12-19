@@ -111,7 +111,6 @@ class DefaultDict(UserDict):
     DEFAULT = {
         "stdout": STDOUT_LIST,
         "stderr": STDERR_LIST,
-        "package": STDOUT_LIST,
         "export": STDOUT_LIST,
         "stderr_lines": list,
     }
@@ -242,7 +241,7 @@ class Packages(State):
         self.pkg.append(match.groupdict())
         self.stdout.append(line)
         name, package_id = match.group("name", "package_id")
-        self.log[name].update(dict(package_id=package_id, package_revision=None))
+        self.log[name]["package_id"] = package_id
 
     def _deactivate(self, final=False):
         self.indent_ref = max(
@@ -309,11 +308,12 @@ class Package(State):
         self.log = parser.defaultlog
 
     def activated(self, parsed_line: Match) -> bool:
-        line, ref, rest = parsed_line.group(0, "ref", "rest")
+        full_line, ref, rest = parsed_line.group(0, "ref", "rest")
         if rest == "Calling package()":
             self.screen.print(f"Packaging {ref}")
-            self.log = self.parser.getdefaultlog(ref)
-            self.log["stdout"].append(line)
+            defaultlog = self.parser.getdefaultlog(ref)
+            defaultlog["stdout"].append(full_line)
+            self.log = self.parser.defaultlog = defaultlog["package"]
             return True
         return False
 
@@ -323,17 +323,22 @@ class Package(State):
             r"(?P<prefix>[\w ]+) '?(?P<id>[a-z0-9]{32,40})(?:[' ]|$)", line
         )
         if not match:
-            self.log["package"].append(line)
+            self.log["stdout"].append(line)
             return
 
         if match.group("prefix") == "Created package revision":
-            self.log["package_revision"] = match.group("id")
+            self.log["created_revision"] = match.group("id")
             self.deactivate()
             return
 
-        self.log["package_id"] = match.group("id")
+        # TODO: delete
+        assert self.parser.getdefaultlog(parsed_line["ref"])[
+            "package_id"
+        ] == match.group("id")
 
     def _deactivate(self, final=False):
+        stderr_lines = self.log.pop("stderr_lines", ())
+        self.log["stderr"].extend(chain(*stderr_lines))
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
 
