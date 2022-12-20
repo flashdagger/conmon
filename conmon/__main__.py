@@ -333,7 +333,8 @@ class Package(State):
 
     def _deactivate(self, final=False):
         stderr_lines = self.log.pop("stderr_lines", ())
-        self.log["stderr"].extend(chain(*stderr_lines))
+        if stderr_lines:
+            self.log["stderr"].extend(chain(*stderr_lines))
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
 
@@ -569,20 +570,36 @@ class Build(State):
         self.buildmon.stop()
         self.dump_debug_proc()
 
-        stderr_lines = self.log.pop("stderr_lines", ())
-        self.log["stderr"].extend(chain(*stderr_lines))
         self.log["translation_units"] = list(
             self.processed_tus(self.buildmon.translation_units)
         )
 
-        build_stdout = "\n".join(self.log["stdout"]) + "\n"
-        build_stderr = "\n".join(self.log["stderr"]) + "\n"
-
         match_map = dict()  # pylint: disable=use-dict-literal
+        build_stdout = "\n".join(self.log["stdout"]) + "\n"
         filter_by_regex(build_stdout, match_map, **Regex.dict("gnu", "msvc", "build"))
-        build_stderr = filter_by_regex(
-            build_stderr, match_map, **Regex.dict("gnu", "msvc", "cmake", "autotools")
-        )
+
+        stderr_lines = self.log.pop("stderr_lines", ())
+        if stderr_lines:
+            self.log["stderr"].extend(chain(*stderr_lines))
+            build_stderr = filter_by_regex(
+                "\n".join(self.log["stderr"]) + "\n",
+                match_map,
+                **Regex.dict("gnu", "msvc", "cmake", "autotools"),
+            )
+            build_stderr = filter_by_regex(
+                build_stderr,
+                {},
+                empty_lines=re.compile(r"(?m)^\s*\n"),
+                warnings_generated=re.compile(r"(?m)^\d+ warnings?.* generated\.\n"),
+                stop="^Stop.\n",
+                meson_status=re.compile(
+                    r"(?m)^(Generating targets|(Writing )?build\.ninja): +\d+ *%.+\n"
+                ),
+                msvc_tools=re.compile(r"(?m)^(Microsoft|Copyright) \([RC]\) .+\n"),
+            )
+        else:
+            build_stderr = ""
+
         self.log["warnings"] = list(
             sorted_dicts(
                 warnings_from_matches(**match_map),
@@ -600,17 +617,6 @@ class Build(State):
             )
         )
 
-        build_stderr = filter_by_regex(
-            build_stderr,
-            {},
-            empty_lines=re.compile(r"(?m)^\s*\n"),
-            warnings_generated=re.compile(r"(?m)^\d+ warnings?.* generated\.\n"),
-            stop="^Stop.\n",
-            meson_status=re.compile(
-                r"(?m)^(Generating targets|(Writing )?build\.ninja): +\d+ *%.+\n"
-            ),
-            msvc_tools=re.compile(r"(?m)^(Microsoft|Copyright) \([RC]\) .+\n"),
-        )
         build_stderr = "".join(
             unique(shorten_lines(build_stderr, 20).splitlines(keepends=True))
         ).rstrip()
@@ -661,7 +667,8 @@ class RunTest(State):
 
     def _deactivate(self, final=False):
         stderr_lines = self.log.pop("stderr_lines", ())
-        self.log["stderr"].extend(chain(*stderr_lines))
+        if stderr_lines:
+            self.log["stderr"].extend(chain(*stderr_lines))
         self.parser.setdefaultlog()
         super()._deactivate(final=True)
 
