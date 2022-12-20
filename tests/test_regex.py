@@ -147,11 +147,12 @@ def test_shorten_conan_data_path(path_pair):
 
 cmake_build_path = [
     Path("site-packages/cmake/data/share/cmake-3.25/Modules/CMakeCCompilerABI.c"),
-    Path("CMakeFiles\\ShowIncludes\\main.c"),
+    Path("CMakeFiles/ShowIncludes/main.c"),
     Path("Release/CMakeFiles/3.25.0/CompilerIdC"),
     Path("Release/CMakeFiles/CMakeScratch/TryCompile-MSORCG/CheckIncludeFile.c"),
     Path("CMakeFiles/CMakeTmp/check_crypto_md.c"),
     Path("Release/CMakeFiles/_CMakeLTOTest-CXX/src/foo.cpp"),
+    Path("src/cmake/test_compiler.cpp"),
 ]
 
 

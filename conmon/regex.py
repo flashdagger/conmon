@@ -64,7 +64,7 @@ CMAKE_BUILD_PATH_REGEX = re.compile(
         (^|/)
         (
           cmake-[23]\.\d{2}/
-          # | cmake/test_[a-z]+\.c
+          | cmake/test_[a-z]+\.c(pp)?$  # from Poco
           | CMake/CurlTests\.c
           | CMakeFiles/
             (
