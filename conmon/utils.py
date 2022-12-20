@@ -149,7 +149,7 @@ class ScreenWriter:
 
 
 class AsyncPipeReader:
-    def __init__(self, pipe: IO):
+    def __init__(self, pipe: Optional[IO]):
         self.queue: Queue[str] = Queue()
         self.thread = Thread(target=self.reader, args=[pipe, self.queue])
         self.thread.start()

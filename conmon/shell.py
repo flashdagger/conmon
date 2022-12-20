@@ -5,7 +5,7 @@ import sys
 from contextlib import suppress
 from pathlib import Path
 from subprocess import PIPE, Popen, TimeoutExpired
-from typing import Dict, Iterator, Optional, Set, Tuple, Union
+from typing import Dict, Iterator, Optional, Set, Tuple
 
 from psutil import NoSuchProcess, Process
 
@@ -22,12 +22,13 @@ def exceptook(type_, value, traceback):
 sys.excepthook = exceptook
 
 
-class BashError(Exception):
+class ShellError(Exception):
     pass
 
 
-class Bash:
-    def __init__(self, executable: Union[str, Path]):
+class Shell:
+    def __init__(self, executable: Path):
+        self.exe = executable
         # pylint: disable=consider-using-with
         proc = Popen(
             [executable],
@@ -37,17 +38,18 @@ class Bash:
             encoding="utf-8",
             bufsize=0,
         )
-        assert proc.stdout
-        assert proc.stderr
         self.stdout = AsyncPipeReader(proc.stdout)
         self.stderr = AsyncPipeReader(proc.stderr)
         self.proc = proc
         self.last_cmd: Optional[str] = None
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}<{self.exe.name}>"
+
     def check_running(self):
         poll = self.proc.poll()
         if poll is not None:
-            raise BashError(f"Bash exited with code {poll}")
+            raise ShellError(f"{self!r} exited with code {poll}")
 
     def send(self, cmd: str):
         self.check_running()
@@ -63,7 +65,7 @@ class Bash:
         stderr = "".join(self.stderr.readlines())
         if stderr:
             self.exit()
-            raise BashError(stderr)
+            raise ShellError(stderr)
         return stdout
 
     def check_output(self, cmd: str, timeout=0.5) -> str:

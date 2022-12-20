@@ -24,7 +24,7 @@ from conmon.utils import (
     unfreeze_json_object,
 )
 
-from .bash import Bash, BashError, scan_msys
+from .shell import Shell, ShellError, scan_msys
 from .logging import UniqueLogger, get_logger
 from .regex import shorten_conan_path
 from .utils import shorten
@@ -178,7 +178,7 @@ class BuildMonitor(Thread):
         self.finish = Event()
         self.timing: List[float] = []
         self.executables: Set[str] = set()
-        self.bash: Union[None, bool, Bash] = None
+        self.shell: Union[None, bool, Shell] = None
         self.seen_proc: Set[Process] = set()
 
     def start(self) -> None:
@@ -337,15 +337,15 @@ class BuildMonitor(Thread):
                     continue
 
                 path = Path(info["cmdline"][0])
-                if self.bash is None and path.name.lower() == "bash.exe":
-                    if self.bash is None:
+                if self.shell is None and path.name.lower() in {"bash.exe", "sh.exe"}:
+                    if self.shell is None:
                         LOG.debug(
                             "Detected %s on Windows: %s",
                             path.stem,
                             shorten_conan_path(path.as_posix()),
                         )
-                        self.bash = False
-                        self.bash = Bash(path)
+                        self.shell = False
+                        self.shell = Shell(path)
                 name = info["name"] = path.stem.lower()
                 if identify_compiler(name) and info["exe"] == "/bin/dash":
                     LOG.warning(
@@ -369,8 +369,8 @@ class BuildMonitor(Thread):
             if sleep_time_s > 0.0:
                 time.sleep(sleep_time_s)
 
-        if self.bash:
-            self.bash.exit()
+        if self.shell:
+            self.shell.exit()
 
         for frozen_info in self.proc_cache:
             info_map = self.proc_cache[frozen_info] = unfreeze_json_object(frozen_info)
@@ -402,23 +402,23 @@ class BuildMonitor(Thread):
         )
 
     def add_msys_procs(self, children):
-        if not self.bash:
+        if not self.shell:
             return
 
         try:
-            if self.bash.last_cmd is None:
-                self.bash.send("/usr/bin/ps")
+            if self.shell.last_cmd is None:
+                self.shell.send("/usr/bin/ps")
                 return
 
-            output = self.bash.receive(timeout=1.0)
+            output = self.shell.receive(timeout=1.0)
             if not output:
                 return
 
-            self.bash.send("/usr/bin/ps")
+            self.shell.send("/usr/bin/ps")
             for parent, procs in scan_msys(output).items():
                 if parent in children:
                     children.update(procs)
 
-        except BashError as exc:
+        except ShellError as exc:
             LOG.error("<%s> %s", type(exc).__name__, exc)
-            self.bash = False
+            self.shell = False
