@@ -593,6 +593,7 @@ class Build(State):
                     r"(?m)^(Generating targets|(Writing )?build\.ninja): +\d+ *%.+\n"
                 ),
                 msvc_tools=re.compile(r"(?m)^(Microsoft|Copyright) \([RC]\) .+\n"),
+                make_warnings=re.compile(r"(?m)make(\[\d+])?: \*.+\n"),
             )
         else:
             build_stderr = ""
