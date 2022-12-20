@@ -4,7 +4,23 @@
 import re
 from typing import Dict, Iterator, List, Match, Optional, Pattern, Tuple, Union
 
-from conmon.conan import storage_path
+from .conan import storage_path
+
+
+class Regex:
+    @classmethod
+    def get(cls, key: str) -> Pattern:
+        key = key.replace("-", "_").upper()
+        return getattr(cls, key)
+
+    @classmethod
+    def dict(cls, *keys: str) -> Dict[str, Pattern]:
+        if not keys:
+            keys = tuple(
+                key.lower().replace("_", "-") for key in dir(cls) if key.isupper()
+            )
+        return {key: cls.get(key) for key in keys}
+
 
 DECOLORIZE_REGEX = re.compile(r"\x1B\[\d{1,2}m", re.UNICODE)
 CONAN_DATA_PATH = re.compile(

@@ -14,13 +14,12 @@ from typing import (
     Iterable,
     Match,
     Optional,
-    Pattern,
     Set,
     Tuple,
 )
 
 from .logging import UniqueLogger, get_logger
-from .regex import REF_REGEX, compact_pattern, shorten_conan_path
+from .regex import REF_REGEX, Regex, compact_pattern, shorten_conan_path
 from .utils import added_first, get_terminal_width, shorten_per_line
 
 LOG = get_logger("BUILD")
@@ -28,7 +27,7 @@ LOG_ONCE = UniqueLogger(LOG)
 _PROCESSED: Set[str] = set()
 
 
-class Regex:
+class BuildRegex(Regex):
     CMAKE = re.compile(
         r"""(?xm)
             ^CMake\ (?P<severity>[\w ]+)
@@ -125,18 +124,16 @@ class Regex:
         """
     )
 
-    @classmethod
-    def get(cls, key: str) -> Pattern:
-        key = key.replace("-", "_").upper()
-        return getattr(cls, key)
 
-    @classmethod
-    def dict(cls, *keys: str) -> Dict[str, Pattern]:
-        if not keys:
-            keys = tuple(
-                key.lower().replace("_", "-") for key in dir(cls) if key.isupper()
-            )
-        return {key: cls.get(key) for key in keys}
+class IgnoreRegex(Regex):
+    STOP = re.compile(r"(?m)^Stop.\n")
+    EMPTY_LINES = re.compile(r"(?m)^\s*\n")
+    MAKE_WARNINGS = re.compile(r"(?m)^make(\[\d+])?: \*.+\n")
+    MSVC_TOOLS = re.compile(r"(?m)^(Microsoft|Copyright) \([RC]\) .+\n")
+    WARNINGS_GENERATED = re.compile(r"(?m)^\d+ warnings?.* generated\.\n")
+    MESON_STATUS = re.compile(
+        r"(?m)^(Generating targets|(Writing )?build\.ninja): +\d+ *%.+\n"
+    )
 
 
 def levelname_from_severity(severity: Optional[str], default="NOTSET") -> str:

@@ -68,7 +68,12 @@ from .utils import (
     unique,
 )
 from .warnings import LOG as BLOG
-from .warnings import Regex, levelname_from_severity, warnings_from_matches
+from .warnings import (
+    BuildRegex,
+    IgnoreRegex,
+    levelname_from_severity,
+    warnings_from_matches,
+)
 
 CONMON_LOG = get_logger("CONMON")
 CONAN_LOG_ONCE = UniqueLogger(CONAN_LOG)
@@ -573,7 +578,9 @@ class Build(State):
 
         match_map = dict()  # pylint: disable=use-dict-literal
         build_stdout = "\n".join(self.log["stdout"]) + "\n"
-        filter_by_regex(build_stdout, match_map, **Regex.dict("gnu", "msvc", "build"))
+        filter_by_regex(
+            build_stdout, match_map, **BuildRegex.dict("gnu", "msvc", "build")
+        )
 
         stderr_lines = self.log.pop("stderr_lines", ())
         if stderr_lines:
@@ -581,19 +588,12 @@ class Build(State):
             build_stderr = filter_by_regex(
                 "\n".join(self.log["stderr"]) + "\n",
                 match_map,
-                **Regex.dict("gnu", "msvc", "cmake", "autotools"),
+                **BuildRegex.dict("gnu", "msvc", "cmake", "autotools"),
             )
             build_stderr = filter_by_regex(
                 build_stderr,
                 {},
-                empty_lines=re.compile(r"(?m)^\s*\n"),
-                warnings_generated=re.compile(r"(?m)^\d+ warnings?.* generated\.\n"),
-                stop="^Stop.\n",
-                meson_status=re.compile(
-                    r"(?m)^(Generating targets|(Writing )?build\.ninja): +\d+ *%.+\n"
-                ),
-                msvc_tools=re.compile(r"(?m)^(Microsoft|Copyright) \([RC]\) .+\n"),
-                make_warnings=re.compile(r"(?m)make(\[\d+])?: \*.+\n"),
+                **IgnoreRegex.dict(),
             )
         else:
             build_stderr = ""
@@ -760,7 +760,7 @@ class ConanParser:
             return
 
         for line in lines:
-            match = Regex.CONAN.match(line)
+            match = BuildRegex.CONAN.match(line)
             line = line.rstrip("\n")
             if match:
                 flush()
