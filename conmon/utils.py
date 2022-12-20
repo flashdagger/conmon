@@ -14,6 +14,7 @@ from io import TextIOBase
 from math import log
 from pathlib import Path
 from queue import Empty, Queue
+from select import select
 from threading import Thread
 from typing import (
     IO,
@@ -34,7 +35,6 @@ from typing import (
 
 import colorama
 from psutil import Popen
-from select import select
 
 T = TypeVar("T", bound=Hashable)
 

@@ -12,23 +12,21 @@ from statistics import mean, median
 from threading import Event, Thread
 from typing import Any, Dict, Hashable, List, Optional, Sequence, Set, Union
 
-import colorama
 from psutil import AccessDenied, NoSuchProcess, Process
 
-from conmon.utils import (
+from .logging import UniqueLogger, colorama_reinit, get_logger
+from .regex import shorten_conan_path
+from .shell import Shell, ShellError, scan_msys
+from .utils import (
     WinShlex,
     append_to_set,
     freeze_json_object,
     human_readable_byte_size,
     human_readable_size,
     merge_mapping,
+    shorten,
     unfreeze_json_object,
 )
-
-from .shell import Shell, ShellError, scan_msys
-from .logging import UniqueLogger, get_logger
-from .regex import shorten_conan_path
-from .utils import shorten
 
 LOG = get_logger("PROC")
 LOG_ONCE = UniqueLogger(LOG)
