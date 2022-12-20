@@ -417,7 +417,7 @@ class Build(State):
             esc = logger_escape_code(BLOG, "WARNING")
             self.screen.print(
                 f"{esc}{self.warnings:4} warning(s)",
-                indent=0,
+                indent=self.MAX_WIDTH,
             )
         self.warnings = 0
 
@@ -452,7 +452,7 @@ class Build(State):
             )
             # shorten at path separator
             output = re.sub(r"\.{3}[^/\\]+(?=[/\\])", "...", output)
-            self.screen.print(f"{output:{self.MAX_WIDTH}}", overwrite=True)
+            self.screen.print(output, overwrite=True)
         elif line.startswith("-- ") or line.lower().startswith("checking "):
             self.screen.print(shorten_conan_path(line), overwrite=True)
         else:

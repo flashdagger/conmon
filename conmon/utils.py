@@ -103,12 +103,17 @@ def get_terminal_width():
 
 
 class ScreenWriter:
-    CLEAR_LINE = colorama.ansi.clear_line(2)
-    RESET_LINE = "\r" if os.name == "nt" else colorama.ansi.CSI + "1G"
+    CLEAR_LINE = colorama.ansi.clear_line(0)
+    NOT_A_TTY = not sys.stdout.isatty()
 
     def __init__(self):
         self._last_line = ""
-        self.skip_overwrite = not sys.stdout.isatty()
+
+    def ansi_cursor(self, show=True):
+        if self.NOT_A_TTY:
+            return
+        code = "h" if show else "l"
+        sys.stdout.write(f"{colorama.ansi.CSI}?25{code}")
 
     @staticmethod
     def fit_width(line: str):
@@ -117,35 +122,35 @@ class ScreenWriter:
         return line[: min(size, columns - 1)]
 
     def reset(self):
+        self.ansi_cursor(show=True)
         if self._last_line:
-            print(self.CLEAR_LINE + self.RESET_LINE, end="")
+            print(self.CLEAR_LINE, end="\r", flush=True)
             self._last_line = ""
 
-    def print(self, line: str, overwrite=False, indent=-1):
-        if overwrite and self.skip_overwrite:
+    def print(self, line: str = "", overwrite=False, indent=-1):
+        if overwrite and self.NOT_A_TTY:
             self._last_line = line
             return
 
-        append = indent >= 0
-        spaces = " " * max(0, indent - len(self._last_line)) if append else ""
+        last_line = self._last_line
+        if indent >= 0:
+            spaces = max(0, indent - len(last_line)) * " "
+            line = last_line + spaces + line
 
         if overwrite:
+            if not last_line:
+                self.ansi_cursor(show=False)
             line = self.fit_width(line)
-
-        if self._last_line and not append:
-            printed_line = self.CLEAR_LINE + self.RESET_LINE + line
-        elif self.skip_overwrite:
-            printed_line = self._last_line + spaces + line
-        else:
-            printed_line = spaces + line
-
-        if overwrite:
             self._last_line = line
-            print(printed_line, end="")
-            sys.stdout.flush()
+            print(self.CLEAR_LINE + line, end="\r", flush=True)
         else:
-            self._last_line = ""
-            print(printed_line)
+            if last_line:
+                self.ansi_cursor(show=True)
+                self._last_line = ""
+            print(self.CLEAR_LINE + line)
+
+    def __del__(self):
+        self.ansi_cursor(show=True)
 
 
 class AsyncPipeReader:

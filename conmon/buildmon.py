@@ -12,6 +12,7 @@ from statistics import mean, median
 from threading import Event, Thread
 from typing import Any, Dict, Hashable, List, Optional, Sequence, Set, Union
 
+import colorama
 from psutil import AccessDenied, NoSuchProcess, Process
 
 from conmon.utils import (
@@ -345,6 +346,7 @@ class BuildMonitor(Thread):
                 }:
                     shell_path = path.with_name("sh.exe")
                     if self.shell is None and shell_path.is_file():
+                        colorama.deinit()  # somehow terminal is getting messed up by msys
                         self.shell = Shell(shell_path)
                         LOG.debug(
                             "Detected shell on Windows: %s",
