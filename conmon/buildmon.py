@@ -328,7 +328,8 @@ class BuildMonitor(Thread):
             LOG_ONCE.error(str(exc))
             return
 
-        self.add_msys_procs(children)
+        if self.shell:
+            self.add_msys_procs(children)
 
         for child in children - self.seen_proc:
             with suppress(NoSuchProcess, AccessDenied, OSError, FileNotFoundError):
@@ -336,17 +337,20 @@ class BuildMonitor(Thread):
                 if not (info["cmdline"] and info["cwd"]):
                     continue
 
-                path = Path(info["cmdline"][0])
-                if self.shell is None and path.name.lower() in {"bash.exe", "sh.exe"}:
-                    if self.shell is None:
+                path = Path(info["exe"])
+                if self.shell is None and path.name.lower() in {
+                    "make.exe",
+                    "bash.exe",
+                    "sh.exe",
+                }:
+                    shell_path = path.with_name("sh.exe")
+                    if self.shell is None and shell_path.is_file():
+                        self.shell = Shell(shell_path)
                         LOG.debug(
-                            "Detected %s on Windows: %s",
-                            path.stem,
-                            shorten_conan_path(path.as_posix()),
+                            "Detected shell on Windows: %s",
+                            shorten_conan_path(shell_path.as_posix()),
                         )
-                        self.shell = False
-                        self.shell = Shell(path)
-                name = info["name"] = path.stem.lower()
+                name = info["name"] = Path(info["cmdline"][0]).stem.lower()
                 if identify_compiler(name) and info["exe"] == "/bin/dash":
                     LOG.warning(
                         "Async capture (%r)",
@@ -402,9 +406,6 @@ class BuildMonitor(Thread):
         )
 
     def add_msys_procs(self, children):
-        if not self.shell:
-            return
-
         try:
             if self.shell.last_cmd is None:
                 self.shell.send("/usr/bin/ps")
