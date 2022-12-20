@@ -13,8 +13,10 @@ CONAN_DATA_PATH = re.compile(
             ([a-zA-Z]:)?
             (?P<sep>[\\/])
             (?:[\w\-.]+(?P=sep)){5,}  # conservative choice of characters in path names
-            (?:build|package)(?P=sep)
-            [a-f0-9]{40}
+            (?:
+                (?:build|package)(?P=sep)[a-f0-9]{40}
+                | source
+            )
             (?P=sep)
         )
     """
