@@ -14,7 +14,7 @@ from typing import Any, Dict, Hashable, List, Optional, Sequence, Set, Union
 
 from psutil import AccessDenied, NoSuchProcess, Process
 
-from .logging import UniqueLogger, colorama_reinit, get_logger
+from .logging import UniqueLogger, get_logger
 from .regex import shorten_conan_path
 from .shell import Shell, ShellError, scan_msys
 from .utils import (
@@ -344,7 +344,6 @@ class BuildMonitor(Thread):
                 }:
                     shell_path = path.with_name("sh.exe")
                     if self.shell is None and shell_path.is_file():
-                        colorama.deinit()  # somehow terminal is getting messed up by msys
                         self.shell = Shell(shell_path)
                         LOG.debug(
                             "Detected shell on Windows: %s",

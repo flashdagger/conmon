@@ -9,7 +9,8 @@ from typing import Dict, Iterator, Optional, Set, Tuple
 
 from psutil import NoSuchProcess, Process
 
-from conmon.utils import AsyncPipeReader
+from .logging import colorama_init
+from .utils import AsyncPipeReader
 
 
 def exceptook(type_, value, traceback):
@@ -42,6 +43,8 @@ class Shell:
         self.stderr = AsyncPipeReader(proc.stderr)
         self.proc = proc
         self.last_cmd: Optional[str] = None
+        # terminal is getting messed up by msys
+        colorama_init(wrap=False)
 
     def __repr__(self):
         return f"{self.__class__.__name__}<{self.exe.name}>"
@@ -73,6 +76,7 @@ class Shell:
         return self.receive(timeout=timeout)
 
     def exit(self) -> int:
+        colorama_init(wrap=True)
         if self.proc.poll() is None:
             with suppress(TimeoutExpired):
                 self.proc.communicate("exit\n", timeout=0.2)

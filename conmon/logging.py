@@ -15,6 +15,7 @@ from . import conan
 # pylint: disable=too-few-public-methods
 class _GLOBALS:
     initialized = False
+    colorama_args = dict(autoreset=True, convert=None, strip=None, wrap=True)
     log_level = logging.WARNING
     log_format = "%(log_color)s[%(name)s:%(levelname)s] %(message)s"
     log_colors = {
@@ -73,19 +74,25 @@ def logger_escape_code(logger: logging.Logger, level: str) -> str:
     return color and escape_codes.get(color, "")
 
 
+def colorama_init(**kwargs):
+    colorama.deinit()
+    if kwargs.get("wrap"):
+        options = _GLOBALS.colorama_args
+        options.update(kwargs)
+        colorama.init(**options)
+
+
 def init(force=False):
     if force:
         colorama.deinit()
     elif _GLOBALS.initialized:
         return
 
-    colorama_args = dict(autoreset=True, convert=None, strip=None, wrap=True)
-    # prevent messing up colorama settings on gitlab
     if os.getenv("CI"):
-        colorama.deinit()
-        colorama_args.update(dict(strip=False, convert=False))
-
-    colorama.init(**colorama_args)
+        # prevent messing up colorama settings on gitlab
+        colorama_init(strip=False, convert=False, wrap=True)
+    else:
+        colorama_init(wrap=True)
 
     _GLOBALS.handler.setFormatter(
         ColoredFormatter(
