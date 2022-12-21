@@ -1,16 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-
 import sys
 from contextlib import suppress
-from pathlib import Path
 from subprocess import PIPE, Popen, TimeoutExpired
-from typing import Dict, Iterator, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Dict, Iterator, Optional, Set, Tuple
 
 from psutil import NoSuchProcess, Process
 
 from .logging import colorama_init
-from .utils import AsyncPipeReader
+from .utils import ProcessStreamHandler
+
+# pylint: disable=invalid-name
+if TYPE_CHECKING:
+    ignore = ()
+    union = attr = 0
 
 
 def exceptook(type_, value, traceback):
@@ -23,68 +26,93 @@ def exceptook(type_, value, traceback):
 sys.excepthook = exceptook
 
 
-class ShellError(Exception):
-    pass
+class Command:
+    def __init__(self) -> None:
+        self.proc: Optional[Popen] = None
+        self.streams: Optional[ProcessStreamHandler] = None
 
+    def __repr__(self):
+        proc = self.proc
+        name = self.__class__.__name__
+        if proc:
+            return str(Process(proc.pid)).replace("psutil.Process", name)
+        return f"{name}()"
 
-class Shell:
-    def __init__(self, executable: Path):
-        self.exe = executable
-        # pylint: disable=consider-using-with
-        proc = Popen(
-            [executable],
-            stdin=PIPE,
+    def run(self, args, **kwargs):
+        if self.is_running():
+            self.wait(kill=True)
+
+        options = dict(
             stdout=PIPE,
             stderr=PIPE,
+            stdin=PIPE,
             encoding="utf-8",
             bufsize=0,
         )
-        self.stdout = AsyncPipeReader(proc.stdout)
-        self.stderr = AsyncPipeReader(proc.stderr)
+        options.update(kwargs)
+        # pylint: disable=consider-using-with
+        proc = Popen(
+            args,
+            **options,
+        )
+        self.streams = ProcessStreamHandler(proc)
         self.proc = proc
-        self.last_cmd: Optional[str] = None
+
+    def is_running(self):
+        with suppress(AttributeError):
+            poll = self.proc.poll()
+            return poll is None
+        return False
+
+    @property
+    def returncode(self):
+        return self.proc and self.proc.returncode
+
+    def wait(self, *, kill=False, terminate=False, timeout=None):
+        if self.proc is None:
+            return None
+        if terminate:
+            self.proc.kill()
+        elif kill:
+            self.proc.terminate()
+        returncode = self.proc.wait(timeout=timeout)
+        return returncode
+
+    def __del__(self):
+        self.wait(kill=True)
+
+
+class Shell(Command):
+    class Error(Exception):
+        pass
+
+    def run(self, args, **kwargs):
+        super().run(args, **kwargs)
         # terminal is getting messed up by msys
         colorama_init(wrap=False)
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}<{self.exe.name}>"
+    def send(self, cmd: str, flush=True):
+        if not self.is_running():
+            raise self.Error("Process is not running")
 
-    def check_running(self):
-        poll = self.proc.poll()
-        if poll is not None:
-            raise ShellError(f"{self!r} exited with code {poll}")
+        if flush:
+            self.streams.readboth()  # type: ignore [union-attr]
 
-    def send(self, cmd: str):
-        self.check_running()
-        self.stdout.readlines()
-        assert self.proc.stdin
-        self.proc.stdin.write(f"{cmd}\n")
-        self.last_cmd = cmd
+        self.proc.stdin.write(f"{cmd}\n")  # type: ignore [union-attr]
 
     def receive(self, timeout: Optional[float] = None) -> str:
-        stdout = "".join(
-            self.stdout.readlines(block_first=timeout is not None, timeout=timeout)
-        )
-        stderr = "".join(self.stderr.readlines())
+        stdout, stderr = self.streams.readboth(timeout=timeout)  # type: ignore [union-attr]
         if stderr:
             self.exit()
-            raise ShellError(stderr)
-        return stdout
-
-    def check_output(self, cmd: str, timeout=0.5) -> str:
-        self.send(cmd)
-        return self.receive(timeout=timeout)
+            raise self.Error("".join(stderr))
+        return "".join(stdout)
 
     def exit(self) -> int:
-        colorama_init(wrap=True)
-        if self.proc.poll() is None:
+        if self.is_running():
             with suppress(TimeoutExpired):
-                self.proc.communicate("exit\n", timeout=0.2)
-        return self.proc.wait()
-
-    def __del__(self):
-        with suppress(AttributeError):
-            self.proc.kill()
+                self.proc.communicate("exit\n", timeout=0.2)  # type: ignore [union-attr]
+        colorama_init(wrap=True)
+        return self.proc.wait()  # type: ignore [union-attr]
 
 
 def parse_ps(output: str) -> Iterator[Dict[str, str]]:

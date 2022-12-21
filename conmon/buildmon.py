@@ -10,13 +10,13 @@ from functools import partial
 from pathlib import Path
 from statistics import mean, median
 from threading import Event, Thread
-from typing import Any, Dict, Hashable, List, Optional, Sequence, Set, Union
+from typing import Any, Dict, Hashable, List, Optional, Sequence, Set
 
 from psutil import AccessDenied, NoSuchProcess, Process
 
 from .logging import UniqueLogger, get_logger
 from .regex import shorten_conan_path
-from .shell import Shell, ShellError, scan_msys
+from .shell import scan_msys, Shell
 from .utils import (
     WinShlex,
     append_to_set,
@@ -177,7 +177,7 @@ class BuildMonitor(Thread):
         self.finish = Event()
         self.timing: List[float] = []
         self.executables: Set[str] = set()
-        self.shell: Union[None, bool, Shell] = None
+        self.shell = Shell()
         self.seen_proc: Set[Process] = set()
 
     def start(self) -> None:
@@ -327,7 +327,7 @@ class BuildMonitor(Thread):
             LOG_ONCE.error(str(exc))
             return
 
-        if self.shell:
+        if self.shell.is_running():
             self.add_msys_procs(children)
 
         for child in children - self.seen_proc:
@@ -337,21 +337,22 @@ class BuildMonitor(Thread):
                     continue
 
                 path = Path(info["exe"])
-                if self.shell is None and path.name.lower() in {
+                name = info["name"] = Path(info["cmdline"][0]).stem.lower()
+                if not self.shell.is_running() and path.name in {
                     "make.exe",
                     "bash.exe",
                     "sh.exe",
                 }:
                     shell_path = path.with_name("sh.exe")
-                    if self.shell is None and shell_path.is_file():
-                        self.shell = Shell(shell_path)
+                    if shell_path.is_file():
+                        self.shell.run([shell_path])
+                        self.shell.send("/usr/bin/ps")
                         LOG.debug(
                             "Scanning processes via %s because %s was detected.",
                             shorten_conan_path(shell_path.as_posix()),
                             path.name,
                         )
-                name = info["name"] = Path(info["cmdline"][0]).stem.lower()
-                if identify_compiler(name) and info["exe"] == "/bin/dash":
+                elif identify_compiler(name) and info["exe"] == "/bin/dash":
                     LOG.warning(
                         "Async capture (%r)",
                         shorten(" ".join(info["cmdline"]), width=60, strip="middle"),
@@ -373,7 +374,7 @@ class BuildMonitor(Thread):
             if sleep_time_s > 0.0:
                 time.sleep(sleep_time_s)
 
-        if self.shell:
+        if self.shell.is_running():
             self.shell.exit()
 
         for frozen_info in self.proc_cache:
@@ -407,12 +408,9 @@ class BuildMonitor(Thread):
 
     def add_msys_procs(self, children):
         try:
-            if self.shell.last_cmd is None:
-                self.shell.send("/usr/bin/ps")
-                return
-
             output = self.shell.receive(timeout=1.0)
             if not output:
+                LOG.info(f"{self.shell} seems unresponsive.")
                 return
 
             self.shell.send("/usr/bin/ps")
@@ -420,6 +418,5 @@ class BuildMonitor(Thread):
                 if parent in children:
                     children.update(procs)
 
-        except ShellError as exc:
+        except Shell.Error as exc:
             LOG.error("<%s> %s", type(exc).__name__, exc)
-            self.shell = False
