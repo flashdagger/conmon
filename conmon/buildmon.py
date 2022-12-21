@@ -167,9 +167,9 @@ class BuildMonitor(Thread):
     CYCLE_TIME_S = 0.025
     PARSER = CompilerParser(prog=Path(__file__).stem, add_help=False)
 
-    def __init__(self, proc: Process):
+    def __init__(self, pid: Optional[int] = None):
         super().__init__(daemon=True)
-        self.proc = proc
+        self.proc = Process(pid)
         self.proc_cache: Dict = {}
         self.rsp_cache: Dict = {}
         self.compiler: Set[str] = set()
@@ -186,7 +186,7 @@ class BuildMonitor(Thread):
         self.stop()
         assert not self.is_alive()
         # pylint: disable=unnecessary-dunder-call
-        self.__init__(self.proc)  # type: ignore
+        self.__init__(self.proc.pid)  # type: ignore
         super().start()
 
     def stop(self):
@@ -410,7 +410,7 @@ class BuildMonitor(Thread):
         try:
             output = self.shell.receive(timeout=1.0)
             if not output:
-                LOG.info(f"{self.shell} seems unresponsive.")
+                LOG.info("%r seems unresponsive.", self.shell)
                 return
 
             self.shell.send("/usr/bin/ps")

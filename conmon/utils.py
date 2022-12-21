@@ -14,7 +14,6 @@ from io import TextIOBase
 from math import log
 from pathlib import Path
 from queue import Empty, Queue
-from select import select
 from threading import Thread
 from typing import (
     IO,
@@ -204,14 +203,9 @@ class AsyncPipeReader:
 
 
 class ProcessStreamHandler:
-    def __init__(self, proc: Popen):
-        self.stdout = AsyncPipeReader(proc.stdout)
-        self.stderr = AsyncPipeReader(proc.stderr)
-        self.select = (
-            lambda: select([proc.stdout, proc.stderr], [], [])
-            if os.name == "posix"
-            else lambda: None
-        )
+    def __init__(self, proc: Optional[Popen] = None):
+        self.stdout: AsyncPipeReader = proc and AsyncPipeReader(proc.stdout)  # type: ignore
+        self.stderr: AsyncPipeReader = proc and AsyncPipeReader(proc.stderr)  # type: ignore
 
     @property
     def exhausted(self) -> bool:

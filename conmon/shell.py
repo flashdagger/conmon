@@ -3,17 +3,12 @@
 import sys
 from contextlib import suppress
 from subprocess import PIPE, Popen, TimeoutExpired
-from typing import TYPE_CHECKING, Dict, Iterator, Optional, Set, Tuple
+from typing import Dict, Iterator, Optional, Set, Tuple
 
 from psutil import NoSuchProcess, Process
 
 from .logging import colorama_init
 from .utils import ProcessStreamHandler
-
-# pylint: disable=invalid-name
-if TYPE_CHECKING:
-    ignore = ()
-    union = attr = 0
 
 
 def exceptook(type_, value, traceback):
@@ -28,15 +23,15 @@ sys.excepthook = exceptook
 
 class Command:
     def __init__(self) -> None:
-        self.proc: Optional[Popen] = None
-        self.streams: Optional[ProcessStreamHandler] = None
+        self.proc: Popen = None  # type: ignore
+        self.streams: ProcessStreamHandler = None  # type: ignore
 
     def __repr__(self):
         proc = self.proc
         name = self.__class__.__name__
         if proc:
-            return str(Process(proc.pid)).replace("psutil.Process", name)
-        return f"{name}()"
+            return f"<{name}: returncode: {self.returncode} args: {proc.args}>"
+        return f"<{name}>"
 
     def run(self, args, **kwargs):
         if self.is_running():
@@ -96,12 +91,13 @@ class Shell(Command):
             raise self.Error("Process is not running")
 
         if flush:
-            self.streams.readboth()  # type: ignore [union-attr]
+            self.streams.readboth()
 
-        self.proc.stdin.write(f"{cmd}\n")  # type: ignore [union-attr]
+        assert self.proc.stdin
+        self.proc.stdin.write(f"{cmd}\n")
 
     def receive(self, timeout: Optional[float] = None) -> str:
-        stdout, stderr = self.streams.readboth(timeout=timeout)  # type: ignore [union-attr]
+        stdout, stderr = self.streams.readboth(timeout=timeout)
         if stderr:
             self.exit()
             raise self.Error("".join(stderr))
@@ -110,9 +106,9 @@ class Shell(Command):
     def exit(self) -> int:
         if self.is_running():
             with suppress(TimeoutExpired):
-                self.proc.communicate("exit\n", timeout=0.2)  # type: ignore [union-attr]
+                self.proc.communicate("exit\n", timeout=0.2)
         colorama_init(wrap=True)
-        return self.proc.wait()  # type: ignore [union-attr]
+        return self.proc.wait()
 
 
 def parse_ps(output: str) -> Iterator[Dict[str, str]]:

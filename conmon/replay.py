@@ -3,15 +3,14 @@
 
 import re
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from psutil import Process
-
-from conmon import json
-from conmon.buildmon import BuildMonitor as BuildMonitorOrig
-from conmon.conan import conmon_setting
-from conmon.utils import freeze_json_object
+from . import json
+from .conan import conmon_setting
+from .shell import Command
+from .utils import ProcessStreamHandler
 
 
 def replay_logfile(setting: str, create_if_not_exists=True) -> Optional[Path]:
@@ -34,9 +33,10 @@ def replay_json(setting: str) -> Dict[str, Any]:
 
 
 # pylint: disable=too-few-public-methods
-class ReplayStreamHandler:
-    def __init__(self):
-        self.exhausted = False
+class ReplayStreamHandler(ProcessStreamHandler):
+    def __init__(self, *_args):
+        super().__init__()
+        self._exhausted = False
         self.loglines = self._readlines(replay_logfile("conan.log"))
 
     @staticmethod
@@ -64,37 +64,47 @@ class ReplayStreamHandler:
 
             yield pipe, tuple(loglines)
 
-    def readboth(self):
+    @property
+    def exhausted(self) -> bool:
+        return self._exhausted
+
+    def readboth(self, timeout=None):
         pipe, loglines = next(self.loglines, (None, ()))
         if not loglines:
-            self.exhausted = True
+            self._exhausted = True
             return (), ()
         if pipe == "stderr":
             return (), loglines
         return loglines, ()
 
 
-class ReplayProcess(Process):
-    def __init__(self, _pid=None):
-        super().__init__(None)
-        self.proc_json = replay_json("proc.json")
+class ReplayPopen(subprocess.Popen):
+    def __init__(self, args, **_kwargs):
         self.log_json = replay_json("report.json")
-        self._exitcode = self.log_json.get("conan", {}).get("returncode", -1)
+        conan = self.log_json.get("conan", {})
+        self.args = conan.get("command", args)
+        self.returncode = conan.get("returncode", -1)
 
-    def cmdline(self):
-        default = super().cmdline()
-        return self.log_json.get("conan", {}).get("command", default)
+    @property
+    def pid(self):
+        return None
 
 
-class BuildMonitor(BuildMonitorOrig):
-    _PROC_FILE = None
+class ReplayCommand(Command):
+    def __init__(self):
+        super().__init__()
+        self.proc_json = replay_json("proc.json")
 
-    def __init__(self, proc):
-        super().__init__(proc)
-        if not self._PROC_FILE:
-            return
-        with open(self._PROC_FILE, encoding="utf8") as fh:
-            procs = json.load(fh)
-        for proc_list in procs.values():
-            for proc_info in proc_list:
-                self.proc_cache[freeze_json_object(proc_info)] = None
+    def run(self, args, **kwargs):
+        self.streams = ReplayStreamHandler()
+        self.proc = ReplayPopen([])
+
+    def is_running(self):
+        return not self.streams.exhausted
+
+    def wait(self, **_kwargs):
+        return self.proc.returncode
+
+    @property
+    def returncode(self):
+        return self.proc.returncode if self.streams.exhausted else None

@@ -32,15 +32,14 @@ from typing import (
     cast,
 )
 
-from psutil import Popen, Process
+import psutil
 
 from . import __version__, json
 from .buildmon import BuildMonitor
 from .conan import LOG as CONAN_LOG
 from .conan import call_cmd_and_version, conmon_setting
-from .logging import UniqueLogger, get_logger
 from .logging import init as initialize_logging
-from .logging import level_from_name, logger_escape_code
+from .logging import UniqueLogger, level_from_name, get_logger, logger_escape_code
 from .regex import (
     BUILD_STATUS_REGEX,
     BUILD_STATUS_REGEX2,
@@ -51,11 +50,11 @@ from .regex import (
     filter_by_regex,
     shorten_conan_path,
 )
-from .replay import ReplayProcess, ReplayStreamHandler, replay_logfile
+from .replay import ReplayCommand, replay_logfile
+from .shell import Command
 from .state import State, StateMachine
 from .utils import (
     NullList,
-    ProcessStreamHandler,
     ScreenWriter,
     StrictConfigParser,
     added_first,
@@ -77,7 +76,7 @@ from .warnings import (
 
 CONMON_LOG = get_logger("CONMON")
 CONAN_LOG_ONCE = UniqueLogger(CONAN_LOG)
-PARENT_PROCS = [parent.name() for parent in Process(os.getppid()).parents()]
+PARENT_PROCS = [parent.name() for parent in psutil.Process(os.getppid()).parents()]
 LOG_HINTS: Dict[str, Optional[int]] = {}
 LOG_WARNING_COUNT = conmon_setting("log.warning_count", True)
 
@@ -378,7 +377,7 @@ class Build(State):
         super().__init__(parser)
         self.parser = parser
         self.warnings = 0
-        self.buildmon = BuildMonitor(self.parser.process)
+        self.buildmon = BuildMonitor(self.parser.command.proc.pid)
         self.log = parser.defaultlog
         self.ref = "???"
         self.force_status = False
@@ -408,7 +407,7 @@ class Build(State):
             defaultlog["stdout"].append(full_line)
             self.log = self.parser.defaultlog = defaultlog[self.REF_LOG_KEY]
             self.buildmon.start()
-            proc_json = getattr(self.parser.process, "proc_json", {})
+            proc_json = getattr(self.parser.command, "proc_json", {})
             for proc_info in proc_json.get(self.ref, ()):
                 self.buildmon.proc_cache[freeze_json_object(proc_info)] = None
             return True
@@ -680,8 +679,8 @@ class ConanParser:
         rf"(?:{compact_pattern(REF_REGEX)[0]}(?:: ?| ))?(?P<rest>[^\r\n]*)"
     )
 
-    def __init__(self, process: Process):
-        self.process = process
+    def __init__(self, command: Command):
+        self.command = command
         self.log = DefaultDict()
         self.defaultlog = self.log
         self.screen = ScreenWriter()
@@ -691,7 +690,7 @@ class ConanParser:
             python_version=".".join(map(str, sys.implementation.version))
             + f" ({sys.implementation.name})",
             version=self.CONAN_VERSION,
-            command=process.cmdline(),
+            command=command.proc.args,
         )
 
         self.states = StateMachine(
@@ -789,16 +788,12 @@ class ConanParser:
 
         if ref and "is locked by another concurrent conan process" in rest:
             CONAN_LOG.warning(line)
-            self.process.kill()
+            self.command.wait(kill=True)
 
         self.states.process_hooks(parsed_line)
 
     def process_streams(self, raw_fh: TextIO):
-        streams: Any = (
-            ProcessStreamHandler(self.process)
-            if isinstance(self.process, Popen)
-            else ReplayStreamHandler()
-        )
+        streams = self.command.streams
         marker = "{:-^120}\n"
         stderr_marker_start = marker.format(" <stderr> ")
         stdout_marker_start = marker.format(" <stdout> ")
@@ -875,11 +870,11 @@ class ConanParser:
         self.states.deactivate_all()
         self.screen.reset()
         try:
-            self.log["conan"]["returncode"] = self.process.wait()
+            self.command.wait()
         except KeyboardInterrupt:
-            if self.process.is_running():
-                self.process.kill()
-            self.log["conan"]["returncode"] = self.process.wait()
+            self.command.wait(kill=True)
+        finally:
+            self.log["conan"]["returncode"] = self.command.returncode
 
 
 def monitor(args: List[str], replay=False) -> int:
@@ -898,27 +893,17 @@ def monitor(args: List[str], replay=False) -> int:
 
     conan_command, ConanParser.CONAN_VERSION = call_cmd_and_version()
     conan_command.extend(args)
-    process = (
-        ReplayProcess()
-        if replay
-        else Popen(
-            conan_command,
-            stdout=PIPE,
-            stderr=(
-                STDOUT
-                if str(conmon_setting("report.stderr")).lower() == "stdout"
-                else PIPE
-            ),
-            universal_newlines=True,
-            bufsize=0,
-        )
+    command = ReplayCommand() if replay else Command()
+    stderr = (
+        STDOUT if str(conmon_setting("report.stderr")).lower() == "stdout" else PIPE
     )
+    command.run(conan_command, stderr=stderr)
     cycle_time_s = conmon_setting("build.monitor", True)
     if isinstance(cycle_time_s, float):
         BuildMonitor.CYCLE_TIME_S = cycle_time_s
     elif not cycle_time_s:
         BuildMonitor.ACTIVE = False
-    parser = ConanParser(process)
+    parser = ConanParser(command)
     for item in ("conan.log", "report.json", "proc.json"):
         # copy replay file before opening or delete old ones
         path = replay_logfile(item, create_if_not_exists=replay)
@@ -940,7 +925,7 @@ def monitor(args: List[str], replay=False) -> int:
     with filehandler("report.json", hint="report json") as fh:
         json.dump(parser.log, fh, indent=2)
 
-    returncode = process.wait()
+    returncode = command.wait()
     if returncode:
         CONMON_LOG.error("conan exited with code %s", returncode)
     for hint, level in LOG_HINTS.items():
