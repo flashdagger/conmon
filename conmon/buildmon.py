@@ -346,8 +346,9 @@ class BuildMonitor(Thread):
                     if self.shell is None and shell_path.is_file():
                         self.shell = Shell(shell_path)
                         LOG.debug(
-                            "Detected shell on Windows: %s",
+                            "Scanning processes via %s because %s was detected.",
                             shorten_conan_path(shell_path.as_posix()),
+                            path.name,
                         )
                 name = info["name"] = Path(info["cmdline"][0]).stem.lower()
                 if identify_compiler(name) and info["exe"] == "/bin/dash":
