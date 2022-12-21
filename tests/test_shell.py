@@ -107,7 +107,7 @@ class TestShell:
 
     def test_shell_ps(self, shell: Shell):
         shell.send("/usr/bin/ps")
-        ps_output = shell.receive(timeout=0.1)
+        ps_output = shell.receive(timeout=0.2)
         assert ps_output
 
         proc_map = {proc["COMMAND"]: proc for proc in parse_ps(ps_output)}

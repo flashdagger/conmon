@@ -3,7 +3,6 @@ from collections.abc import Hashable
 from pathlib import Path
 
 import pytest
-from psutil import Process
 
 from conmon.buildmon import BuildMonitor, CompilerParser
 from conmon.utils import (
@@ -85,7 +84,7 @@ cases = [
 
 @pytest.mark.parametrize("case", cases)
 def test_buildmon_process(case):
-    monitor = BuildMonitor(Process())
+    monitor = BuildMonitor()
     monitor.check_process(case["proc"])
     translation_units = monitor.translation_units
     assert len(translation_units) == 1
