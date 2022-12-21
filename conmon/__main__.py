@@ -811,7 +811,7 @@ class ConanParser:
 
         while not streams.exhausted:
             try:
-                stdout, stderr = streams.readboth()
+                stdout, stderr = streams.readboth(timeout=1.0)
             except KeyboardInterrupt:
                 with suppress(KeyboardInterrupt):
                     self.screen.reset()

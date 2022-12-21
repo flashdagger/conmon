@@ -217,8 +217,10 @@ class ProcessStreamHandler:
     def exhausted(self) -> bool:
         return self.stdout.exhausted and self.stderr.exhausted
 
-    def readboth(self) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
-        stdout_lines = tuple(self.stdout.readlines(block_first=True))
+    def readboth(self, timeout=None) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
+        stdout_lines = tuple(
+            self.stdout.readlines(block_first=timeout is not None, timeout=timeout)
+        )
         stderr_lines = tuple(self.stderr.readlines())
         return stdout_lines, stderr_lines
 
