@@ -2,12 +2,12 @@
 # -*- coding: UTF-8 -*-
 
 import argparse
+import os.path as os_path
 import re
 import shlex
 import time
 from contextlib import suppress
 from functools import partial
-import os.path as os_path
 from pathlib import Path
 from statistics import mean, median
 from threading import Event, Thread
