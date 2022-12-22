@@ -7,6 +7,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import ijson
+
 from . import json
 from .conan import conmon_setting
 from .shell import Command
@@ -24,12 +26,17 @@ def replay_logfile(setting: str, create_if_not_exists=True) -> Optional[Path]:
     return replay_path
 
 
-def replay_json(setting: str) -> Dict[str, Any]:
+def replay_json(setting: str, key: Optional[str] = None) -> Dict[str, Any]:
     logfile = replay_logfile(setting)
     if logfile is None:
         return {}
     with logfile.open("r", encoding="utf8") as fh:
-        return json.load(fh)
+        if key is None:
+            return json.load(fh)
+        for _key, value in ijson.kvitems(fh, ""):
+            if _key == key:
+                return value
+        return {}
 
 
 # pylint: disable=too-few-public-methods
@@ -73,8 +80,7 @@ class ReplayStreamHandler(ProcessStreamHandler):
 
 class ReplayPopen(subprocess.Popen):
     def __init__(self, args, **_kwargs):
-        log_json = replay_json("report.json")
-        conan = log_json.get("conan", {})
+        conan = replay_json("report.json", "conan")
         self.args = conan.get("command", args)
         self.returncode = conan.get("returncode", -1)
 
