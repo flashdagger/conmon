@@ -179,6 +179,19 @@ output = [
     "  if (index < 0 || index >= FRAME_BUFFERS) return NULL;",
     "                                                  ^~~~",
     "                                                  nullptr",
+    "CMake Warning at cmake/fido2.cmake:70 (MESSAGE):",
+    "  Cannot find development libraries.  You need to install the required",
+    "  packages:",
+    "",
+    "    Debian/Ubuntu:              apt install libudev-dev",
+    "    RedHat/Fedora/Oracle Linux: yum install libudev-devel",
+    "    SuSE:                       zypper install libudev-devel",
+    "",
+    "Call Stack (most recent call first):",
+    "  CMakeListsOriginal.txt:2032 (WARN_MISSING_SYSTEM_UDEV)",
+    "  CMakeLists.txt:7 (include)",
+    "",
+    "",
     "cl : Command line warning D9002 : ignoring unknown option '/diagnostics:caret/Wall'",
     "",
 ]
@@ -607,6 +620,22 @@ dataset = [
                 "  Update the VERSION argument <min> value or use a ...<max> suffix to tell\n"
                 "  CMake that the project does not need compatibility with older versions.\n",
                 "context": None,
+            },
+            {
+                "context": "Call Stack (most recent call first):\n"
+                "  CMakeListsOriginal.txt:2032 (WARN_MISSING_SYSTEM_UDEV)\n"
+                "  CMakeLists.txt:7 (include)\n",
+                "file": "cmake/fido2.cmake",
+                "function": "MESSAGE",
+                "info": "Cannot find development libraries.  You need to install the "
+                "required\n"
+                "  packages:\n"
+                "\n"
+                "    Debian/Ubuntu:              apt install libudev-dev\n"
+                "    RedHat/Fedora/Oracle Linux: yum install libudev-devel\n"
+                "    SuSE:                       zypper install libudev-devel\n",
+                "line": "70",
+                "severity": "Warning",
             },
         ],
         id="cmake",
