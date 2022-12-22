@@ -5,7 +5,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from . import json
 from .conan import conmon_setting
@@ -44,25 +44,18 @@ class ReplayStreamHandler(ProcessStreamHandler):
         if logfile is None:
             return
 
-        loglines: List[str] = []
         pipe = "stdout"
         with logfile.open("r", encoding="utf8") as fh:
-            for line in fh.readlines():
+            for line in fh:
                 match = re.fullmatch(
                     r"^(?P<state>\[[A-Z][a-z]+] )?(?:-+ <(?P<pipe>[a-z]+)> -+)?(?P<line>.*\n)$",
                     line,
                 )
                 assert match, repr(line)
-                logline = match.group("line")
                 if match.group("pipe"):
-                    if loglines:
-                        yield pipe, tuple(loglines)
-                        loglines.clear()
                     pipe = match.group("pipe")
                 else:
-                    loglines.append(logline)
-
-            yield pipe, tuple(loglines)
+                    yield pipe, (match.group("line"),)
 
     @property
     def exhausted(self) -> bool:
@@ -80,8 +73,8 @@ class ReplayStreamHandler(ProcessStreamHandler):
 
 class ReplayPopen(subprocess.Popen):
     def __init__(self, args, **_kwargs):
-        self.log_json = replay_json("report.json")
-        conan = self.log_json.get("conan", {})
+        log_json = replay_json("report.json")
+        conan = log_json.get("conan", {})
         self.args = conan.get("command", args)
         self.returncode = conan.get("returncode", -1)
 
