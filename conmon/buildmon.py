@@ -7,6 +7,7 @@ import shlex
 import time
 from contextlib import suppress
 from functools import partial
+import os.path as os_path
 from pathlib import Path
 from statistics import mean, median
 from threading import Event, Thread
@@ -272,13 +273,10 @@ class BuildMonitor(Thread):
 
     @staticmethod
     def make_absolute(path: str, cwd: str) -> Path:
-        ppath = Path(path)
-        if not ppath.is_absolute():
-            ppath = Path(cwd, path).absolute()
-        try:
-            return ppath.resolve()
-        except OSError:
-            return ppath
+        if not os_path.isabs(path):
+            assert os_path.isabs(cwd), cwd
+            path = os_path.join(cwd, path)
+        return Path(os_path.abspath(path))
 
     @staticmethod
     def is_valid_tu(file: Path) -> bool:

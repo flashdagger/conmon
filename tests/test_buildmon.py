@@ -49,7 +49,7 @@ cases = [
                 "-IMPLIB:libltdl\\.libs\\ltdl.dll.lib",
             ],
             "exe": "clang",
-            "cwd": "source",
+            "cwd": Path.cwd() / "source",
             "name": "clang++",
         },
         "translation_unit": {
@@ -193,16 +193,27 @@ def test_compiler_arg_parsing():
     assert args.ccas_frontend
 
 
-@pytest.mark.skipif(os.name != "nt", reason="Windows only")
-def test_make_absolute():
-    relative_path = r".libs\testlib-0.dll.exp"
-    cwd = r"D:\build\bin_autotools"
+paths = [
+    (
+        r".libs\testlib-0.dll.exp",
+        r"D:\build\bin_autotools",
+        r"D:\build\bin_autotools\.libs\testlib-0.dll.exp",
+    ),
+    (
+        r"C:\.libs\testlib-0.dll.exp",
+        r"D:\build\bin_autotools",
+        r"C:\.libs\testlib-0.dll.exp",
+    ),
+    ("/mnt/foo/bar", "/mnt/baz", "/mnt/foo/bar"),
+    ("/mnt/foo/../bar", "", "/mnt/bar"),
+    ("../bar", "/mnt/foo", "/mnt/bar"),
+    ("../../bar/../..", "/mnt/foo", "/"),
+]
 
-    assert BuildMonitor.make_absolute(relative_path, cwd) == Path(
-        r"D:\build\bin_autotools\.libs\testlib-0.dll.exp"
-    )
 
-    absolute_path = r"C:\.libs\testlib-0.dll.exp"
-    assert BuildMonitor.make_absolute(absolute_path, cwd) == Path(
-        r"C:\.libs\testlib-0.dll.exp"
-    )
+@pytest.mark.parametrize("path", paths)
+def test_make_absolute(path):
+    path, cwd, expected = path
+    if os.name != "nt" and ("\\" in path or "\\" in cwd):
+        return
+    assert BuildMonitor.make_absolute(path, cwd) == Path(expected).resolve()
