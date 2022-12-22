@@ -9,9 +9,13 @@ import pytest
 from psutil import Process
 
 from conmon import conan
-from conmon.shell import Command, Shell, parse_ps
+from conmon.shell import Command, Shell
+from conmon.buildmon import ScanPS
+
+WORKER_COUNT = int(os.environ.get("PYTEST_XDIST_WORKER_COUNT", "1"))
 
 
+@pytest.mark.skipif(WORKER_COUNT > 1, reason="cannot be parallelized")
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows only")
 class TestShell:
     @pytest.fixture(scope="class")
@@ -63,10 +67,10 @@ class TestShell:
 
     def test_proc_del(self, msys_bindir: Path):
         command = Command()
-        command.run([msys_bindir / "sleep", "10"])
+        command.run([msys_bindir / "sleep", "1"])
         proc = Process(command.proc.pid)
         assert proc in Process().children()
-        command.run([msys_bindir / "sleep", "10"])
+        command.run([msys_bindir / "sleep", "1"])
         assert proc not in Process().children(), "old process is still running"
         proc = Process(command.proc.pid)
         del command
@@ -74,15 +78,17 @@ class TestShell:
 
     def test_streams(self, msys_bindir: Path):
         command = Command()
-        command.run([msys_bindir / "echo", "Hello World!"])
+        command.run([msys_bindir / "ls", "ls.exe"], cwd=msys_bindir)
         stdout, stderr = command.streams.readboth(timeout=0.1)
-        assert stdout == ("Hello World!\n",)
+        assert stdout == ("ls.exe\n",)
         assert stderr == ()
 
-        command.run([msys_bindir / "sh", "-c", "echo Hello World! 1>&2"])
-        stdout, stderr = command.streams.readboth(timeout=0.05)
+        command.run([msys_bindir / "ls", "missing"], cwd=msys_bindir)
+        stdout, stderr = command.streams.readboth(timeout=0.2)
         assert stdout == ()
-        assert stderr == ("Hello World!\n",)
+        assert stderr == (
+            "/usr/bin/ls: cannot access 'missing': No such file or directory\n",
+        )
 
         command.run([msys_bindir / "echo", "Hello World!"])
         stdout, stderr = command.streams.readboth()
@@ -110,7 +116,7 @@ class TestShell:
         ps_output = shell.receive(timeout=0.2)
         assert ps_output
 
-        proc_map = {proc["COMMAND"]: proc for proc in parse_ps(ps_output)}
+        proc_map = {proc["COMMAND"]: proc for proc in ScanPS.parse_ps(ps_output)}
         assert "/usr/bin/ps" in proc_map
 
         for proc in proc_map.values():
@@ -128,3 +134,13 @@ class TestShell:
             shell.send("whoami")
 
         assert exc_info.value.args[0] == "Process is not running"
+
+    def test_rerun(self, shell: Shell):
+        args = shell.proc.args
+        assert shell.returncode is None
+        shell.exit()
+        assert shell.returncode == 0
+        shell.run(args)
+        assert shell.returncode is None
+        shell.wait(kill=True)
+        assert shell.returncode == 1

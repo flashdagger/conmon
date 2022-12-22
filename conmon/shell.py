@@ -3,9 +3,9 @@
 import sys
 from contextlib import suppress
 from subprocess import PIPE, Popen, TimeoutExpired
-from typing import Dict, Iterator, Optional, Set, Tuple
+from typing import Optional
 
-from psutil import NoSuchProcess, Process
+from psutil import Process
 
 from .logging import colorama_init
 from .utils import ProcessStreamHandler
@@ -25,6 +25,7 @@ class Command:
     def __init__(self) -> None:
         self.proc: Popen = None  # type: ignore
         self.streams: ProcessStreamHandler = None  # type: ignore
+        self.returned_error = False
 
     def __repr__(self):
         proc = self.proc
@@ -71,6 +72,7 @@ class Command:
         elif kill:
             self.proc.terminate()
         returncode = self.proc.wait(timeout=timeout)
+        self.returned_error = returncode != 0
         return returncode
 
     def __del__(self):
@@ -108,44 +110,4 @@ class Shell(Command):
             with suppress(TimeoutExpired):
                 self.proc.communicate("exit\n", timeout=0.2)
         colorama_init(wrap=True)
-        return self.proc.wait()
-
-
-def parse_ps(output: str) -> Iterator[Dict[str, str]]:
-    lines = output.splitlines(keepends=False)
-    if len(lines) < 2:
-        return
-
-    header = lines[0].split()
-    for line in lines[1:]:
-        if not line.startswith(" "):
-            continue
-        entries = line.split(maxsplit=len(header) - 1)
-        yield dict(zip(header, entries))
-
-
-def scan_msys(ps_output: str):
-    procs: Dict[Process, Set[Process]] = {}
-    # mapping pid -> ppid, winpid
-    ppid_map: Dict[int, Tuple[int, int]] = {}
-
-    def root_process(child_pid: int) -> Process:
-        parent_pid, win_pid = ppid_map[child_pid]
-        if parent_pid == 1:
-            return Process(win_pid)
-        return root_process(parent_pid)
-
-    for info in parse_ps(ps_output):
-        if info.get("COMMAND", "/ps").endswith("/ps"):
-            continue
-        try:
-            ppid_map[int(info["PID"])] = int(info["PPID"]), int(info["WINPID"])
-        except ValueError:
-            ppid_map.clear()
-
-    for pid, (_, winpid) in ppid_map.items():
-        with suppress(NoSuchProcess, KeyError):
-            root_proc = root_process(pid)
-            procs.setdefault(root_proc, set()).add(Process(winpid))
-
-    return procs
+        return self.wait()
