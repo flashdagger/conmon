@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-import ijson
+import json_stream
 
 from . import json
 from .conan import conmon_setting
@@ -33,10 +33,7 @@ def replay_json(setting: str, key: Optional[str] = None) -> Dict[str, Any]:
     with logfile.open("r", encoding="utf8") as fh:
         if key is None:
             return json.load(fh)
-        for _key, value in ijson.kvitems(fh, ""):
-            if _key == key:
-                return value
-        return {}
+        return json_stream.load(fh, persistent=True).get(key, {})
 
 
 # pylint: disable=too-few-public-methods

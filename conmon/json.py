@@ -1,24 +1,31 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+import json
 from collections import UserDict
-from json import JSONEncoder, load, loads
 from pathlib import Path
 from typing import TextIO
 
-loads = loads  # pylint: disable=self-assigning-variable
-load = load  # pylint: disable=self-assigning-variable
+from json_stream import streamable_list
+from json_stream.dump import JSONStreamEncoder
+
+from .utils import CachedLines
 
 
-class Encoder(JSONEncoder):
-    def default(self, o):
-        if isinstance(o, Path):
-            return str(o)
-        if isinstance(o, UserDict):
-            return o.data
+loads = json.loads  # pylint: disable=self-assigning-variable
+load = json.load  # pylint: disable=self-assigning-variable
+
+
+class Encoder(JSONStreamEncoder):
+    def default(self, obj):
+        if isinstance(obj, Path):
+            return str(obj)
+        if isinstance(obj, UserDict):
+            return obj.data
+        if isinstance(obj, CachedLines):
+            return streamable_list(line[:-1] for line in obj)
         # Let the base class default method raise the TypeError
-        return super().default(o)
+        return super().default(obj)
 
 
 def dump(obj, fh: TextIO, *args, **kwargs):
-    encoder = Encoder(*args, **kwargs)
-    fh.write(encoder.encode(obj))
+    json.dump(obj, fh, *args, **kwargs, cls=Encoder)

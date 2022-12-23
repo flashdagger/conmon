@@ -14,6 +14,7 @@ from io import TextIOBase
 from math import log
 from pathlib import Path
 from queue import Empty, Queue
+from tempfile import SpooledTemporaryFile
 from threading import Thread
 from typing import (
     IO,
@@ -237,6 +238,49 @@ class NullList(list):
     append = _ignore
     extend = _ignore
     insert = _ignore
+
+
+# pylint: disable=consider-using-with
+class CachedLines:
+    def __init__(self, max_size=1000):
+        args = self._args = dict(
+            mode="w+", max_size=max_size, buffering=1, encoding="utf-8", newline="\n"
+        )
+        self._fh = SpooledTemporaryFile(**args)
+
+    @property
+    def name(self):
+        return self._fh.name
+
+    def writelines(self, *lines, end="\n"):
+        fh = self._fh
+        fh.seek(0, 2)
+        fh.writelines(line + end for line in lines)
+
+    def append(self, line, end="\n"):
+        fh = self._fh
+        fh.seek(0, 2)
+        fh.write(line + end)
+
+    def read(self):
+        fh = self._fh
+        fh.seek(0)
+        return fh.read()
+
+    def readlines(self, keepends=True):
+        fh = self._fh
+        fh.seek(0)
+        if not keepends:
+            return [line[:-1] for line in fh.readlines()]
+        return fh.readlines()
+
+    def clear(self):
+        self._fh = SpooledTemporaryFile(**self._args)
+
+    def __iter__(self):
+        fh = self._fh
+        fh.seek(0)
+        return iter(fh)
 
 
 def freeze_json_object(obj) -> Hashable:
