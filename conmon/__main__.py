@@ -813,6 +813,13 @@ class ConanParser:
                     CONMON_LOG.warning("Pressed Ctrl+C")
                 break
 
+            if stderr:
+                if not stderr_written:
+                    raw_fh.write(stderr_marker_start)
+                    stderr_written = True
+                raw_fh.writelines(decolorize(stderr))
+                self.process_errors(stderr)
+
             if stdout:
                 if stderr_written:
                     raw_fh.write(stdout_marker_start)
@@ -826,20 +833,9 @@ class ConanParser:
                         raw_fh.write(f"[{name}] {line}")
                     else:
                         raw_fh.write(line)
-                raw_fh.flush()
 
-            if stderr:
-                raw_fh.write(
-                    "".join(
-                        (
-                            "" if stderr_written else stderr_marker_start,
-                            *decolorize(stderr),
-                        )
-                    )
-                )
+            if stdout or stderr:
                 raw_fh.flush()
-                stderr_written = True
-                self.process_errors(stderr)
 
     def process_tracelog(self, trace_path: Path):
         actions: List[Dict[str, Any]] = []

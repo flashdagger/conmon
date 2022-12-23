@@ -52,7 +52,7 @@ class ScanPS(Shell):
         if not self.is_running():
             return
         try:
-            output = self.receive(timeout=0.05)
+            output = self.receive(timeout=0.5)
             if not output:
                 self.LOG.debug("shell is unresponsive")
                 return
