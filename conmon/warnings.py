@@ -27,7 +27,7 @@ class BuildRegex(Regex):
                 (?::(?P<line>\d+)\ \((?P<function>\w+)\))?
             )?
             :(?:\n\ )?\ #
-            (?P<info>.+\n(?:(?:\n?\ {2}|This warning).*\n)*)
+            (?P<info>.+\n(?:\n?\ {2}.*\n)*(?:.+\n\n)?)
             \n?
             (?P<context>Call\ Stack.+ (?:\n\ +.+)+\n)?
         """

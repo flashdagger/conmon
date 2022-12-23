@@ -15,7 +15,6 @@ output = [
     "     ^~~~~~",
     "C:\\source_subfolder\\source\\common\\x86\\seaintegral.asm:92: warning: improperly calling "
     "multi-line macro `SETUP_STACK_POINTER' with 0 parameters [-w+macro-params-legacy]",
-    "some text",
     "In file included from C:\\conan\\data\\source_subfolder\\zutil.c:10:",
     "C:\\conan\\data\\source_subfolder/gzguts.h(146,52): warning: extension used "
     "[-Wlanguage-extension-token]",
@@ -63,7 +62,6 @@ output = [
     "*** a GNU mirror site.  (If you are using the official distribution of",
     "*** PostgreSQL then you do not need to worry about this, because the Bison",
     "*** output is pre-generated.)",
-    "end",
     "CMake Warning at cmake/ldap.cmake:158 (MESSAGE):",
     "  Could not find LDAP",
     "Call Stack (most recent call first):",
@@ -578,7 +576,9 @@ dataset = [
                 "file": "libmysql/authentication_ldap/CMakeLists.txt",
                 "line": "30",
                 "function": "MESSAGE",
-                "info": "Skipping the LDAP client authentication plugin\n",
+                "info": ""
+                "Skipping the LDAP client authentication plugin\n"
+                "This warning is for project developers.  Use -Wno-dev to suppress it.\n\n",
                 "context": None,
             },
             {

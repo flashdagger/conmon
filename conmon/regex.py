@@ -111,7 +111,7 @@ def compact_pattern(regex: Pattern) -> Tuple[str, int]:
     pattern = re.sub(r"\(\?([aiLmsux])+\)", "", regex.pattern, flags=re.ASCII)
     # remove whitespace in verbose pattern
     if flags & re.VERBOSE:
-        pattern = re.sub(r"(?<!\\)\s+|\\(?= )|#[^\n]+\n", "", pattern, flags=re.ASCII)
+        pattern = re.sub(r"(?<!\\)\s+|\\(?= )|#.*\n", "", pattern, flags=re.ASCII)
         flags -= re.VERBOSE
 
     return pattern, flags
