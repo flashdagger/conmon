@@ -7,6 +7,7 @@ import conmon.regex
 from conmon.regex import (
     CMAKE_BUILD_PATH_REGEX,
     REF_REGEX,
+    filter_by_regex,
     shorten_conan_path,
 )
 
@@ -160,3 +161,16 @@ cmake_build_path = [
 def test_cmake_build_path_regex(path):
     match = CMAKE_BUILD_PATH_REGEX.search(path.as_posix())
     assert match, f"{path!r} did not match"
+
+
+def test_filter_by_regex():
+    string = " aa b aa b a b a c b a bbbb a bb a"
+    matchmap = {}
+    residue = filter_by_regex(string, matchmap, x="foo", a=" a+", b=" b+", d=" d+")
+    assert residue == " c"
+    assert {name: len(matches) for name, matches in matchmap.items()} == {
+        "a": 7,
+        "b": 6,
+        "d": 0,
+        "x": 0,
+    }
