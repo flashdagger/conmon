@@ -5,7 +5,7 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import json_stream
 
@@ -49,6 +49,7 @@ class ReplayStreamHandler(ProcessStreamHandler):
             return
 
         pipe = "stdout"
+        loglines: List[str] = []
         with logfile.open("r", encoding="utf8") as fh:
             for line in fh:
                 match = re.fullmatch(
@@ -57,15 +58,21 @@ class ReplayStreamHandler(ProcessStreamHandler):
                 )
                 assert match, repr(line)
                 if match.group("pipe"):
+                    if loglines:
+                        yield pipe, tuple(loglines)
+                        loglines.clear()
                     pipe = match.group("pipe")
                 else:
-                    yield pipe, (match.group("line"),)
+                    loglines.append(match.group("line"))
+
+        if loglines:
+            yield pipe, tuple(loglines)
 
     @property
     def exhausted(self) -> bool:
         return self._exhausted
 
-    def readboth(self, timeout=None):
+    def readboth(self, block=False, block_first=False):
         pipe, loglines = next(self.loglines, (None, ()))
         if not loglines:
             self._exhausted = True

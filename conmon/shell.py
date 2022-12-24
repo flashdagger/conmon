@@ -99,7 +99,7 @@ class Shell(Command):
         self.proc.stdin.write(f"{cmd}\n")
 
     def receive(self, timeout: Optional[float] = None) -> str:
-        stdout, stderr = self.streams.readboth(timeout=timeout)
+        stdout, stderr = self.streams.readboth(block_first=timeout)
         if stderr:
             self.exit()
             raise self.Error("".join(stderr))

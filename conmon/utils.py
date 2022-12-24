@@ -175,29 +175,27 @@ class AsyncPipeReader:
         return not self.queue.empty()
 
     def readlines(
-        self, block_all=False, block_first=False, timeout=None
+        self, block: Union[bool, float] = False, block_first: Union[bool, float] = False
     ) -> Iterator[str]:
+        def kwargs(_block):
+            if isinstance(_block, float):
+                return dict(block=True, timeout=_block)
+            return dict(block=_block, timeout=None)
+
         if self.exhausted:
             return
 
-        if block_first:
-            try:
-                line = self.queue.get(block=True, timeout=timeout)
-            except Empty:
-                return
+        default_kwargs = kwargs(block)
+        with suppress(Empty, AssertionError):
+            while True:
+                if block_first is not False:
+                    line = self.queue.get(**kwargs(block_first))
+                    block_first = False
+                else:
+                    line = self.queue.get(**default_kwargs)
 
-            if line:
+                assert line
                 yield line
-
-        while block_all or not self.queue.empty():
-            try:
-                line = self.queue.get(block=block_all, timeout=timeout)
-            except Empty:
-                return
-
-            if not line:
-                break
-            yield line
 
     def readline(self) -> str:
         return self.queue.get(block=True)
@@ -212,9 +210,11 @@ class ProcessStreamHandler:
     def exhausted(self) -> bool:
         return self.stdout.exhausted and self.stderr.exhausted
 
-    def readboth(self, timeout=None) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
+    def readboth(
+        self, block=False, block_first=False
+    ) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
         stdout_lines = tuple(
-            self.stdout.readlines(block_first=timeout is not None, timeout=timeout)
+            self.stdout.readlines(block=block, block_first=block_first)
         )
         stderr_lines = tuple(self.stderr.readlines())
         return stdout_lines, stderr_lines
@@ -284,7 +284,11 @@ class CachedLines:
 
     def __del__(self):
         fh = self._fh
-        print("SpooledFile", "name:", fh.name, "size:", fh.tell())
+        if fh.name is None:
+            return
+        size = human_readable_byte_size(fh.tell())
+        fh.seek(0)
+        print("SpooledFile", "name:", fh.name, "size:", size, repr(fh.read(20)))
 
 
 def freeze_json_object(obj) -> Hashable:

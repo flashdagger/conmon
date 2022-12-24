@@ -54,7 +54,6 @@ class ScanPS(Shell):
         try:
             output = self.receive(timeout=0.5)
             if not output:
-                self.LOG.debug("shell is unresponsive")
                 return
             self.send("/usr/bin/ps")
             for parent, procs in self.scan_msys(output).items():

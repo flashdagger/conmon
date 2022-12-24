@@ -808,11 +808,12 @@ class ConanParser:
 
         while not streams.exhausted:
             try:
-                stdout, stderr = streams.readboth(timeout=1.0)
+                stdout, stderr = streams.readboth(block=0.05, block_first=1.0)
             except KeyboardInterrupt:
                 with suppress(KeyboardInterrupt):
                     self.screen.reset()
                     CONMON_LOG.warning("Pressed Ctrl+C")
+                self.command.wait(terminate=True)
                 break
 
             if stderr:

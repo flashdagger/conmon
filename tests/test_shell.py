@@ -79,12 +79,12 @@ class TestShell:
     def test_streams(self, msys_bindir: Path):
         command = Command()
         command.run([msys_bindir / "ls", "ls.exe"], cwd=msys_bindir)
-        stdout, stderr = command.streams.readboth(timeout=0.1)
+        stdout, stderr = command.streams.readboth(block=0.1)
         assert stdout == ("ls.exe\n",)
         assert stderr == ()
 
         command.run([msys_bindir / "ls", "missing"], cwd=msys_bindir)
-        stdout, stderr = command.streams.readboth(timeout=0.2)
+        stdout, stderr = command.streams.readboth(block=0.2)
         assert stdout == ()
         assert stderr == (
             "/usr/bin/ls: cannot access 'missing': No such file or directory\n",
