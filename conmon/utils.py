@@ -242,7 +242,7 @@ class NullList(list):
 
 # pylint: disable=consider-using-with
 class CachedLines:
-    def __init__(self, max_size=1000):
+    def __init__(self, max_size=2**12):
         args = self._args = dict(
             mode="w+", max_size=max_size, buffering=1, encoding="utf-8", newline="\n"
         )
@@ -281,6 +281,10 @@ class CachedLines:
         fh = self._fh
         fh.seek(0)
         return iter(fh)
+
+    def __del__(self):
+        fh = self._fh
+        print("SpooledFile", "name:", fh.name, "size:", fh.tell())
 
 
 def freeze_json_object(obj) -> Hashable:

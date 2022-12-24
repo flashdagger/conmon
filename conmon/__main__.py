@@ -54,6 +54,7 @@ from .replay import ReplayCommand, replay_logfile
 from .shell import Command
 from .state import State, StateMachine
 from .utils import (
+    CachedLines,
     NullList,
     ScreenWriter,
     StrictConfigParser,
@@ -110,7 +111,7 @@ class DefaultDict(UserDict):
     STDOUT_LIST = list if conmon_setting("report.stdout", True) else NullList
     STDERR_LIST = list if conmon_setting("report.stderr", True) is True else NullList
     DEFAULT = {
-        "stdout": STDOUT_LIST,
+        "stdout": CachedLines,
         "stderr": STDERR_LIST,
         "export": STDOUT_LIST,
         "stderr_lines": list,
@@ -575,10 +576,11 @@ class Build(State):
             self.processed_tus(self.buildmon.translation_units)
         )
 
-        match_map = dict()  # pylint: disable=use-dict-literal
-        build_stdout = "\n".join(self.log["stdout"]) + "\n"
+        match_map = {}
         filter_by_regex(
-            build_stdout, match_map, **BuildRegex.dict("gnu", "msvc", "build")
+            self.log["stdout"].read(),
+            match_map,
+            **BuildRegex.dict("gnu", "msvc", "build"),
         )
 
         stderr_lines = self.log.pop("stderr_lines", ())
@@ -821,9 +823,8 @@ class ConanParser:
                 self.process_errors(stderr)
 
             if stdout:
-                if stderr_written:
-                    raw_fh.write(stdout_marker_start)
-                    stderr_written = False
+                raw_fh.write(stdout_marker_start)
+                stderr_written = False
 
                 for line in decolorize(stdout):
                     self.process_line(line)

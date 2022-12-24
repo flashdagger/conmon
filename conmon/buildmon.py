@@ -421,7 +421,7 @@ class BuildMonitor(Thread):
                         )
                 elif identify_compiler(name) and info["exe"] == "/bin/dash":
                     LOG.warning(
-                        "Async capture (%r)",
+                        "Async capture: %r",
                         shorten(" ".join(info["cmdline"]), width=60, strip="middle"),
                     )
                     continue
