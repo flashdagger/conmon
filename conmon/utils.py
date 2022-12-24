@@ -247,35 +247,47 @@ class CachedLines:
             mode="w+", max_size=max_size, buffering=1, encoding="utf-8", newline="\n"
         )
         self._fh = SpooledTemporaryFile(**args)
+        self._len = 0
 
     @property
     def name(self):
         return self._fh.name
 
-    def writelines(self, *lines, end="\n"):
+    def write(self, string: str):
         fh = self._fh
         fh.seek(0, 2)
-        fh.writelines(line + end for line in lines)
+        fh.write(string)
+        self._len += string.count("\n")
+
+    def extend(self, lines, end="\n"):
+        fh = self._fh
+        fh.seek(0, 2)
+        count = 0
+        for line in lines:
+            fh.write(line + end)
+            count += 1
+        self._len += count
 
     def append(self, line, end="\n"):
         fh = self._fh
         fh.seek(0, 2)
         fh.write(line + end)
+        self._len += 1
 
     def read(self):
         fh = self._fh
         fh.seek(0)
         return fh.read()
 
-    def readlines(self, keepends=True):
-        fh = self._fh
-        fh.seek(0)
-        if not keepends:
-            return [line[:-1] for line in fh.readlines()]
-        return fh.readlines()
-
     def clear(self):
         self._fh = SpooledTemporaryFile(**self._args)
+        self._len = 0
+
+    def __bool__(self):
+        return bool(self._len)
+
+    def __len__(self):
+        return self._len
 
     def __iter__(self):
         fh = self._fh

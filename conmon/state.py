@@ -31,6 +31,13 @@ class State:
     def process(self, parsed_line: Match) -> None:
         raise NotImplementedError
 
+    def process_errors(self):
+        pass
+
+    @property
+    def name(self):
+        return self.__class__.__name__
+
 
 class StateMachine:
     def __init__(

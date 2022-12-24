@@ -53,7 +53,9 @@ class ReplayStreamHandler(ProcessStreamHandler):
         with logfile.open("r", encoding="utf8") as fh:
             for line in fh:
                 match = re.fullmatch(
-                    r"^(?P<state>\[[A-Z][a-z]+] )?(?:-+ <(?P<pipe>[a-z]+)> -+)?(?P<line>.*\n)$",
+                    r"^(?P<state>\[[A-Z][a-z]+] )?"
+                    r"(?:-+ <(?P<pipe>[a-z]+)[^>]*> -+)?"
+                    r"(?P<line>.*\n)$",
                     line,
                 )
                 assert match, repr(line)

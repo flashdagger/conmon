@@ -8,12 +8,12 @@ import platform
 import re
 import sys
 import tempfile
+import time
 from collections import UserDict
 from configparser import ParsingError
 from contextlib import suppress
 from functools import partial
 from io import StringIO
-from itertools import chain
 from operator import itemgetter
 from pathlib import Path
 from subprocess import PIPE, STDOUT
@@ -38,8 +38,8 @@ from . import __version__, json
 from .buildmon import BuildMonitor
 from .conan import LOG as CONAN_LOG
 from .conan import call_cmd_and_version, conmon_setting
-from .logging import init as initialize_logging
 from .logging import UniqueLogger, level_from_name, get_logger, logger_escape_code
+from .logging import init as initialize_logging
 from .regex import (
     BUILD_STATUS_REGEX,
     BUILD_STATUS_REGEX2,
@@ -67,19 +67,20 @@ from .utils import (
     sorted_dicts,
     unique,
 )
-from .warnings import LOG as BLOG
 from .warnings import (
     BuildRegex,
     IgnoreRegex,
     levelname_from_severity,
     warnings_from_matches,
 )
+from .warnings import LOG as BLOG
 
 CONMON_LOG = get_logger("CONMON")
 CONAN_LOG_ONCE = UniqueLogger(CONAN_LOG)
 PARENT_PROCS = [parent.name() for parent in psutil.Process(os.getppid()).parents()]
 LOG_HINTS: Dict[str, Optional[int]] = {}
 LOG_WARNING_COUNT = conmon_setting("log.warning_count", True)
+START_OFFSET = psutil.Process().create_time()
 
 
 def filehandler(key: str, mode="w", hint="") -> TextIO:
@@ -114,7 +115,7 @@ class DefaultDict(UserDict):
         "stdout": CachedLines,
         "stderr": STDERR_LIST,
         "export": STDOUT_LIST,
-        "stderr_lines": list,
+        "stderr_lines": CachedLines,
     }
 
     def __getitem__(self, item):
@@ -124,6 +125,9 @@ class DefaultDict(UserDict):
             value = data[item] = defaultcls()
             return value
         return data[item]
+
+    def get(self, item, default=None):
+        return self.data.get(item, default)
 
     def setdefault(self, key, *args):
         if args:
@@ -334,9 +338,9 @@ class Package(State):
             return
 
     def _deactivate(self, final=False):
-        stderr_lines = self.log.pop("stderr_lines", ())
+        stderr_lines = self.log.pop("stderr_lines")
         if stderr_lines:
-            self.log["stderr"].extend(chain(*stderr_lines))
+            self.log["stderr"].extend((line[:-1] for line in stderr_lines))
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
 
@@ -382,6 +386,7 @@ class Build(State):
         self.log = parser.defaultlog
         self.ref = "???"
         self.force_status = False
+        self.warning_map: Dict[str, List[Match]] = {}
         if not Build.PROC_JSON_RESET:
             with filehandler("proc.json", hint="process debug json") as fh:
                 fh.write("{}")
@@ -565,6 +570,26 @@ class Build(State):
                 indent=2,
             )
 
+    def process_errors(self):
+        stderr_lines = self.log.get("stderr_lines")
+        if not stderr_lines:
+            return
+
+        CONMON_LOG.warning("Build: %s warning lines", len(stderr_lines))
+        build_stderr = filter_by_regex(
+            stderr_lines.read(),
+            self.warning_map,
+            **BuildRegex.dict("gnu", "msvc", "cmake", "autotools"),
+        )
+        build_stderr = filter_by_regex(
+            build_stderr,
+            {},
+            **IgnoreRegex.dict(),
+        )
+        stderr_lines.clear()
+        if build_stderr:
+            self.log["stderr"].extend(build_stderr.splitlines(keepends=False))
+
     def _deactivate(self, final=False):
         self.force_status = False
         self.flush_warning_count()
@@ -572,32 +597,18 @@ class Build(State):
         self.buildmon.stop()
         self.dump_debug_proc()
 
+        self.process_errors()
+        self.log.pop("stderr_lines")
         self.log["translation_units"] = list(
             self.processed_tus(self.buildmon.translation_units)
         )
 
-        match_map = {}
+        match_map = self.warning_map
         filter_by_regex(
             self.log["stdout"].read(),
             match_map,
             **BuildRegex.dict("gnu", "msvc", "build"),
         )
-
-        stderr_lines = self.log.pop("stderr_lines", ())
-        if stderr_lines:
-            self.log["stderr"].extend(chain(*stderr_lines))
-            build_stderr = filter_by_regex(
-                "\n".join(self.log["stderr"]) + "\n",
-                match_map,
-                **BuildRegex.dict("gnu", "msvc", "cmake", "autotools"),
-            )
-            build_stderr = filter_by_regex(
-                build_stderr,
-                {},
-                **IgnoreRegex.dict(),
-            )
-        else:
-            build_stderr = ""
 
         self.log["warnings"] = list(
             sorted_dicts(
@@ -616,10 +627,11 @@ class Build(State):
             )
         )
 
-        build_stderr = "".join(
-            unique(shorten_lines(build_stderr, 20).splitlines(keepends=True))
-        ).rstrip()
-        if build_stderr:
+        stderr_lines = self.log.get("stderr", None)
+        if stderr_lines:
+            build_stderr = "".join(
+                unique(shorten_lines("\n".join(stderr_lines), 20))
+            ).rstrip()
             CONMON_LOG.debug(
                 "unprocessed stderr:\n%s",
                 indent(shorten_conan_path(build_stderr), "  "),
@@ -665,9 +677,9 @@ class RunTest(State):
         self.log["stdout"].append(parsed_line.group(0))
 
     def _deactivate(self, final=False):
-        stderr_lines = self.log.pop("stderr_lines", ())
+        stderr_lines = self.log.pop("stderr_lines")
         if stderr_lines:
-            self.log["stderr"].extend(chain(*stderr_lines))
+            self.log["stderr"].extend((line[:-1] for line in stderr_lines))
         self.parser.setdefaultlog()
         super()._deactivate(final=True)
 
@@ -730,9 +742,9 @@ class ConanParser:
     def process_errors(self, lines: Iterable[str]):
         processed: List[str] = []
         loglevel: int = logging.WARNING
-        residue: List[str] = []
         stderr: List[str] = []
         ref: Optional[str] = None
+        residue = self.defaultlog["stderr_lines"]
 
         def flush():
             if not processed:
@@ -778,10 +790,10 @@ class ConanParser:
                 stderr.append(line)
             else:
                 residue.append(line)
-
         flush()
-        if residue:
-            self.defaultlog["stderr_lines"].append(residue)
+        state = self.states.active_instance()
+        if residue and state:
+            state.process_errors()
 
     def process_line(self, line: str):
         line = line.rstrip()
@@ -795,10 +807,13 @@ class ConanParser:
         self.states.process_hooks(parsed_line)
 
     def process_streams(self, raw_fh: TextIO):
+        def marker(pipe: str, time_offset=True):
+            _marker = f" <{pipe}> "
+            if time_offset:
+                _marker = f" <{pipe}@{time.time() - START_OFFSET}> "
+            return f"{_marker:-^120}\n"
+
         streams = self.command.streams
-        marker = "{:-^120}\n"
-        stderr_marker_start = marker.format(" <stderr> ")
-        stdout_marker_start = marker.format(" <stdout> ")
         stderr_written = True
         log_states = conmon_setting("conan.log.states", False)
         decolorize = cast(
@@ -818,20 +833,20 @@ class ConanParser:
 
             if stderr:
                 if not stderr_written:
-                    raw_fh.write(stderr_marker_start)
+                    raw_fh.write(marker("stderr"))
                     stderr_written = True
                 raw_fh.writelines(decolorize(stderr))
                 self.process_errors(stderr)
 
             if stdout:
-                raw_fh.write(stdout_marker_start)
+                raw_fh.write(marker("stdout"))
                 stderr_written = False
 
                 for line in decolorize(stdout):
                     self.process_line(line)
                     if log_states and line:
                         state = self.states.active_instance()
-                        name = state and type(state).__name__
+                        name = state and state.name
                         raw_fh.write(f"[{name}] {line}")
                     else:
                         raw_fh.write(line)
