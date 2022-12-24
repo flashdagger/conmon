@@ -126,8 +126,8 @@ class DefaultDict(UserDict):
             return value
         return data[item]
 
-    def get(self, item, default=None):
-        return self.data.get(item, default)
+    def get(self, key, default=None):
+        return self.data.get(key, default)
 
     def setdefault(self, key, *args):
         if args:

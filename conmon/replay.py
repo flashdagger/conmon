@@ -30,10 +30,12 @@ def replay_json(setting: str, key: Optional[str] = None) -> Dict[str, Any]:
     logfile = replay_logfile(setting)
     if logfile is None:
         return {}
-    with logfile.open("r", encoding="utf8") as fh:
-        if key is None:
-            return json.load(fh)
-        return json_stream.load(fh, persistent=True).get(key, {})
+    fh = logfile.open("r", encoding="utf8")
+    stream = json_stream.load(fh, persistent=not key)
+    if key:
+        with fh:
+            return json.manifest(stream.get(key, {}))
+    return stream
 
 
 # pylint: disable=too-few-public-methods

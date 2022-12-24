@@ -34,6 +34,7 @@ from typing import (
 )
 
 import colorama
+from json_stream.base import StreamingJSONObject, StreamingJSONList
 from psutil import Popen
 
 T = TypeVar("T", bound=Hashable)
@@ -306,9 +307,9 @@ class CachedLines:
 def freeze_json_object(obj) -> Hashable:
     if isinstance(obj, set):
         return tuple((freeze_json_object(value) for value in sorted(obj)))
-    if isinstance(obj, (list, tuple)):
+    if isinstance(obj, (list, tuple, StreamingJSONList)):
         return tuple(freeze_json_object(value) for value in obj)
-    if isinstance(obj, dict):
+    if isinstance(obj, (dict, StreamingJSONObject)):
         return MappingPair(
             (key, freeze_json_object(value)) for key, value in obj.items()
         )

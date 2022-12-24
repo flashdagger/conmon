@@ -5,14 +5,22 @@ from collections import UserDict
 from pathlib import Path
 from typing import TextIO
 
+from json_stream.base import StreamingJSONObject, StreamingJSONList
 from json_stream import streamable_list
 from json_stream.dump import JSONStreamEncoder
 
 from .utils import CachedLines
 
-
 loads = json.loads  # pylint: disable=self-assigning-variable
 load = json.load  # pylint: disable=self-assigning-variable
+
+
+def manifest(obj):
+    if isinstance(obj, StreamingJSONList):
+        return [manifest(item) for item in obj]
+    if isinstance(obj, StreamingJSONObject):
+        return {key: manifest(value) for key, value in obj.items()}
+    return obj
 
 
 class Encoder(JSONStreamEncoder):
