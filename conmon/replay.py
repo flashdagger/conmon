@@ -2,7 +2,6 @@
 # -*- coding: UTF-8 -*-
 
 import re
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -21,8 +20,8 @@ def replay_logfile(setting: str, create_if_not_exists=True) -> Optional[Path]:
         return None
     path = Path(logfile)
     replay_path = path.with_suffix(f".replay{path.suffix}")
-    if not replay_path.is_file() and create_if_not_exists:
-        shutil.copy2(path, replay_path)
+    if not replay_path.exists() and create_if_not_exists:
+        path.rename(replay_path)
     return replay_path
 
 
