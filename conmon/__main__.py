@@ -8,7 +8,6 @@ import platform
 import re
 import sys
 import tempfile
-import time
 from collections import UserDict
 from configparser import ParsingError
 from contextlib import suppress
@@ -75,7 +74,6 @@ CONAN_LOG_ONCE = UniqueLogger(CONAN_LOG)
 PARENT_PROCS = [parent.name() for parent in psutil.Process(os.getppid()).parents()]
 LOG_HINTS: Dict[str, Optional[int]] = {}
 LOG_WARNING_COUNT = conmon_setting("log.warning_count", True)
-START_OFFSET = psutil.Process().create_time()
 
 
 def log_stderr():
@@ -779,10 +777,10 @@ class ConanParser:
         flush()
 
     def process_streams(self, raw_fh: TextIO):
-        def marker(pipe: str, time_offset=True):
+        def marker(pipe: str, timestamp=None):
             _marker = f" <{pipe}> "
-            if time_offset:
-                _marker = f" <{pipe}@{time.time() - START_OFFSET}> "
+            if timestamp:
+                _marker = f" <{pipe}@{timestamp}> "
             return f"{_marker:-^120}\n"
 
         streams = self.command.streams
@@ -805,13 +803,15 @@ class ConanParser:
 
             if stderr:
                 if not stderr_written:
-                    raw_fh.write(marker("stderr"))
+                    raw_fh.write(
+                        marker("stderr", timestamp=streams.stderr.last_timestamp)
+                    )
                     stderr_written = True
                 raw_fh.writelines(decolorize(stderr))
                 self.process_errors(stderr)
 
             if stdout:
-                raw_fh.write(marker("stdout"))
+                raw_fh.write(marker("stdout", timestamp=streams.stdout.last_timestamp))
                 stderr_written = False
 
                 for line in decolorize(stdout):

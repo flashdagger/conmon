@@ -158,6 +158,7 @@ class AsyncPipeReader:
     def __init__(self, pipe: Optional[IO]):
         self.queue: Queue[str] = Queue()
         self.thread = Thread(target=self.reader, args=[pipe, self.queue])
+        self._timestamp_offset = self._timestamp = time.time()
         self.thread.start()
 
     @staticmethod
@@ -175,6 +176,10 @@ class AsyncPipeReader:
     def not_empty(self) -> bool:
         return not self.queue.empty()
 
+    @property
+    def last_timestamp(self):
+        return self._timestamp - self._timestamp_offset
+
     def readlines(
         self, block: Union[bool, float] = False, block_first: Union[bool, float] = False
     ) -> Iterator[str]:
@@ -187,6 +192,7 @@ class AsyncPipeReader:
             return
 
         default_kwargs = kwargs(block)
+        time_set = False
         with suppress(Empty, AssertionError):
             while True:
                 if block_first is not False:
@@ -195,11 +201,17 @@ class AsyncPipeReader:
                 else:
                     line = self.queue.get(**default_kwargs)
 
+                if not time_set:
+                    self._timestamp = time.time()
+                    time_set = True
+
                 assert line
                 yield line
 
     def readline(self) -> str:
-        return self.queue.get(block=True)
+        line = self.queue.get(block=True)
+        self._timestamp = time.time()
+        return line
 
 
 class ProcessStreamHandler:

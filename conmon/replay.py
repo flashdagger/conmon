@@ -39,8 +39,14 @@ def replay_json(setting: str, key: Optional[str] = None) -> Dict[str, Any]:
 
 # pylint: disable=too-few-public-methods
 class ReplayStreamHandler(ProcessStreamHandler):
+    class DummyPipe:
+        def __init__(self):
+            self.last_timestamp = 0.0
+
     def __init__(self, *_args):
         super().__init__()
+        self.stdout = self.DummyPipe()
+        self.stderr = self.DummyPipe()
         self._exhausted = False
         self.loglines = self._readlines(replay_logfile("conan.log"))
 
@@ -50,33 +56,39 @@ class ReplayStreamHandler(ProcessStreamHandler):
             return
 
         pipe = "stdout"
+        timestamp = None
         loglines: List[str] = []
         with logfile.open("r", encoding="utf8") as fh:
             for line in fh:
                 match = re.fullmatch(
                     r"^(?P<state>\[[A-Z][a-z]+] )?"
-                    r"(?:-+ <(?P<pipe>[a-z]+)[^>]*> -+)?"
+                    r"(?:-+ <(?P<pipe>[a-z]+)@?(?P<timestamp>\d+\.\d+)?> -+)?"
                     r"(?P<line>.*\n)$",
                     line,
                 )
                 assert match, repr(line)
                 if match.group("pipe"):
                     if loglines:
-                        yield pipe, tuple(loglines)
+                        yield pipe, timestamp, tuple(loglines)
                         loglines.clear()
-                    pipe = match.group("pipe")
+                    pipe, timestamp = match.group("pipe", "timestamp")
                 else:
                     loglines.append(match.group("line"))
 
         if loglines:
-            yield pipe, tuple(loglines)
+            yield pipe, timestamp, tuple(loglines)
 
     @property
     def exhausted(self) -> bool:
         return self._exhausted
 
     def readboth(self, block=False, block_first=False):
-        pipe, loglines = next(self.loglines, (None, ()))
+        pipe, timestamp_str, loglines = next(self.loglines, (None, None, ()))
+        if timestamp_str:
+            timestamp = float(timestamp_str)
+            obj = self.stderr if pipe == "stderr" else self.stdout
+            obj.last_timestamp = timestamp
+
         if not loglines:
             self._exhausted = True
             return (), ()
