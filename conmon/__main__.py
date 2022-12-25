@@ -420,9 +420,6 @@ class Build(State):
             self.log["stderr"].saveposition(self)
             self.log["stdout"].saveposition(self)
             self.buildmon.start()
-            proc_json = getattr(self.parser.command, "proc_json", {})
-            for proc_info in proc_json.get(self.ref, ()):
-                self.buildmon.proc_cache[freeze_json_object(proc_info)] = None
             return True
         return False
 
@@ -611,6 +608,11 @@ class Build(State):
         self.force_status = False
         self.flush_warning_count()
         self.parser.screen.reset()
+
+        proc_json = getattr(self.parser.command, "proc_json", {})
+        for proc_info in proc_json.get(self.ref, ()):
+            self.buildmon.proc_cache[freeze_json_object(proc_info)] = None
+
         self.buildmon.stop()
         self.dump_debug_proc()
         self.flush()
@@ -762,9 +764,6 @@ class ConanParser:
             CONAN_LOG_ONCE.log(loglevel, "\n".join(_lines))
             self.getdefaultlog(ref)["stderr"].extend(stderr)
 
-        if not "".join(lines).rstrip():
-            return
-
         for line in lines:
             match = BuildRegex.CONAN.match(line)
             line = line.rstrip("\n")
@@ -889,11 +888,12 @@ def monitor(args: List[str], replay=False) -> int:
     conan_command.extend(args)
     command = ReplayCommand() if replay else Command()
     command.run(conan_command, stderr=log_stderr())
+
     cycle_time_s = conmon_setting("build.monitor", True)
-    if isinstance(cycle_time_s, float):
-        BuildMonitor.CYCLE_TIME_S = cycle_time_s
-    elif not cycle_time_s:
-        BuildMonitor.ACTIVE = False
+    if isinstance(cycle_time_s, (float, int)):
+        BuildMonitor.CYCLE_TIME_S = float(cycle_time_s)
+    BuildMonitor.ACTIVE = not (replay or cycle_time_s is False)
+
     parser = ConanParser(command)
     for item in ("conan.log", "report.json", "proc.json"):
         # copy replay file before opening or delete old ones

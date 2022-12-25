@@ -255,12 +255,13 @@ class BuildMonitor(Thread):
         if not self.ACTIVE:
             return
         self.stop()
-        assert not self.is_alive()
         # pylint: disable=unnecessary-dunder-call
         self.__init__(self.proc.pid)  # type: ignore
         super().start()
+        LOG.debug("scanning subprocesses of pid %s", self.proc.pid)
 
     def stop(self):
+        self.finalize()
         if not self.is_alive():
             return
         self.finish.set()
@@ -429,20 +430,7 @@ class BuildMonitor(Thread):
         self.seen_proc = children
 
     # noinspection PyBroadException
-    def run(self):
-        while self.proc.is_running() and not self.finish.is_set():
-            t_start = time.monotonic()
-            self.scan()
-            t_diff = time.monotonic() - t_start
-            if t_diff:
-                self.timing.append(t_diff)
-            sleep_time_s = self.CYCLE_TIME_S - t_diff
-            if sleep_time_s > 0.0:
-                time.sleep(sleep_time_s)
-
-        if self.shell.is_running():
-            self.shell.exit()
-
+    def finalize(self):
         for frozen_info in self.proc_cache:
             info_map = self.proc_cache[frozen_info] = unfreeze_json_object(frozen_info)
             name = info_map["name"]
@@ -471,3 +459,17 @@ class BuildMonitor(Thread):
             hrs(mean(self.timing)),
             hrs(median(self.timing)),
         )
+
+    def run(self):
+        while self.proc.is_running() and not self.finish.is_set():
+            t_start = time.monotonic()
+            self.scan()
+            t_diff = time.monotonic() - t_start
+            if t_diff:
+                self.timing.append(t_diff)
+            sleep_time_s = self.CYCLE_TIME_S - t_diff
+            if sleep_time_s > 0.0:
+                time.sleep(sleep_time_s)
+
+        if self.shell.is_running():
+            self.shell.exit()
