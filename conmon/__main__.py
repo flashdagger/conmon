@@ -149,11 +149,17 @@ class Default(State):
 
     def process(self, parsed_line: Match) -> None:
         line, ref, rest = parsed_line.group(0, "ref", "rest")
-        match = re.fullmatch(r"Downloading conan\w+\.[a-z]{2,3}", line)
+        if ref and "is locked by another concurrent conan process" in rest:
+            self.parser.command.wait(terminate=True)
+            CONAN_LOG.warning(line)
+            self.parser.defaultlog["stdout"].append(line)
+            self.deactivate()
+            return
 
         if rest.startswith("Installing (downloading, building) binaries..."):
             self.overwrite = True
 
+        match = re.fullmatch(r"Downloading conan\w+\.[a-z]{2,3}", line)
         if match:
             log = self.parser.getdefaultlog(self.last_ref)
             self.screen.print(f"{match.group()} for {self.last_ref} ", overwrite=True)
@@ -383,7 +389,6 @@ class Build(State):
         self.warnings = 0
         self.buildmon = BuildMonitor(self.parser.command.proc.pid)
         self.log = parser.defaultlog
-        self.stderr = self.stdout = None
         self.ref = "???"
         self.force_status = False
         self.warning_map: Dict[str, List[Match]] = {}
@@ -412,8 +417,8 @@ class Build(State):
             defaultlog = self.parser.getdefaultlog(self.ref)
             defaultlog["stdout"].append(full_line)
             self.log = self.parser.defaultlog = defaultlog[self.REF_LOG_KEY]
-            self.stderr = self.log["stderr"].reader()
-            self.stdout = self.log["stdout"].reader()
+            self.log["stderr"].saveposition(self)
+            self.log["stdout"].saveposition(self)
             self.buildmon.start()
             proc_json = getattr(self.parser.command, "proc_json", {})
             for proc_info in proc_json.get(self.ref, ()):
@@ -578,17 +583,19 @@ class Build(State):
             )
 
     def flush(self):
-        stderr = self.stderr
-        for pipe in (stderr, self.stdout):
-            if not pipe:
+        for name in ("stderr", "stdout"):
+            pipe = self.log[name]
+            if pipe.empty(self):
                 continue
             residue_str = filter_by_regex(
-                pipe.read(),
+                pipe.read(marker=self),
                 self.warning_map,
                 **BuildRegex.dict("gnu", "msvc", "cmake", "autotools"),
             )
-            pipe.reset()
-            if pipe is not stderr:
+            if not conmon_setting(f"report.build.{name}", True):
+                pipe.clear()
+            pipe.saveposition(self)
+            if name != "stderr":
                 continue
             residue_str = filter_by_regex(
                 residue_str,
@@ -607,12 +614,6 @@ class Build(State):
         self.buildmon.stop()
         self.dump_debug_proc()
         self.flush()
-        if not conmon_setting("report.build.stderr", True):
-            self.stderr = None
-            self.log.pop("stderr")
-        if not conmon_setting("report.build.stdout", True):
-            self.stdout = None
-            self.log.pop("stdout")
         self.log["translation_units"] = list(
             self.processed_tus(self.buildmon.translation_units)
         )
@@ -784,17 +785,6 @@ class ConanParser:
                 residue.append(line)
         flush()
 
-    def process_line(self, line: str):
-        line = line.rstrip()
-        parsed_line = self.parse_line(line)
-        ref, rest = parsed_line.group("ref", "rest")
-
-        if ref and "is locked by another concurrent conan process" in rest:
-            CONAN_LOG.warning(line)
-            self.command.wait(kill=True)
-
-        self.states.process_hooks(parsed_line)
-
     def process_streams(self, raw_fh: TextIO):
         def marker(pipe: str, time_offset=True):
             _marker = f" <{pipe}> "
@@ -832,7 +822,7 @@ class ConanParser:
                 stderr_written = False
 
                 for line in decolorize(stdout):
-                    self.process_line(line)
+                    self.states.process_hooks(self.parse_line(line))
                     if log_states and line:
                         state = self.states.active_instance()
                         name = state and state.name

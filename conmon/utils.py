@@ -225,30 +225,6 @@ class MappingPair(tuple):
     pass
 
 
-class CachedLinesReader:
-    def __init__(self, fh: SpooledTemporaryFile):
-        self._fh = fh
-        self._pos = fh.tell()
-
-    def read(self, hint=-1):
-        fh = self._fh
-        fh.seek(self._pos)
-        return fh.read(hint)
-
-    def reset(self):
-        fh = self._fh
-        fh.seek(0, 2)
-        self._pos = fh.tell()
-
-    def __bool__(self):
-        return self._fh.tell() > self._pos
-
-    def __iter__(self):
-        fh = self._fh
-        fh.seek(self._pos)
-        return iter(fh)
-
-
 # pylint: disable=consider-using-with
 class CachedLines:
     """this class mimics a list of string lines
@@ -257,19 +233,20 @@ class CachedLines:
     disk saving memory consumption
     """
 
-    def __init__(self, max_size=2**12):
+    def __init__(self, max_size=2**12) -> None:
         args = self._args = dict(
             mode="w+", max_size=max_size, buffering=1, encoding="utf-8", newline="\n"
         )
-        self._fh = SpooledTemporaryFile(**args)
         self._len = 0
+        self._positions: Dict[int, int] = {}
+        self._fh = SpooledTemporaryFile(**args)
 
     @property
     def name(self):
         return self._fh.name
 
-    def reader(self):
-        return CachedLinesReader(self._fh)
+    def saveposition(self, obj: Hashable):
+        self._positions[hash(obj)] = self._fh.tell()
 
     def write(self, string: str):
         fh = self._fh
@@ -277,7 +254,7 @@ class CachedLines:
         fh.write(string)
         self._len += string.count("\n")
 
-    def extend(self, lines, end="\n"):
+    def extend(self, lines: Iterator[str], end="\n"):
         fh = self._fh
         fh.seek(0, 2)
         count = 0
@@ -286,19 +263,33 @@ class CachedLines:
             count += 1
         self._len += count
 
-    def append(self, line, end="\n"):
+    def append(self, line: str, end="\n"):
         fh = self._fh
         fh.seek(0, 2)
         fh.write(line + end)
         self._len += 1
 
-    def read(self, hint=-1):
+    def read(self, hint=-1, marker: Hashable = None):
         fh = self._fh
-        fh.seek(0)
+        position = 0 if marker is None else self._positions[hash(marker)]
+        fh.seek(position)
         return fh.read(hint)
+
+    def iterlines(self, marker: Hashable = None):
+        fh = self._fh
+        position = 0 if marker is None else self._positions[hash(marker)]
+        fh.seek(position)
+        return iter(fh)
+
+    def empty(self, marker: Hashable = None):
+        position = 0 if marker is None else self._positions[hash(marker)]
+        tell = self._fh.tell()
+        assert tell >= position, "corrupted file pointer"
+        return tell == position
 
     def clear(self):
         self._fh = SpooledTemporaryFile(**self._args)
+        self._positions.clear()
         self._len = 0
 
     def __bool__(self):
