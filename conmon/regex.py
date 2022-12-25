@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 import re
-from typing import Dict, Iterator, List, Match, Optional, Pattern, Tuple, Union
+from typing import Dict, Iterator, List, Match, Optional, Pattern, Tuple, Union, Set
 
 from .conan import storage_path
 
@@ -94,6 +94,7 @@ CMAKE_BUILD_PATH_REGEX = re.compile(
         )
     """
 )
+HASH_SET: Set[int] = set()
 
 
 def shorten_conan_path(text: str, placeholder=r"...\g<sep>", count=0) -> str:
@@ -127,12 +128,22 @@ def finditer(
     yield None, string[span_end:]
 
 
+def unique_matches(matches: List[Optional[Match]]) -> Iterator[Match]:
+    for match in matches:
+        if not match:
+            continue
+        _hash = hash(match.group().lstrip())
+        if _hash not in HASH_SET:
+            HASH_SET.add(_hash)
+            yield match
+
+
 def filter_by_regex(
     string: str, mapping: Dict[str, List[Match]], **patterns: Union[Pattern[str], str]
 ) -> str:
     for name, pattern in patterns.items():
         matches, strings = zip(*finditer(pattern, string))
         string = "".join(strings)
-        mapping.setdefault(name, []).extend(matches[:-1])
+        mapping.setdefault(name, []).extend(unique_matches(matches))
 
     return string

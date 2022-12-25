@@ -6,15 +6,14 @@ import re
 from collections import Counter
 from contextlib import suppress
 from itertools import groupby, islice
-from typing import Any, Callable, Dict, Generator, Iterable, Match, Optional, Set, Tuple
+from typing import Any, Callable, Dict, Iterator, Iterable, Match, Optional, Tuple
 
 from .logging import UniqueLogger, get_logger
 from .regex import REF_REGEX, Regex, compact_pattern, shorten_conan_path
-from .utils import added_first, get_terminal_width, shorten_per_line
+from .utils import get_terminal_width, shorten_per_line
 
 LOG = get_logger("BUILD")
 LOG_ONCE = UniqueLogger(LOG)
-_PROCESSED: Set[str] = set()
 
 
 class BuildRegex(Regex):
@@ -181,15 +180,11 @@ def show_stats(stats):
                 LOG.info(template, key, value)
 
 
-def warnings_from_matches(
-    **kwargs: Iterable[Match],
-) -> Generator[Dict[str, Any], None, None]:
+def warnings_from_matches(**kwargs: Iterable[Match]) -> Iterator[Dict[str, Any]]:
     stats: Dict[Tuple[str, str], int] = Counter()
 
     for name, matches in kwargs.items():
         for match in matches:
-            if not added_first(_PROCESSED, match.group().lstrip()):
-                continue
             mapping = {
                 key: value
                 for key, value in match.groupdict().items()
