@@ -753,8 +753,10 @@ class ConanParser:
                         keep_first=False,
                     )
                 ]
-            CONAN_LOG_ONCE.log(loglevel, "\n".join(_lines))
-            self.getdefaultlog(ref)["stderr"].extend(stderr)
+            msg = "\n".join(_lines)
+            if msg.rstrip():
+                CONAN_LOG_ONCE.log(loglevel, msg)
+                self.getdefaultlog(ref)["stderr"].extend(stderr)
 
         for line in lines:
             match = BuildRegex.CONAN.match(line)
