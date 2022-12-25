@@ -55,7 +55,7 @@ class BuildRegex(Regex):
         (?P<hint>
             (?:
                 \ +\d+\ \|\ .+\n(?:\ +\|\ .*\n)*
-            )+            
+            )+
             | .+\n[ ~]*\^[ ~]*(?:\n\ *[\w =();]+)?\n
         )?
         """
@@ -195,6 +195,10 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> Iterator[Dict[str, Any]]
                     value is None and key in {"column", "hint", "context", "project"}
                 )
             }
+            if name == "autotools" and not (
+                mapping.get("severity") or mapping.get("line")
+            ):
+                continue
             convert(mapping, int, "line", "column")
             convert(
                 mapping,
