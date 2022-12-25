@@ -11,8 +11,8 @@ output = [
     "\u2018Em_FilteringQmFu_processSensorSignals\u2019:",
     "src/main/src/Em_FilteringQmFu.c:266:5: warning: implicit declaration of function "
     "\u2018memset\u2019 [-Wimplicit-function-declaration]",
-    "     memset(&reicevedSignals, 0, sizeof(reicevedSignals));",
-    "     ^~~~~~",
+    "     | memset(&reicevedSignals, 0, sizeof(reicevedSignals));",
+    "       ^~~~~~",
     "C:\\source_subfolder\\source\\common\\x86\\seaintegral.asm:92: warning: improperly calling "
     "multi-line macro `SETUP_STACK_POINTER' with 0 parameters [-w+macro-params-legacy]",
     "In file included from C:\\conan\\data\\source_subfolder\\zutil.c:10:",
@@ -207,8 +207,8 @@ dataset = [
                 "category": "-Wimplicit-function-declaration",
                 "project": None,
                 "hint": ""
-                "     memset(&reicevedSignals, 0, sizeof(reicevedSignals));\n"
-                "     ^~~~~~\n",
+                "     | memset(&reicevedSignals, 0, sizeof(reicevedSignals));\n"
+                "       ^~~~~~\n",
             },
             {
                 "context": None,

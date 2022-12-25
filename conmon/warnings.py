@@ -47,13 +47,15 @@ class BuildRegex(Regex):
             (?:\)\ ?)?
         )?
         :\ #
-        (?P<severity>warning|error|ERROR|note|message|fatal\ error)\ ?:\ #
+        (?P<severity>(?i:warning|error|note|message|fatal\ error))\ ?:\ #
         (?P<info>.*?)
         (\ \[(?P<category>[\w#=+\-]+)])?
         (\ \[ (?P<project>[^]\n]+) ])?
         \n
         (?P<hint>
-            (?:\ +\d*\ \|[^\n]+\n)+
+            (?:
+                \ +\d+\ \|\ .+\n(?:\ +\|\ .*\n)*
+            )+            
             | .+\n[ ~]*\^[ ~]*(?:\n\ *[\w =();]+)?\n
         )?
         """
@@ -118,6 +120,7 @@ class BuildRegex(Regex):
 class IgnoreRegex(Regex):
     STOP = re.compile(r"(?m)^Stop.\n")
     EMPTY_LINES = re.compile(r"(?m)^\s*\n")
+    # EMPTY_LINES = re.compile(r"^\s*\n+|(?<=[^\n]\n{3})\n+")
     MAKE_WARNINGS = re.compile(r"(?m)^make(\[\d+])?: \*.+\n")
     MSVC_TOOLS = re.compile(r"(?m)^(Microsoft|Copyright) \([RC]\) .+\n")
     WARNINGS_GENERATED = re.compile(r"(?m)^\d+ warnings?.* generated\.\n")

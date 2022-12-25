@@ -169,8 +169,8 @@ def test_filter_by_regex():
     residue = filter_by_regex(string, matchmap, x="foo", a=" a+", b=" b+", d=" d+")
     assert residue == " c"
     assert {name: len(matches) for name, matches in matchmap.items()} == {
-        "a": 7,
-        "b": 6,
+        "a": 2,
+        "b": 3,
         "d": 0,
         "x": 0,
     }
