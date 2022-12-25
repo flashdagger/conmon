@@ -53,28 +53,6 @@ REF_REGEX = re.compile(
      )
     """
 )
-BUILD_STATUS_REGEX = re.compile(
-    r"""(?x)
-        (?P<status>
-            \[\ {0,2}\d+(?:%|[/\d]+) ] | \ +(?:CC|CCLD|CPPAS)(?=\ )
-        )?  # ninja, cmake or automake
-        .*? # msbuild prints only the filename
-        (?P<file>
-            [\-.\w/\\]+ (?(status) \.[a-z]{1,3}$ | \.(?:asm|cpp|cxx|cc?|[sS])$ )
-        )
-"""
-)
-BUILD_STATUS_REGEX2 = re.compile(
-    r"""(?x)
-        (?P<status>$)?    # should never match
-        .*\ [-/]c\ .*?    # compile but don't link
-        (?P<file>
-            (?:[a-zA-Z]:)? [\-.\w/\\]+ \. (?:asm|cpp|cxx|cc?|[sS])
-            \b
-        )
-    """
-)
-
 CMAKE_BUILD_PATH_REGEX = re.compile(
     r"""(?x)
         (^|/)
@@ -94,6 +72,17 @@ CMAKE_BUILD_PATH_REGEX = re.compile(
         )
     """
 )
+FILEPATH = re.compile(
+    r"""(?x)
+        (?:[^ ].*\ )?
+        (?P<path>
+          [\-.\w/\\]+
+          \.(?i:asm|s|c(?:pp|xx|c)?)
+          (?:\.[a-z]{1,3})?
+        )\b
+    """
+)
+BUILDSTATUS = re.compile(r"\[ {0,2}\d+(?:%|[/\d]+)]| {2}(?:CC|CCLD|CPPAS)(?= )")
 HASH_SET: Set[int] = set()
 
 
@@ -147,3 +136,21 @@ def filter_by_regex(
         mapping.setdefault(name, []).extend(unique_matches(matches))
 
     return string
+
+
+def build_status(line: str) -> Tuple[Optional[str], Optional[str]]:
+    match = BUILDSTATUS.match(line)
+    if match:
+        return match.group().lstrip(), line.rsplit(maxsplit=1)[1]
+
+    if line.startswith(" "):
+        return None, None
+
+    match = FILEPATH.match(line)
+    if match:
+        start = match.start("path")
+        file = match.group("path")
+        if line == file or any(f" {item} " in line[:start] for item in ("-c", "/c")):
+            return None, file
+
+    return None, None

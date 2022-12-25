@@ -40,11 +40,10 @@ from .conan import call_cmd_and_version, conmon_setting
 from .logging import UniqueLogger, level_from_name, get_logger, logger_escape_code
 from .logging import init as initialize_logging
 from .regex import (
-    BUILD_STATUS_REGEX,
-    BUILD_STATUS_REGEX2,
     CMAKE_BUILD_PATH_REGEX,
     DECOLORIZE_REGEX,
     REF_REGEX,
+    build_status,
     compact_pattern,
     filter_by_regex,
     shorten_conan_path,
@@ -442,20 +441,15 @@ class Build(State):
             return
 
         self.log["stdout"].append(parsed_line.group())
-        if line.startswith(" "):
-            match = None
-        else:
-            match = BUILD_STATUS_REGEX.fullmatch(line) or BUILD_STATUS_REGEX2.match(
-                line
-            )
-        if match:
-            status, file = match.groups()
+        status, file = build_status(line)
+        if file:
             if status:
                 self.force_status = True
             elif self.force_status:
                 return
             self.flush_warning_count()
-            with suppress(ValueError, AttributeError):
+            with suppress(ValueError, AssertionError):
+                assert status
                 _current, _total = status.strip("[]").split("/")
                 status = f"[{_current:>{len(_total)}}/{_total}]"
             prefix = f"{status} " if status else ""

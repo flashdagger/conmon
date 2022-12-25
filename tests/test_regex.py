@@ -7,6 +7,7 @@ import conmon.regex
 from conmon.regex import (
     CMAKE_BUILD_PATH_REGEX,
     REF_REGEX,
+    build_status,
     filter_by_regex,
     shorten_conan_path,
 )
@@ -174,3 +175,27 @@ def test_filter_by_regex():
         "d": 0,
         "x": 0,
     }
+
+
+status = [
+    ("blocksort.c", (None, "blocksort.c")),
+    ("  CCLD     libmisc", ("CCLD", "libmisc")),
+    (
+        "[ 10%] Building C object CMakeFiles/bz2.dir/src/blocksort.c.obj",
+        ("[ 10%]", "CMakeFiles/bz2.dir/src/blocksort.c.obj"),
+    ),
+    (
+        "[574/606] Building CXX object CMakeFiles/DataPostgreSQL.dir/src/SessionImpl.cpp.o",
+        ("[574/606]", "CMakeFiles/DataPostgreSQL.dir/src/SessionImpl.cpp.o"),
+    ),
+    (
+        "clang  -MT crypto/asn1/asn1_lib.o -c -o crypto/asn1/asn1_lib.o crypto/asn1/asn1_lib.c",
+        (None, "crypto/asn1/asn1_lib.c"),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", status)
+def test_build_status(case):
+    line, (bstatus, file) = case
+    assert build_status(line) == (bstatus, file)
