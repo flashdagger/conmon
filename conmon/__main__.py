@@ -16,7 +16,7 @@ from functools import partial
 from io import StringIO
 from operator import itemgetter
 from pathlib import Path
-from subprocess import PIPE, STDOUT
+from subprocess import PIPE, STDOUT, DEVNULL
 from typing import (
     Any,
     Callable,
@@ -79,6 +79,15 @@ LOG_WARNING_COUNT = conmon_setting("log.warning_count", True)
 START_OFFSET = psutil.Process().create_time()
 
 
+def log_stderr():
+    value = conmon_setting("log.stderr", True)
+    if not value:
+        return DEVNULL
+    if str(value).lower() == "stdout":
+        return STDOUT
+    return PIPE
+
+
 def filehandler(key: str, mode="w", hint="") -> TextIO:
     path = conmon_setting(key)
     if isinstance(path, str):
@@ -109,7 +118,6 @@ class DefaultDict(UserDict):
         "stdout": CachedLines,
         "stderr": CachedLines,
         "export": CachedLines,
-        "stderr_lines": CachedLines,
     }
 
     def __getitem__(self, item):
@@ -571,9 +579,7 @@ class Build(State):
 
     def flush(self):
         stderr = self.stderr
-        stdout = self.stdout
-
-        for pipe in (stderr, stdout):
+        for pipe in (stderr, self.stdout):
             if not pipe:
                 continue
             residue_str = filter_by_regex(
@@ -601,6 +607,12 @@ class Build(State):
         self.buildmon.stop()
         self.dump_debug_proc()
         self.flush()
+        if not conmon_setting("report.build.stderr", True):
+            self.stderr = None
+            self.log.pop("stderr")
+        if not conmon_setting("report.build.stdout", True):
+            self.stdout = None
+            self.log.pop("stdout")
         self.log["translation_units"] = list(
             self.processed_tus(self.buildmon.translation_units)
         )
@@ -886,10 +898,7 @@ def monitor(args: List[str], replay=False) -> int:
     conan_command, ConanParser.CONAN_VERSION = call_cmd_and_version()
     conan_command.extend(args)
     command = ReplayCommand() if replay else Command()
-    stderr = (
-        STDOUT if str(conmon_setting("report.stderr")).lower() == "stdout" else PIPE
-    )
-    command.run(conan_command, stderr=stderr)
+    command.run(conan_command, stderr=log_stderr())
     cycle_time_s = conmon_setting("build.monitor", True)
     if isinstance(cycle_time_s, float):
         BuildMonitor.CYCLE_TIME_S = cycle_time_s
