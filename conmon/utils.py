@@ -225,24 +225,38 @@ class MappingPair(tuple):
     pass
 
 
-class NullList(list):
-    def __init__(self, _iterable=None):
-        super().__init__()
+class CachedLinesReader:
+    def __init__(self, fh: SpooledTemporaryFile):
+        self._fh = fh
+        self._pos = fh.tell()
 
-    def _ignore(self, *args):
-        """this method takes no action"""
+    def read(self, hint=-1):
+        fh = self._fh
+        fh.seek(self._pos)
+        return fh.read(hint)
 
-    def __add__(self, other):
-        return self
+    def reset(self):
+        fh = self._fh
+        fh.seek(0, 2)
+        self._pos = fh.tell()
 
-    __iadd__ = __add__
-    append = _ignore
-    extend = _ignore
-    insert = _ignore
+    def __bool__(self):
+        return self._fh.tell() > self._pos
+
+    def __iter__(self):
+        fh = self._fh
+        fh.seek(self._pos)
+        return iter(fh)
 
 
 # pylint: disable=consider-using-with
 class CachedLines:
+    """this class mimics a list of string lines
+    supporting append(), extend() and iter()
+    Once the data reaches max_size it is swapped to
+    disk saving memory consumption
+    """
+
     def __init__(self, max_size=2**12):
         args = self._args = dict(
             mode="w+", max_size=max_size, buffering=1, encoding="utf-8", newline="\n"
@@ -253,6 +267,9 @@ class CachedLines:
     @property
     def name(self):
         return self._fh.name
+
+    def reader(self):
+        return CachedLinesReader(self._fh)
 
     def write(self, string: str):
         fh = self._fh
@@ -275,10 +292,10 @@ class CachedLines:
         fh.write(line + end)
         self._len += 1
 
-    def read(self):
+    def read(self, hint=-1):
         fh = self._fh
         fh.seek(0)
-        return fh.read()
+        return fh.read(hint)
 
     def clear(self):
         self._fh = SpooledTemporaryFile(**self._args)
@@ -301,7 +318,14 @@ class CachedLines:
             return
         size = human_readable_byte_size(fh.tell())
         fh.seek(0)
-        print("SpooledFile", "name:", fh.name, "size:", size, repr(fh.read(20)))
+        print(
+            "SpooledFile",
+            "name:",
+            fh.name,
+            "size:",
+            size,
+            repr(next(iter(fh))[:80].rstrip()),
+        )
 
 
 def freeze_json_object(obj) -> Hashable:

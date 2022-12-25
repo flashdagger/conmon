@@ -31,7 +31,7 @@ class State:
     def process(self, parsed_line: Match) -> None:
         raise NotImplementedError
 
-    def process_errors(self):
+    def flush(self):
         pass
 
     @property

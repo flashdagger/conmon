@@ -17,7 +17,6 @@ from io import StringIO
 from operator import itemgetter
 from pathlib import Path
 from subprocess import PIPE, STDOUT
-from textwrap import indent
 from typing import (
     Any,
     Callable,
@@ -55,17 +54,14 @@ from .shell import Command
 from .state import State, StateMachine
 from .utils import (
     CachedLines,
-    NullList,
     ScreenWriter,
     StrictConfigParser,
     added_first,
     freeze_json_object,
     get_terminal_width,
     shorten,
-    shorten_lines,
     shorten_per_line,
     sorted_dicts,
-    unique,
 )
 from .warnings import (
     BuildRegex,
@@ -109,12 +105,10 @@ def filehandler(key: str, mode="w", hint="") -> TextIO:
 
 
 class DefaultDict(UserDict):
-    STDOUT_LIST = list if conmon_setting("report.stdout", True) else NullList
-    STDERR_LIST = list if conmon_setting("report.stderr", True) is True else NullList
     DEFAULT = {
         "stdout": CachedLines,
-        "stderr": STDERR_LIST,
-        "export": STDOUT_LIST,
+        "stderr": CachedLines,
+        "export": CachedLines,
         "stderr_lines": CachedLines,
     }
 
@@ -338,9 +332,6 @@ class Package(State):
             return
 
     def _deactivate(self, final=False):
-        stderr_lines = self.log.pop("stderr_lines")
-        if stderr_lines:
-            self.log["stderr"].extend((line[:-1] for line in stderr_lines))
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
 
@@ -384,6 +375,7 @@ class Build(State):
         self.warnings = 0
         self.buildmon = BuildMonitor(self.parser.command.proc.pid)
         self.log = parser.defaultlog
+        self.stderr = self.stdout = None
         self.ref = "???"
         self.force_status = False
         self.warning_map: Dict[str, List[Match]] = {}
@@ -412,6 +404,8 @@ class Build(State):
             defaultlog = self.parser.getdefaultlog(self.ref)
             defaultlog["stdout"].append(full_line)
             self.log = self.parser.defaultlog = defaultlog[self.REF_LOG_KEY]
+            self.stderr = self.log["stderr"].reader()
+            self.stdout = self.log["stdout"].reader()
             self.buildmon.start()
             proc_json = getattr(self.parser.command, "proc_json", {})
             for proc_info in proc_json.get(self.ref, ()):
@@ -438,7 +432,12 @@ class Build(State):
             return
 
         self.log["stdout"].append(parsed_line.group())
-        match = BUILD_STATUS_REGEX.fullmatch(line) or BUILD_STATUS_REGEX2.match(line)
+        if line.startswith(" "):
+            match = None
+        else:
+            match = BUILD_STATUS_REGEX.fullmatch(line) or BUILD_STATUS_REGEX2.match(
+                line
+            )
         if match:
             status, file = match.groups()
             if status:
@@ -570,25 +569,30 @@ class Build(State):
                 indent=2,
             )
 
-    def process_errors(self):
-        stderr_lines = self.log.get("stderr_lines")
-        if not stderr_lines:
-            return
+    def flush(self):
+        stderr = self.stderr
+        stdout = self.stdout
 
-        CONMON_LOG.warning("Build: %s warning lines", len(stderr_lines))
-        build_stderr = filter_by_regex(
-            stderr_lines.read(),
-            self.warning_map,
-            **BuildRegex.dict("gnu", "msvc", "cmake", "autotools"),
-        )
-        build_stderr = filter_by_regex(
-            build_stderr,
-            {},
-            **IgnoreRegex.dict(),
-        )
-        stderr_lines.clear()
-        if build_stderr:
-            self.log["stderr"].extend(build_stderr.splitlines(keepends=False))
+        for pipe in (stderr, stdout):
+            if not pipe:
+                continue
+            residue_str = filter_by_regex(
+                pipe.read(),
+                self.warning_map,
+                **BuildRegex.dict("gnu", "msvc", "cmake", "autotools"),
+            )
+            pipe.reset()
+            if pipe is not stderr:
+                continue
+            residue_str = filter_by_regex(
+                residue_str,
+                {},
+                **IgnoreRegex.dict(),
+            )
+            if residue_str:
+                self.log.setdefault("_stderr", []).extend(
+                    residue_str.splitlines(keepends=False)
+                )
 
     def _deactivate(self, final=False):
         self.force_status = False
@@ -596,23 +600,13 @@ class Build(State):
         self.parser.screen.reset()
         self.buildmon.stop()
         self.dump_debug_proc()
-
-        self.process_errors()
-        self.log.pop("stderr_lines")
+        self.flush()
         self.log["translation_units"] = list(
             self.processed_tus(self.buildmon.translation_units)
         )
-
-        match_map = self.warning_map
-        filter_by_regex(
-            self.log["stdout"].read(),
-            match_map,
-            **BuildRegex.dict("gnu", "msvc", "build"),
-        )
-
         self.log["warnings"] = list(
             sorted_dicts(
-                warnings_from_matches(**match_map),
+                warnings_from_matches(**self.warning_map),
                 keys=(
                     "from",
                     "severity",
@@ -626,17 +620,6 @@ class Build(State):
                 reorder_keys=True,
             )
         )
-
-        stderr_lines = self.log.get("stderr", None)
-        if stderr_lines:
-            build_stderr = "".join(
-                unique(shorten_lines("\n".join(stderr_lines), 20))
-            ).rstrip()
-            CONMON_LOG.debug(
-                "unprocessed stderr:\n%s",
-                indent(shorten_conan_path(build_stderr), "  "),
-            )
-
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
 
@@ -677,9 +660,6 @@ class RunTest(State):
         self.log["stdout"].append(parsed_line.group(0))
 
     def _deactivate(self, final=False):
-        stderr_lines = self.log.pop("stderr_lines")
-        if stderr_lines:
-            self.log["stderr"].extend((line[:-1] for line in stderr_lines))
         self.parser.setdefaultlog()
         super()._deactivate(final=True)
 
@@ -744,7 +724,7 @@ class ConanParser:
         loglevel: int = logging.WARNING
         stderr: List[str] = []
         ref: Optional[str] = None
-        residue = self.defaultlog["stderr_lines"]
+        residue = self.defaultlog["stderr"]
 
         def flush():
             if not processed:
@@ -791,9 +771,6 @@ class ConanParser:
             else:
                 residue.append(line)
         flush()
-        state = self.states.active_instance()
-        if residue and state:
-            state.process_errors()
 
     def process_line(self, line: str):
         line = line.rstrip()
@@ -852,6 +829,8 @@ class ConanParser:
                         raw_fh.write(line)
 
             if stdout or stderr:
+                state = self.states.active_instance()
+                _ = state and state.flush()
                 raw_fh.flush()
 
     def process_tracelog(self, trace_path: Path):
