@@ -44,7 +44,7 @@ class StopWatch:
     INSTANCES: Dict[FrameInfo, "StopWatch"] = {}
 
     def __init__(self):
-        self._last_ts = time.time()
+        self._last_ts = time.monotonic()
 
     @classmethod
     def at_location(cls) -> "StopWatch":
@@ -55,17 +55,17 @@ class StopWatch:
 
     @property
     def elapsed_seconds(self) -> float:
-        return time.time() - self._last_ts
+        return time.monotonic() - self._last_ts
 
     def timespan_elapsed(self, timespan_s: float) -> bool:
         if self.elapsed_seconds >= timespan_s:
-            self._last_ts = time.time() - self.elapsed_seconds % timespan_s
+            self._last_ts = time.monotonic() - self.elapsed_seconds % timespan_s
             return True
 
         return False
 
     def reset(self):
-        self._last_ts = time.time()
+        self._last_ts = time.monotonic()
 
 
 class WinShlex(shlex.shlex):
@@ -158,7 +158,7 @@ class AsyncPipeReader:
     def __init__(self, pipe: Optional[IO]):
         self.queue: Queue[str] = Queue()
         self.thread = Thread(target=self.reader, args=[pipe, self.queue])
-        self._timestamp_offset = self._timestamp = time.time()
+        self._timestamp_offset = self._timestamp = time.monotonic()
         self.thread.start()
 
     @staticmethod
@@ -202,7 +202,7 @@ class AsyncPipeReader:
                     line = self.queue.get(**default_kwargs)
 
                 if not time_set:
-                    self._timestamp = time.time()
+                    self._timestamp = time.monotonic()
                     time_set = True
 
                 assert line
@@ -210,7 +210,7 @@ class AsyncPipeReader:
 
     def readline(self) -> str:
         line = self.queue.get(block=True)
-        self._timestamp = time.time()
+        self._timestamp = time.monotonic()
         return line
 
 
