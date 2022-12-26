@@ -121,7 +121,7 @@ class IgnoreRegex(Regex):
     STOP = re.compile(r"(?m)^Stop.\n")
     EMPTY_LINES = re.compile(r"(?m)^\s*\n")
     # EMPTY_LINES = re.compile(r"^\s*\n+|(?<=[^\n]\n{3})\n+")
-    MAKE_WARNINGS = re.compile(r"(?m)^make(\[\d+])?: \*.+\n")
+    MAKE_WARNINGS = re.compile(r"(?m)^[\w.-]+(\[\d+])?: \*{3}.+\n")
     MSVC_TOOLS = re.compile(r"(?m)^(Microsoft|Copyright) \([RC]\) .+\n")
     WARNINGS_GENERATED = re.compile(r"(?m)^\d+ warnings?.* generated\.\n")
     MESON_STATUS = re.compile(

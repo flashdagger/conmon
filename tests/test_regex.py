@@ -1,8 +1,6 @@
-import re
 from pathlib import Path
 
 import pytest
-import conmon.regex
 
 from conmon.regex import (
     CMAKE_BUILD_PATH_REGEX,
@@ -55,13 +53,14 @@ output = [
 dataset = [
     pytest.param(
         [
-            ("", "adler32.c"),
             ("[3/16]", "CMakeFiles\\zlib.dir\\gzclose.c.obj"),
             ("[ 93%]", "CMakeFiles/zlib.dir/zutil.c.obj"),
             ("[100%]", "libz.a"),
-            ("", "apps/app_rand.c"),
-            ("  CC", "libmisc/walk_tree.lo"),
-            ("  CCLD", "libacl.la"),
+            ("[100%]", "zlib"),
+            (None, "apps/app_rand.c"),
+            ("CC", "libmisc/walk_tree.lo"),
+            ("CCLD", "libacl.la"),
+            ("CCLD", "chacl"),
         ],
         id="BUILD_STATUS_REGEX",
     ),
@@ -69,17 +68,13 @@ dataset = [
 
 
 @pytest.mark.parametrize("expected", dataset)
-def test_build_status_regex(expected, request):
-    regex_name = request.node.callspec.id
-    regex = getattr(conmon.regex, regex_name, None)
-    assert isinstance(regex, type(re.compile(""))), f"invalid regex {regex_name!r}"
-    pattern, flags = conmon.regex.compact_pattern(regex)
-    matches = list(
-        match_tuple
-        for match_tuple in re.findall(
-            pattern, "\n".join(output), flags=flags | re.MULTILINE
-        )
-    )
+def test_build_status(expected):
+    matches = []
+    for line in output:
+        bstatus, file = build_status(line)
+        if file:
+            matches.append((bstatus, file))
+
     # matches are tuples of (status, file)
     assert matches == expected
 
@@ -175,27 +170,3 @@ def test_filter_by_regex():
         "d": 0,
         "x": 0,
     }
-
-
-status = [
-    ("blocksort.c", (None, "blocksort.c")),
-    ("  CCLD     libmisc", ("CCLD", "libmisc")),
-    (
-        "[ 10%] Building C object CMakeFiles/bz2.dir/src/blocksort.c.obj",
-        ("[ 10%]", "CMakeFiles/bz2.dir/src/blocksort.c.obj"),
-    ),
-    (
-        "[574/606] Building CXX object CMakeFiles/DataPostgreSQL.dir/src/SessionImpl.cpp.o",
-        ("[574/606]", "CMakeFiles/DataPostgreSQL.dir/src/SessionImpl.cpp.o"),
-    ),
-    (
-        "clang  -MT crypto/asn1/asn1_lib.o -c -o crypto/asn1/asn1_lib.o crypto/asn1/asn1_lib.c",
-        (None, "crypto/asn1/asn1_lib.c"),
-    ),
-]
-
-
-@pytest.mark.parametrize("case", status)
-def test_build_status(case):
-    line, (bstatus, file) = case
-    assert build_status(line) == (bstatus, file)
