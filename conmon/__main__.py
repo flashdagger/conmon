@@ -53,6 +53,7 @@ from .state import State, StateMachine
 from .utils import (
     CachedLines,
     ScreenWriter,
+    StopWatch,
     StrictConfigParser,
     added_first,
     freeze_json_object,
@@ -793,6 +794,7 @@ class ConanParser:
             partial(map, partial(DECOLORIZE_REGEX.sub, "")),
         )
 
+        flush_timer = StopWatch()
         while not streams.exhausted:
             try:
                 stdout, stderr = streams.readboth(block=0.05, block_first=1.0)
@@ -828,6 +830,7 @@ class ConanParser:
             if stdout or stderr:
                 state = self.states.active_instance()
                 _ = state and state.flush()
+            if flush_timer.timespan_elapsed(1.0):
                 raw_fh.flush()
 
     def process_tracelog(self, trace_path: Path):
