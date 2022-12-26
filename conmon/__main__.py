@@ -886,7 +886,7 @@ def monitor(args: List[str], replay=False) -> int:
     command.run(conan_command, stderr=log_stderr())
 
     cycle_time_s = conmon_setting("build.monitor", True)
-    if isinstance(cycle_time_s, (float, int)):
+    if isinstance(cycle_time_s, float):
         BuildMonitor.CYCLE_TIME_S = float(cycle_time_s)
     BuildMonitor.ACTIVE = not (replay or cycle_time_s is False)
 
