@@ -255,6 +255,10 @@ class BuildMonitor(Thread):
         if not self.ACTIVE:
             return
         self.stop()
+        if not self.proc.is_running():
+            LOG.error(self.proc)
+            return
+
         # pylint: disable=unnecessary-dunder-call
         self.__init__(self.proc.pid)  # type: ignore
         super().start()

@@ -4,3 +4,4 @@ openssl/1.1.1m     # genuine make script
 acl/2.3.1          # autotools
 ninja/1.11.1       # using response files on Linux
 fontconfig/2.13.93 # meson build
+minizip/1.2.11     # fails on Windows with --build minizip --build bzip2 -pr mingw
