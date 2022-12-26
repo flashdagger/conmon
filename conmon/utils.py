@@ -293,11 +293,9 @@ class CachedLines:
         fh.seek(position)
         return iter(fh)
 
-    def empty(self, marker: Hashable = None):
+    def size(self, marker: Hashable = None):
         position = 0 if marker is None else self._positions[hash(marker)]
-        tell = self._fh.tell()
-        assert tell >= position, "corrupted file pointer"
-        return tell == position
+        return self._fh.tell() - position
 
     def clear(self):
         self._fh = SpooledTemporaryFile(**self._args)

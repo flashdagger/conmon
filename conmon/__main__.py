@@ -574,7 +574,7 @@ class Build(State):
     def flush(self):
         for name in ("stderr", "stdout"):
             pipe = self.log[name]
-            if pipe.empty(self):
+            if not pipe.size(self):
                 continue
             residue_str = filter_by_regex(
                 pipe.read(marker=self),
