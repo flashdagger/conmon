@@ -254,7 +254,8 @@ class BuildMonitor(Thread):
     def start(self) -> None:
         if not self.ACTIVE:
             return
-        self.stop()
+        if self.is_alive():
+            self.stop()
         if not self.proc.is_running():
             LOG.error(self.proc)
             return
