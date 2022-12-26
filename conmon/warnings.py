@@ -62,7 +62,7 @@ class BuildRegex(Regex):
     )
     MSVC = re.compile(
         r"""(?xm)
-            (?P<file>(?:[A-Za-z]:)?[\w()/\\. -]*\w)
+            ^(?P<file>(?:[A-Za-z]:)?[\w()/\\. -]*\w)
             (?:\(
               (?P<line>\d+)
               (?:, (?P<column>\d+))?
