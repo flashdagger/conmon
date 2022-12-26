@@ -435,7 +435,7 @@ class BuildMonitor(Thread):
                 }:
                     self.shell.setps(path.parent)
                     LOG.debug(
-                        "scanning processes via MSYS ps because %s was detected.",
+                        "scanning processes via MSYS ps because %r was detected.",
                         path.name,
                     )
                 elif identify_compiler(name) and info["exe"] == "/bin/dash":
