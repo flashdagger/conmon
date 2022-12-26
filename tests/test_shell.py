@@ -118,7 +118,7 @@ class TestShell:
         assert ps_output
 
         proc_map = {proc["COMMAND"]: proc for proc in scan_ps.parse_ps(ps_output)}
-        assert "/usr/bin/bash" in proc_map
+        assert "/usr/bin/ps" in proc_map
 
         for proc in proc_map.values():
             with suppress(psutil.NoSuchProcess):
