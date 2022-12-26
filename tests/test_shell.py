@@ -111,13 +111,14 @@ class TestShell:
         shell.exit()
         assert shell.is_running() is False
 
-    def test_shell_ps(self, shell: Shell):
-        shell.send("/usr/bin/ps")
-        ps_output = shell.receive(timeout=0.2)
+    def test_msys_ps(self, msys_bindir: Path):
+        scan_ps = ScanPS()
+        scan_ps.setps(msys_bindir)
+        ps_output = scan_ps.receive(timeout=0.2)
         assert ps_output
 
-        proc_map = {proc["COMMAND"]: proc for proc in ScanPS.parse_ps(ps_output)}
-        assert "/usr/bin/ps" in proc_map
+        proc_map = {proc["COMMAND"]: proc for proc in scan_ps.parse_ps(ps_output)}
+        assert "/usr/bin/bash" in proc_map
 
         for proc in proc_map.values():
             with suppress(psutil.NoSuchProcess):

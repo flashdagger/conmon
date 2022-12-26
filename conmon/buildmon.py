@@ -16,8 +16,7 @@ from typing import Any, Dict, Hashable, Iterator, List, Optional, Sequence, Set,
 from psutil import AccessDenied, NoSuchProcess, Process
 
 from .logging import UniqueLogger, get_logger
-from .regex import shorten_conan_path
-from .shell import Shell
+from .shell import Command
 from .utils import (
     WinShlex,
     append_to_set,
@@ -33,50 +32,50 @@ LOG = get_logger("PROC")
 LOG_ONCE = UniqueLogger(LOG)
 
 
-class ScanPS(Shell):
-    LOG = get_logger("MSYS")
+class ScanPS(Command):
+    LOG = get_logger("MSYSPS")
     LOG_ONCE = UniqueLogger(LOG)
 
-    def is_ready(self):
-        return not (self.is_running() or self.returned_error)
+    def __init__(self):
+        super().__init__()
+        self.ps_exe = None
 
-    def start(self, executable: Path):
-        if self.is_running():
-            return
-        if self.returned_error:
-            self.LOG_ONCE.warning("Returned error %s", self.returncode)
-        self.run(executable)
-        self.send("/usr/bin/ps")
+    def __bool__(self):
+        return self.ps_exe is not None
+
+    def setps(self, path: Path):
+        if path.is_dir():
+            path = path / "ps.exe"
+        assert path.is_file()
+        self.ps_exe = path
+
+    def receive(self, timeout=None):
+        if not (self.is_running() or self.returned_error):
+            assert self.ps_exe, "ps.exe is not set"
+            self.run([self.ps_exe])
+
+        stdout, stderr = self.streams.readboth(block_first=timeout)
+        if stderr:
+            raise RuntimeError("".join(stderr))
+
+        return stdout
 
     def add_msys_procs(self, children: Set[Process]) -> None:
-        if not self.is_running():
+        if self.returned_error:
+            self.LOG_ONCE.warning("Returned error %s", self.returncode)
             return
         try:
             output = self.receive(timeout=0.5)
             if not output:
                 return
-            self.send("/usr/bin/ps")
             for parent, procs in self.scan_msys(output).items():
                 if parent in children:
                     children.update(procs)
-        except Shell.Error as exc:
+        except RuntimeError as exc:
             self.LOG.error("%s: %s", self.__class__.__name__, exc)
 
     @staticmethod
-    def parse_ps(output: str) -> Iterator[Dict[str, str]]:
-        lines = output.splitlines(keepends=False)
-        if len(lines) < 2:
-            return
-
-        header = lines[0].split()
-        for line in lines[1:]:
-            if not line.startswith(" "):
-                continue
-            entries = line.split(maxsplit=len(header) - 1)
-            yield dict(zip(header, entries))
-
-    @staticmethod
-    def scan_msys(ps_output: str):
+    def scan_msys(ps_lines: Sequence[str]):
         procs: Dict[Process, Set[Process]] = {}
         # mapping pid -> ppid, winpid
         ppid_map: Dict[int, Tuple[int, int]] = {}
@@ -87,7 +86,7 @@ class ScanPS(Shell):
                 return Process(win_pid)
             return root_process(parent_pid)
 
-        for info in ScanPS.parse_ps(ps_output):
+        for info in ScanPS.parse_ps(ps_lines):
             if info.get("COMMAND", "/ps").endswith("/ps"):
                 continue
             try:
@@ -101,6 +100,18 @@ class ScanPS(Shell):
                 procs.setdefault(root_proc, set()).add(Process(winpid))
 
         return procs
+
+    @staticmethod
+    def parse_ps(lines: Sequence[str]) -> Iterator[Dict[str, str]]:
+        if len(lines) < 2:
+            return
+
+        header = lines[0].split()
+        for line in lines[1:]:
+            if not line.startswith(" "):
+                continue
+            entries = line.rstrip("\n").split(maxsplit=len(header) - 1)
+            yield dict(zip(header, entries))
 
 
 class CompilerParser(argparse.ArgumentParser):
@@ -266,6 +277,7 @@ class BuildMonitor(Thread):
         LOG.debug("scanning subprocesses of pid %s", self.proc.pid)
 
     def stop(self):
+        self.shell.ps_exe = None
         self.finalize()
         if not self.is_alive():
             return
@@ -401,7 +413,8 @@ class BuildMonitor(Thread):
             LOG_ONCE.error(str(exc))
             return
 
-        self.shell.add_msys_procs(children)
+        if self.shell:
+            self.shell.add_msys_procs(children)
 
         for child in children - self.seen_proc:
             with suppress(NoSuchProcess, AccessDenied, OSError, FileNotFoundError):
@@ -411,19 +424,16 @@ class BuildMonitor(Thread):
 
                 path = Path(info["exe"])
                 name = info["name"] = Path(info["cmdline"][0]).stem.lower()
-                if self.shell.is_ready() and path.name in {
+                if not self.shell and path.name in {
                     "make.exe",
                     "bash.exe",
                     "sh.exe",
                 }:
-                    shell_path = path.with_name("sh.exe")
-                    if shell_path.is_file():
-                        self.shell.start(shell_path)
-                        LOG.debug(
-                            "Scanning processes via %s because %s was detected.",
-                            shorten_conan_path(shell_path.as_posix()),
-                            path.name,
-                        )
+                    self.shell.setps(path.parent)
+                    LOG.debug(
+                        "scanning processes via MSYS ps because %s was detected.",
+                        path.name,
+                    )
                 elif identify_compiler(name) and info["exe"] == "/bin/dash":
                     LOG.warning(
                         "Async capture: %r",
@@ -475,6 +485,3 @@ class BuildMonitor(Thread):
             sleep_time_s = self.CYCLE_TIME_S - t_diff
             if sleep_time_s > 0.0:
                 time.sleep(sleep_time_s)
-
-        if self.shell.is_running():
-            self.shell.exit()
