@@ -65,7 +65,7 @@ class ScanPS(Command):
             self.LOG_ONCE.warning("Returned error %s", self.returncode)
             return
         try:
-            output = self.receive(timeout=0.5)
+            output = self.receive(timeout=0.1)
             if not output:
                 return
             for parent, procs in self.scan_msys(output).items():
@@ -263,26 +263,30 @@ class BuildMonitor(Thread):
         self.seen_proc: Set[Process] = set()
 
     def start(self) -> None:
-        if not self.ACTIVE:
-            return
         if self.is_alive():
             self.stop()
+
         if not self.proc.is_running():
             LOG.error(self.proc)
             return
 
-        # pylint: disable=unnecessary-dunder-call
-        self.__init__(self.proc.pid)  # type: ignore
+        # we abuse init to clear all member variables
+        self.__class__.__init__(self, self.proc.pid)
+
+        if not self.ACTIVE:
+            return
+
         super().start()
         LOG.debug("scanning subprocesses of pid %s", self.proc.pid)
 
     def stop(self):
         self.shell.ps_exe = None
-        self.finalize()
         if not self.is_alive():
+            self.finalize()
             return
         self.finish.set()
         self.join()
+        self.finalize()
 
     @property
     def translation_units(self):
