@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 
 from conmon.utils import (
+    AnyComparable,
     common_parent,
-    compare_everything,
     human_readable_byte_size,
     human_readable_size,
     shorten,
@@ -40,17 +40,15 @@ def test_human_readable_byte_size():
 
 
 def test_compare_everything():
-    assert tuple(
-        sorted((3, None, 2, None, 1, 2.5, "4", "3"), key=compare_everything)
-    ) == (
+    assert tuple(sorted((3, None, 2, None, 1, 2.5, "4", "3"), key=AnyComparable)) == (
+        None,
+        None,
         1,
         2,
         2.5,
         3,
         "3",
         "4",
-        None,
-        None,
     )
 
 
@@ -58,19 +56,19 @@ def test_compare_everything_2():
     assert tuple(
         sorted(
             (
-                (20, "A"),
-                (1, "BBB"),
-                (1, "A"),
                 (1, None),
-                (2, None, "X"),
+                (1, "A"),
+                (1, "BBB"),
                 (2, None, "S"),
+                (20, "A"),
+                (2, None, "X"),
             ),
-            key=compare_everything,
+            key=AnyComparable,
         )
     ) == (
+        (1, None),
         (1, "A"),
         (1, "BBB"),
-        (1, None),
         (2, None, "S"),
         (2, None, "X"),
         (20, "A"),
@@ -78,17 +76,19 @@ def test_compare_everything_2():
 
 
 def test_sorted_dicts():
-    items = (dict(a=3, b=2), dict(a=2), dict(c=3, a=0), dict(a=2, c="x"))
-
-    with pytest.raises(AssertionError) as exc_info:
-        next(sorted_dicts(items, keys=("a", "b", "c", "b")))
-    assert exc_info.match("keys must be unique")
-
+    items = (
+        dict(a=3, b=2),
+        dict(a=2),
+        dict(a=3, b="x"),
+        dict(c=3, a=0),
+        dict(a=2, c="x"),
+    )
     assert tuple(sorted_dicts(items, keys=("a", "b", "c"))) == (
         {"a": 0, "c": 3},
-        {"a": 2, "c": "x"},
         {"a": 2},
+        {"a": 2, "c": "x"},
         {"a": 3, "b": 2},
+        {"a": 3, "b": "x"},
     )
 
 
@@ -98,10 +98,10 @@ def test_sorted_dicts_reordered():
         tuple(mapping.items())
         for mapping in sorted_dicts(items, keys=("c", "a", "b"), reorder_keys=True)
     ] == [
+        (("a", 2),),
+        (("a", 2), ("b", 2)),
         (("c", 3), ("a", 0)),
         (("c", "x"), ("a", 2)),
-        (("a", 2), ("b", 2)),
-        (("a", 2),),
     ]
 
 

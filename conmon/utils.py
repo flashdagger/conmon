@@ -8,7 +8,6 @@ import sys
 import time
 from configparser import ConfigParser
 from contextlib import suppress
-from functools import cmp_to_key
 from inspect import FrameInfo, stack
 from io import TextIOBase
 from math import log
@@ -29,6 +28,7 @@ from typing import (
     Sequence,
     Set,
     Tuple,
+    Type,
     TypeVar,
     Union,
 )
@@ -507,55 +507,85 @@ def human_readable_byte_size(size: int) -> str:
     return human_readable_size(size, "Bytes", factor=1024)
 
 
-def _compare_everything(obj, other):
-    if obj == other:
-        return 0
+class AnyComparable:
+    PRECEDENCE = {
+        typ: idx
+        for idx, typ in enumerate(
+            (
+                type(None),
+                bool,
+                int,
+                float,
+                str,
+            )[::-1],
+            1,
+        )
+    }
 
-    if all(
-        isinstance(item, Sequence) and not isinstance(item, str)
-        for item in (obj, other)
-    ):
-        for _obj, _other in zip(obj, other):
-            ret = _compare_everything(_obj, _other)
-            if ret != 0:
-                return ret
-        return min(1, max(len(obj) - len(other), -1))
+    __slots__ = ["obj"]
 
-    with suppress(TypeError):
-        if other is None or obj < other:
-            return -1
-    with suppress(TypeError):
-        if obj is None or obj > other:
-            return 1
-    return -1 if str(obj) < str(other) else 1
+    def __init__(self, obj):
+        self.obj = obj
+
+    def precedence(self, typ: Type) -> str:
+        rank = self.PRECEDENCE.get(typ, 0)
+        return rank * "_" + typ.__name__.lower()
+
+    def lt_seq(self, seq_a, seq_b):
+        for obj_a, obj_b in zip(seq_a, seq_b):
+            if self.lt_impl(obj_a, obj_b):
+                return True
+            if obj_a != obj_b:
+                return False
+        return len(seq_a) < len(seq_b)
+
+    def lt_impl(self, obj_a, obj_b):
+        type_a, type_b = type(obj_a), type(obj_b)
+        typeset = {type_a, type_b}
+        if typeset not in ({bool, int}, {bool, float}):
+            with suppress(TypeError):
+                return obj_a < obj_b
+
+        with suppress(TypeError):
+            return self.lt_seq(obj_a, obj_b)
+
+        return self.precedence(type_a) < self.precedence(type_b)
+
+    def __lt__(self, other: "AnyComparable") -> bool:
+        return self.lt_impl(self.obj, other.obj)
 
 
-# pylint: disable=invalid-name
-compare_everything = cmp_to_key(_compare_everything)
+def orderkeys(mapping: Mapping, *keys: Hashable) -> Mapping:
+    """returns a sorted dict according to order in keys
+    other keys order are left untouched
+
+    example:
+    dict(a=0, b=0, x=0, y=0) == orderkeys(dict(x=0, b=0, y=0, a=0), 'a', 'b')
+    """
+    # optimize for already ordered mappings
+    # mkeys = tuple(islice(mapping.keys(), len(keys)))
+    # if mkeys == keys:
+    #     return mapping
+
+    omap: Dict = {}
+    for key in keys:
+        if key in mapping:
+            omap[key] = None
+
+    omap.update(mapping)
+    return omap
 
 
 def sorted_dicts(
     items: Iterable[Mapping], *, keys: Sequence, reorder_keys=False, reverse=False
 ):
-    assert len(set(keys)) == len(keys), "keys must be unique"
-
-    def reorder(mapping: Mapping) -> Mapping:
-        new_mapping = {}
-        for key in keys:
-            if key not in mapping:
-                continue
-            new_mapping[key] = mapping[key]
-        for key in mapping.keys():
-            if key in new_mapping:
-                continue
-            new_mapping[key] = mapping[key]
-        return new_mapping
-
     def transform(mapping: Mapping):
         sortable_keys = (mapping.get(key) for key in keys)
-        return tuple((*sortable_keys, reorder(mapping) if reorder_keys else mapping))
+        return tuple(
+            (*sortable_keys, orderkeys(mapping, *keys) if reorder_keys else mapping)
+        )
 
     for item in sorted(
-        (transform(item) for item in items), key=compare_everything, reverse=reverse
+        (transform(item) for item in items), key=AnyComparable, reverse=reverse
     ):
         yield item[-1]
