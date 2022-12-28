@@ -387,7 +387,7 @@ class Build(State):
         self.warnings = 0
         self.buildmon = BuildMonitor(self.parser.command.proc.pid)
         self.log = parser.defaultlog
-        self.ref = "???"
+        self.ref = self.stopline = "???"
         self.force_status = False
         self.warning_map: Dict[str, List[Match]] = {}
         if not Build.PROC_JSON_RESET:
@@ -396,26 +396,19 @@ class Build(State):
             Build.PROC_JSON_RESET = True
 
     def _activated(self, parsed_line: Match) -> bool:
-        line, self.ref = parsed_line.group("rest", "ref")
+        line, ref = parsed_line.group("rest", "ref")
         if line == "Calling build()":
-            self.screen.print(f"Building {self.ref}")
+            self.ref = ref
+            self.screen.print(f"Building {ref}")
             return True
         return False
 
-    @staticmethod
-    def _deactivated(parsed_line: Match) -> bool:
-        line = parsed_line.group("rest")
-        if not line.startswith("Package '"):
-            return False
-        match = re.fullmatch(r"Package '\w+' built", line)
-        return bool(match) or line.startswith("ERROR:")
-
     def activated(self, parsed_line: Match) -> bool:
-        full_line = parsed_line.group(0)
         if self._activated(parsed_line):
             assert self.ref
             defaultlog = self.parser.getdefaultlog(self.ref)
-            defaultlog["stdout"].append(full_line)
+            self.stopline = f"Package '{defaultlog['package_id']}' built"
+            defaultlog["stdout"].append(parsed_line.group())
             self.log = self.parser.defaultlog = defaultlog[self.REF_LOG_KEY]
             self.log["stderr"].saveposition(self)
             self.log["stdout"].saveposition(self)
@@ -433,12 +426,9 @@ class Build(State):
         self.warnings = 0
 
     def process(self, parsed_line: Match) -> None:
-        if self._deactivated(parsed_line):
-            self.deactivate()
-            return
-
         line = parsed_line.group("rest")
-        if not line:
+        if line == self.stopline or line.startswith("ERROR:"):
+            self.deactivate()
             return
 
         self.log["stdout"].append(parsed_line.group())
@@ -641,7 +631,7 @@ class BuildTest(Build):
         line, ref = parsed_line.group("rest", "ref")
         if line == "(test package): Calling build()":
             self.ref = f"{ref} (test package)"
-            self.screen.print(f"Building {self.ref}")
+            self.screen.print(f"Building {ref}")
             return True
         return False
 
