@@ -156,11 +156,13 @@ def build_status(line: str) -> Tuple[Optional[str], Optional[str]]:
 
 
 class ParsedLine:
-    REF_REGEX = re.compile(rf"^{compact_pattern(REF_REGEX)[0]}")
+    REF_REGEX = re.compile(
+        rf"^{compact_pattern(REF_REGEX)[0]}(?: \((?P<spec>[a-z ]+)\))?"
+    )
 
     def __init__(self, line: str):
         self.line = line.rstrip("\r\n")
-        self._ref = self._rest = None
+        self.refspec = self._ref = self._rest = None
 
     def _split(self):
         line = self.line
@@ -168,7 +170,7 @@ class ParsedLine:
         if prefix and "/" in prefix[0]:
             match = self.REF_REGEX.match(prefix[0])
             if match:
-                self._ref = match.group()
+                self._ref, self.refspec = match.group("ref", "spec")
                 line = rest[1:]
 
         self._rest = line

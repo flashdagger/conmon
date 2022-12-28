@@ -392,6 +392,7 @@ class Build(State):
         self.buildmon = BuildMonitor(self.parser.command.proc.pid)
         self.log = parser.defaultlog
         self.ref = self.stopline = "???"
+        self.refspec = None
         self.force_status = False
         self.warning_map: Dict[str, List[Match]] = {}
         if not Build.PROC_JSON_RESET:
@@ -399,25 +400,27 @@ class Build(State):
                 fh.write("{}")
             Build.PROC_JSON_RESET = True
 
-    def _activated(self, parsed: ParsedLine) -> bool:
-        if parsed.line.endswith("Calling build()"):
-            self.ref = ref = parsed.ref
-            self.screen.print(f"Building {ref}")
-            return True
-        return False
-
     def activated(self, parsed: ParsedLine) -> bool:
-        if self._activated(parsed):
-            assert self.ref
-            defaultlog = self.parser.getdefaultlog(self.ref)
-            self.stopline = f"Package '{defaultlog['package_id']}' built"
-            defaultlog["stdout"].append(parsed.line)
-            self.log = self.parser.defaultlog = defaultlog[self.REF_LOG_KEY]
-            self.log["stderr"].saveposition(self)
-            self.log["stdout"].saveposition(self)
-            self.buildmon.start()
-            return True
-        return False
+        if not parsed.line.endswith("Calling build()"):
+            return False
+
+        self.ref = ref = parsed.ref
+        assert ref, repr(parsed.line)
+        log_key = "build"
+        defaultlog = self.parser.getdefaultlog(self.ref)
+        self.stopline = f"Package '{defaultlog['package_id']}' built"
+        self.refspec = refspec = parsed.refspec
+        if refspec:
+            ref = f"{refspec} for {ref}"
+            log_key = f"{log_key}_{refspec.replace(' ', '_')}"
+            self.stopline = "Running test()"
+        self.screen.print(f"Building {ref}")
+        defaultlog["stdout"].append(parsed.line)
+        self.log = self.parser.defaultlog = defaultlog[log_key]
+        self.log["stderr"].saveposition(self)
+        self.log["stdout"].saveposition(self)
+        self.buildmon.start()
+        return True
 
     def flush_warning_count(self):
         if self.warnings and BLOG.isEnabledFor(logging.WARNING):
@@ -559,7 +562,10 @@ class Build(State):
             ) as proc_fh:
                 proc_obj.update(json.load(proc_fh))
 
-        proc_obj[self.ref] = list(self.buildmon.proc_cache.values())
+        proc_key = self.ref
+        if self.refspec:
+            proc_key = f"{proc_key} {self.refspec}"
+        proc_obj[proc_key] = list(self.buildmon.proc_cache.values())
         with filehandler("proc.json", hint="process debug json") as proc_fh:
             json.dump(
                 proc_obj,
@@ -597,8 +603,11 @@ class Build(State):
         self.flush_warning_count()
         self.parser.screen.reset()
 
+        proc_key = self.ref
+        if self.refspec:
+            proc_key = f"{proc_key} {self.refspec}"
         proc_json = getattr(self.parser.command, "proc_json", {})
-        for proc_info in proc_json.get(self.ref, ()):
+        for proc_info in proc_json.get(proc_key, ()):
             self.buildmon.proc_cache[freeze_json_object(proc_info)] = None
 
         self.buildmon.stop()
@@ -623,23 +632,9 @@ class Build(State):
                 reorder_keys=True,
             )
         )
+        self.warning_map.clear()
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
-
-
-class BuildTest(Build):
-    REF_LOG_KEY = "test_build"
-
-    def _activated(self, parsed: ParsedLine) -> bool:
-        if parsed.line.endswith("(test package): Calling build()"):
-            ref = self.ref = f"{parsed.ref} (test package)"
-            self.screen.print(f"Building {ref}")
-            return True
-        return False
-
-    @staticmethod
-    def _deactivated(parsed: ParsedLine) -> bool:
-        return parsed.line.endswith("(test package): Running test()")
 
 
 class RunTest(State):
@@ -649,7 +644,7 @@ class RunTest(State):
         self.log = parser.defaultlog
 
     def activated(self, parsed: ParsedLine) -> bool:
-        if parsed.rest == "(test package): Running test()":
+        if parsed.rest == "Running test()":
             ref = parsed.ref
             self.screen.print(f"Running test for {ref}")
             defaultlog = self.parser.getdefaultlog(ref)
@@ -694,7 +689,6 @@ class ConanParser:
             Packages,
             Build,
             Package,
-            BuildTest,
             RunTest,
             default=Default,
         )
