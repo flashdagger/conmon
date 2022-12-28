@@ -563,16 +563,13 @@ def orderkeys(mapping: Mapping, *keys: Hashable) -> Mapping:
     return omap
 
 
-def sorted_dicts(
+def sorted_mappings(
     items: Iterable[Mapping], *, keys: Sequence, reorder_keys=False, reverse=False
-):
-    def transform(mapping: Mapping):
-        sortable_keys = (mapping.get(key) for key in keys)
-        return tuple(
-            (*sortable_keys, orderkeys(mapping, *keys) if reorder_keys else mapping)
-        )
+) -> List[Mapping]:
+    def mappingkey(mapping: Mapping):
+        return AnyComparable(tuple(mapping.get(key) for key in keys))
 
-    for item in sorted(
-        (transform(item) for item in items), key=AnyComparable, reverse=reverse
-    ):
-        yield item[-1]
+    if reorder_keys:
+        items = (orderkeys(item, *keys) for item in items)
+
+    return sorted(items, key=mappingkey, reverse=reverse)

@@ -61,7 +61,7 @@ from .utils import (
     get_terminal_width,
     shorten,
     shorten_per_line,
-    sorted_dicts,
+    sorted_mappings,
 )
 from .warnings import (
     BuildRegex,
@@ -608,7 +608,7 @@ class Build(State):
             self.processed_tus(self.buildmon.translation_units)
         )
         self.log["warnings"] = list(
-            sorted_dicts(
+            sorted_mappings(
                 warnings_from_matches(**self.warning_map),
                 keys=(
                     "from",

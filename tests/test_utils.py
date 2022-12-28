@@ -11,7 +11,7 @@ from conmon.utils import (
     human_readable_size,
     shorten,
     shorten_lines,
-    sorted_dicts,
+    sorted_mappings,
 )
 
 
@@ -77,13 +77,13 @@ def test_compare_everything_2():
 
 def test_sorted_dicts():
     items = (
-        dict(a=3, b=2),
+        dict(b=2, a=3),
         dict(a=2),
         dict(a=3, b="x"),
         dict(c=3, a=0),
         dict(a=2, c="x"),
     )
-    assert tuple(sorted_dicts(items, keys=("a", "b", "c"))) == (
+    assert tuple(sorted_mappings(items, keys=("a", "b", "c"))) == (
         {"a": 0, "c": 3},
         {"a": 2},
         {"a": 2, "c": "x"},
@@ -96,7 +96,7 @@ def test_sorted_dicts_reordered():
     items = (dict(a=2, b=2), dict(a=2), dict(c=3, a=0), dict(a=2, c="x"))
     assert [
         tuple(mapping.items())
-        for mapping in sorted_dicts(items, keys=("c", "a", "b"), reorder_keys=True)
+        for mapping in sorted_mappings(items, keys=("c", "a", "b"), reorder_keys=True)
     ] == [
         (("a", 2),),
         (("a", 2), ("b", 2)),
