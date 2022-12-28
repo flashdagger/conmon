@@ -1,6 +1,7 @@
-from typing import TYPE_CHECKING, List, Match, Optional, Set, Tuple, Type
+from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Type
 
-from conmon.logging import get_logger
+from .logging import get_logger
+from .regex import ParsedLine
 
 if TYPE_CHECKING:
     from .__main__ import ConanParser
@@ -25,10 +26,10 @@ class State:
         self.finished = True
         self.stopped = final
 
-    def activated(self, parsed_line: Match) -> bool:
+    def activated(self, parsed: ParsedLine) -> bool:
         raise NotImplementedError
 
-    def process(self, parsed_line: Match) -> None:
+    def process(self, parsed: ParsedLine) -> None:
         raise NotImplementedError
 
     def flush(self):
@@ -89,11 +90,11 @@ class StateMachine:
         for state in tuple(self._active):
             self.deactivate(state)
 
-    def process_hooks(self, parsed_line: Match) -> None:
+    def process_hooks(self, parsed: ParsedLine) -> None:
         skip_next = []
         for state in tuple(self._active):
             if not state.finished:
-                state.process(parsed_line)
+                state.process(parsed)
             if state.finished:
                 self.deactivate(state)
                 skip_next.append(state.SKIP_NEXT)
@@ -103,7 +104,7 @@ class StateMachine:
 
         activated = []
         for state in tuple(self._running):
-            if state not in self._active and state.activated(parsed_line):
+            if state not in self._active and state.activated(parsed):
                 activated.append(state)
 
         if activated:
@@ -118,4 +119,4 @@ class StateMachine:
 
         if not self._active and self._default and not self._default.stopped:
             self.activate(self._default)
-            self._default.process(parsed_line)
+            self._default.process(parsed)

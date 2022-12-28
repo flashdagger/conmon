@@ -37,7 +37,7 @@ CONAN_DATA_PATH = re.compile(
         )
     """
 )
-REF_PART_PATTERN = r"\w[\w\+\.\-]{1,50}"
+REF_PART_PATTERN = r"\w[\w.+-]{1,50}"
 REF_REGEX = re.compile(
     rf"""(?x)
     (?P<ref>
@@ -154,3 +154,34 @@ def build_status(line: str) -> Tuple[Optional[str], Optional[str]]:
             return None, file
 
     return None, None
+
+
+class ParsedLine:
+    REF_REGEX = re.compile(rf"^{compact_pattern(REF_REGEX)[0]}")
+
+    def __init__(self, line: str):
+        self.line = line.rstrip("\r\n")
+        self._ref = self._rest = None
+
+    def _split(self):
+        line = self.line
+        *prefix, rest = line.split(":", maxsplit=1)
+        if prefix and "/" in prefix[0]:
+            match = self.REF_REGEX.match(prefix[0])
+            if match:
+                self._ref = match.group()
+                line = rest[1:]
+
+        self._rest = line
+
+    @property
+    def ref(self):
+        if self._rest is None:
+            self._split()
+        return self._ref
+
+    @property
+    def rest(self):
+        if self._rest is None:
+            self._split()
+        return self._rest

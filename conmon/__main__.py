@@ -41,6 +41,7 @@ from .logging import init as initialize_logging
 from .regex import (
     CMAKE_BUILD_PATH_REGEX,
     DECOLORIZE_REGEX,
+    ParsedLine,
     REF_REGEX,
     build_status,
     compact_pattern,
@@ -142,12 +143,13 @@ class Default(State):
         self.overwrite = False
         self.last_ref = None
 
-    def activated(self, parsed_line: Match) -> bool:
+    def activated(self, parsed: ParsedLine) -> bool:
         return False
 
-    def process(self, parsed_line: Match) -> None:
-        line, ref, rest = parsed_line.group(0, "ref", "rest")
-        if ref and "is locked by another concurrent conan process" in rest:
+    def process(self, parsed: ParsedLine) -> None:
+        rest = parsed.rest
+        line = parsed.line
+        if parsed.ref and "is locked by another concurrent conan process" in rest:
             self.parser.command.wait(terminate=True)
             CONAN_LOG.warning(line)
             self.parser.defaultlog["stdout"].append(line)
@@ -157,6 +159,7 @@ class Default(State):
         if rest.startswith("Installing (downloading, building) binaries..."):
             self.overwrite = True
 
+        ref = parsed.ref
         match = re.fullmatch(r"Downloading conan\w+\.[a-z]{2,3}", line)
         if match:
             log = self.parser.getdefaultlog(self.last_ref)
@@ -185,16 +188,16 @@ class Requirements(State):
         self.req: List[Dict[str, Optional[str]]] = []
         self.indent_ref = 0
 
-    def activated(self, parsed_line: Match) -> bool:
-        full_line, line = parsed_line.group(0, "rest")
-        if line in {"Requirements", "Build requirements"}:
-            self.screen.print(line)
-            self.stdout.append(full_line)
+    def activated(self, parsed: ParsedLine) -> bool:
+        rest = parsed.rest
+        if rest in {"Requirements", "Build requirements"}:
+            self.screen.print(rest)
+            self.stdout.append(parsed.line)
             return True
         return False
 
-    def process(self, parsed_line: Match) -> None:
-        line = parsed_line.group(0)
+    def process(self, parsed: ParsedLine) -> None:
+        line = parsed.line
         match = self.regex.match(line)
         if not match:
             self.deactivate()
@@ -235,16 +238,16 @@ class Packages(State):
         self.pkg: List[Dict[str, Optional[str]]] = []
         self.indent_ref = 0
 
-    def activated(self, parsed_line: Match) -> bool:
-        full_line, line = parsed_line.group(0, "rest")
-        if line in {"Packages", "Build requirements packages"}:
-            self.screen.print(line)
-            self.stdout.append(full_line)
+    def activated(self, parsed: ParsedLine) -> bool:
+        rest = parsed.rest
+        if rest in {"Packages", "Build requirements packages"}:
+            self.screen.print(rest)
+            self.stdout.append(parsed.line)
             return True
         return False
 
-    def process(self, parsed_line: Match) -> None:
-        line = parsed_line.group(0)
+    def process(self, parsed: ParsedLine) -> None:
+        line = parsed.line
         match = self.regex.match(line)
         if not match:
             self.deactivate()
@@ -277,10 +280,10 @@ class Config(State):
         self.log = parser.log["profile"]
         self._final = False
 
-    def activated(self, parsed_line: Match) -> bool:
+    def activated(self, parsed: ParsedLine) -> bool:
         match = re.fullmatch(
             r"Configuration(?: \(profile_(?P<ptype>[a-z]+)\))?:",
-            parsed_line.group("rest"),
+            parsed.rest,
         )
         if match:
             self.lines.clear()
@@ -289,8 +292,8 @@ class Config(State):
             return True
         return False
 
-    def process(self, parsed_line: Match) -> None:
-        line = parsed_line.group(0)
+    def process(self, parsed: ParsedLine) -> None:
+        line = parsed.line
         if not line:
             self.deactivate()
         else:
@@ -319,23 +322,24 @@ class Package(State):
         self.parser = parser
         self.log = parser.defaultlog
 
-    def activated(self, parsed_line: Match) -> bool:
-        full_line, ref, rest = parsed_line.group(0, "ref", "rest")
+    def activated(self, parsed: ParsedLine) -> bool:
+        rest = parsed.rest
         if rest == "Calling package()":
+            ref = parsed.ref
             self.screen.print(f"Packaging {ref}")
             defaultlog = self.parser.getdefaultlog(ref)
-            defaultlog["stdout"].append(full_line)
+            defaultlog["stdout"].append(parsed.line)
             self.log = self.parser.defaultlog = defaultlog["package"]
             return True
         return False
 
-    def process(self, parsed_line: Match) -> None:
-        line = parsed_line.group("rest")
+    def process(self, parsed: ParsedLine) -> None:
+        rest = parsed.rest
         match = re.match(
-            r"(?P<prefix>[\w ]+) '?(?P<id>[a-z0-9]{32,40})(?:[' ]|$)", line
+            r"(?P<prefix>[\w ]+) '?(?P<id>[a-z0-9]{32,40})(?:[' ]|$)", rest
         )
         if not match:
-            self.log["stdout"].append(line)
+            self.log["stdout"].append(rest)
             return
 
         if match.group("prefix") == "Created package revision":
@@ -353,22 +357,22 @@ class Export(State):
         super().__init__(parser)
         self.parser = parser
 
-    def activated(self, parsed_line: Match) -> bool:
-        rest = parsed_line.group("rest")
-        if rest == "Exporting package recipe":
+    def activated(self, parsed: ParsedLine) -> bool:
+        if parsed.line.endswith("Exporting package recipe"):
             return True
         return False
 
-    def process(self, parsed_line: Match) -> None:
-        line, ref, rest = parsed_line.group(0, "ref", "rest")
-        match = re.match("Exported revision: (?P<recipe_revision>[a-f0-9]{32})", rest)
-        log = self.parser.getdefaultlog(ref)
+    def process(self, parsed: ParsedLine) -> None:
+        match = re.match(
+            "Exported revision: (?P<recipe_revision>[a-f0-9]{32})", parsed.rest
+        )
+        log = self.parser.getdefaultlog(parsed.ref)
 
         if match:
             log.update(match.groupdict())
             self.deactivate()
         else:
-            log["export"].append(line)
+            log["export"].append(parsed.line)
 
     def _deactivate(self, final=False):
         self.parser.setdefaultlog()
@@ -395,20 +399,19 @@ class Build(State):
                 fh.write("{}")
             Build.PROC_JSON_RESET = True
 
-    def _activated(self, parsed_line: Match) -> bool:
-        line, ref = parsed_line.group("rest", "ref")
-        if line == "Calling build()":
-            self.ref = ref
+    def _activated(self, parsed: ParsedLine) -> bool:
+        if parsed.line.endswith("Calling build()"):
+            self.ref = ref = parsed.ref
             self.screen.print(f"Building {ref}")
             return True
         return False
 
-    def activated(self, parsed_line: Match) -> bool:
-        if self._activated(parsed_line):
+    def activated(self, parsed: ParsedLine) -> bool:
+        if self._activated(parsed):
             assert self.ref
             defaultlog = self.parser.getdefaultlog(self.ref)
             self.stopline = f"Package '{defaultlog['package_id']}' built"
-            defaultlog["stdout"].append(parsed_line.group())
+            defaultlog["stdout"].append(parsed.line)
             self.log = self.parser.defaultlog = defaultlog[self.REF_LOG_KEY]
             self.log["stderr"].saveposition(self)
             self.log["stdout"].saveposition(self)
@@ -425,14 +428,14 @@ class Build(State):
             )
         self.warnings = 0
 
-    def process(self, parsed_line: Match) -> None:
-        line = parsed_line.group("rest")
-        if line == self.stopline or line.startswith("ERROR:"):
+    def process(self, parsed: ParsedLine) -> None:
+        rest = parsed.rest
+        if rest == self.stopline or rest.startswith("ERROR:"):
             self.deactivate()
             return
 
-        self.log["stdout"].append(parsed_line.group())
-        status, file = build_status(line)
+        self.log["stdout"].append(parsed.line)
+        status, file = build_status(rest)
         if file:
             if status:
                 self.force_status = True
@@ -454,16 +457,16 @@ class Build(State):
             # shorten at path separator
             output = re.sub(r"\.{3}[^/\\]+(?=[/\\])", "...", output)
             self.screen.print(output, overwrite=True)
-        elif line.startswith("-- ") or line.lower().startswith("checking "):
-            self.screen.print(shorten_conan_path(line), overwrite=True)
+        elif rest.startswith("-- ") or rest.lower().startswith("checking "):
+            self.screen.print(shorten_conan_path(rest), overwrite=True)
         elif LOG_WARNING_COUNT:
-            match = self.parser.SEVERITY_REGEX.match(line)
+            match = self.parser.SEVERITY_REGEX.match(rest)
             if not (match and added_first(self._WARNINGS, match.group())):
                 return
             level_name = levelname_from_severity(match.group("severity"))
             if level_name in {"ERROR", "CRITICAL"}:
                 esc = logger_escape_code(BLOG, level_name)
-                self.screen.print(f"{esc}E {line}")
+                self.screen.print(f"{esc}E {rest}")
             elif level_name == "WARNING":
                 self.warnings += 1
 
@@ -627,17 +630,16 @@ class Build(State):
 class BuildTest(Build):
     REF_LOG_KEY = "test_build"
 
-    def _activated(self, parsed_line: Match) -> bool:
-        line, ref = parsed_line.group("rest", "ref")
-        if line == "(test package): Calling build()":
-            self.ref = f"{ref} (test package)"
+    def _activated(self, parsed: ParsedLine) -> bool:
+        if parsed.line.endswith("(test package): Calling build()"):
+            ref = self.ref = f"{parsed.ref} (test package)"
             self.screen.print(f"Building {ref}")
             return True
         return False
 
     @staticmethod
-    def _deactivated(parsed_line: Match) -> bool:
-        return parsed_line.group("rest") == "(test package): Running test()"
+    def _deactivated(parsed: ParsedLine) -> bool:
+        return parsed.line.endswith("(test package): Running test()")
 
 
 class RunTest(State):
@@ -646,18 +648,18 @@ class RunTest(State):
         self.parser = parser
         self.log = parser.defaultlog
 
-    def activated(self, parsed_line: Match) -> bool:
-        full_line, ref, line = parsed_line.group(0, "ref", "rest")
-        if line == "(test package): Running test()":
+    def activated(self, parsed: ParsedLine) -> bool:
+        if parsed.rest == "(test package): Running test()":
+            ref = parsed.ref
             self.screen.print(f"Running test for {ref}")
             defaultlog = self.parser.getdefaultlog(ref)
-            defaultlog["stdout"].append(full_line)
+            defaultlog["stdout"].append(parsed.line)
             self.log = self.parser.defaultlog = defaultlog["test_run"]
             return True
         return False
 
-    def process(self, parsed_line: Match) -> None:
-        self.log["stdout"].append(parsed_line.group(0))
+    def process(self, parsed: ParsedLine) -> None:
+        self.log["stdout"].append(parsed.line)
 
     def _deactivate(self, final=False):
         self.parser.setdefaultlog()
@@ -668,9 +670,6 @@ class ConanParser:
     CONAN_VERSION = "<undefined>"
     SEVERITY_REGEX = re.compile(
         r"(?xm).+?:\ (?P<severity>warning|error|fatal\ error)(?:\ ?:\ |\ [a-zA-Z])"
-    )
-    LINE_REGEX = re.compile(
-        rf"^(?:{compact_pattern(REF_REGEX)[0]}(?:: |[: ]))?(?P<rest>[^\r\n]*)"
     )
 
     def __init__(self, command: Command):
@@ -806,8 +805,7 @@ class ConanParser:
                 stderr_written = False
 
                 for line in decolorize(stdout):
-                    match = self.LINE_REGEX.match(line)
-                    self.states.process_hooks(match)
+                    self.states.process_hooks(ParsedLine(line))
                     if log_states and line:
                         state = self.states.active_instance()
                         name = state and state.name
