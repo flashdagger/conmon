@@ -405,6 +405,8 @@ class Build(State):
     @staticmethod
     def _deactivated(parsed_line: Match) -> bool:
         line = parsed_line.group("rest")
+        if not line.startswith("Package '"):
+            return False
         match = re.fullmatch(r"Package '\w+' built", line)
         return bool(match) or line.startswith("ERROR:")
 
@@ -464,7 +466,7 @@ class Build(State):
             self.screen.print(output, overwrite=True)
         elif line.startswith("-- ") or line.lower().startswith("checking "):
             self.screen.print(shorten_conan_path(line), overwrite=True)
-        else:
+        elif LOG_WARNING_COUNT:
             match = self.parser.SEVERITY_REGEX.match(line)
             if not (match and added_first(self._WARNINGS, match.group())):
                 return
@@ -472,7 +474,7 @@ class Build(State):
             if level_name in {"ERROR", "CRITICAL"}:
                 esc = logger_escape_code(BLOG, level_name)
                 self.screen.print(f"{esc}E {line}")
-            elif LOG_WARNING_COUNT and level_name == "WARNING":
+            elif level_name == "WARNING":
                 self.warnings += 1
 
     def filtered_tus(
@@ -678,7 +680,7 @@ class ConanParser:
         r"(?xm).+?:\ (?P<severity>warning|error|fatal\ error)(?:\ ?:\ |\ [a-zA-Z])"
     )
     LINE_REGEX = re.compile(
-        rf"(?:{compact_pattern(REF_REGEX)[0]}(?:: ?| ))?(?P<rest>[^\r\n]*)"
+        rf"^(?:{compact_pattern(REF_REGEX)[0]}(?:: |[: ]))?(?P<rest>[^\r\n]*)"
     )
 
     def __init__(self, command: Command):
@@ -707,11 +709,6 @@ class ConanParser:
             RunTest,
             default=Default,
         )
-
-    def parse_line(self, line) -> Match:
-        match = self.LINE_REGEX.match(line)
-        assert match
-        return match
 
     def getdefaultlog(self, name: Optional[str] = None) -> DefaultDict:
         if name is None:
@@ -819,7 +816,8 @@ class ConanParser:
                 stderr_written = False
 
                 for line in decolorize(stdout):
-                    self.states.process_hooks(self.parse_line(line))
+                    match = self.LINE_REGEX.match(line)
+                    self.states.process_hooks(match)
                     if log_states and line:
                         state = self.states.active_instance()
                         name = state and state.name

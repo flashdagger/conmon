@@ -38,6 +38,7 @@ from json_stream.base import StreamingJSONObject, StreamingJSONList
 from psutil import Popen
 
 T = TypeVar("T", bound=Hashable)
+NoneType = type(None)
 
 
 class StopWatch:
@@ -262,13 +263,13 @@ class CachedLines:
 
     def write(self, string: str):
         fh = self._fh
-        fh.seek(0, 2)
+        # fh.seek(0, 2)
         fh.write(string)
         self._len += string.count("\n")
 
     def extend(self, lines: Iterator[str], end="\n"):
         fh = self._fh
-        fh.seek(0, 2)
+        # fh.seek(0, 2)
         count = 0
         for line in lines:
             fh.write(line + end)
@@ -277,15 +278,15 @@ class CachedLines:
 
     def append(self, line: str, end="\n"):
         fh = self._fh
-        fh.seek(0, 2)
+        # fh.seek(0, 2)
         fh.write(line + end)
         self._len += 1
 
-    def read(self, hint=-1, marker: Hashable = None):
+    def read(self, *, marker: Hashable = None):
         fh = self._fh
         position = 0 if marker is None else self._positions[hash(marker)]
         fh.seek(position)
-        return fh.read(hint)
+        return fh.read()
 
     def iterlines(self, marker: Hashable = None):
         fh = self._fh
@@ -312,21 +313,6 @@ class CachedLines:
         fh = self._fh
         fh.seek(0)
         return iter(fh)
-
-    def __del__(self):
-        fh = self._fh
-        if fh.name is None:
-            return
-        size = human_readable_byte_size(fh.tell())
-        fh.seek(0)
-        print(
-            "SpooledFile",
-            "name:",
-            fh.name,
-            "size:",
-            size,
-            repr(next(iter(fh))[:80].rstrip()),
-        )
 
 
 def freeze_json_object(obj) -> Hashable:
@@ -512,7 +498,7 @@ class AnyComparable:
         typ: idx
         for idx, typ in enumerate(
             (
-                type(None),
+                NoneType,
                 bool,
                 int,
                 float,
@@ -546,8 +532,9 @@ class AnyComparable:
             with suppress(TypeError):
                 return obj_a < obj_b
 
-        with suppress(TypeError):
-            return self.lt_seq(obj_a, obj_b)
+        if not NoneType in typeset:
+            with suppress(TypeError):
+                return self.lt_seq(obj_a, obj_b)
 
         return self.precedence(type_a) < self.precedence(type_b)
 
