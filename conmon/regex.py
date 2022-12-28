@@ -74,12 +74,12 @@ CMAKE_BUILD_PATH_REGEX = re.compile(
 )
 FILEPATH = re.compile(
     r"""(?x)
-        (?:[^ ].*\ )?
+        ^(?:.*\ )?
         (?P<path>
           [\-.\w/\\]+
-          \.(?i:asm|s|c(?:pp|xx|c)?)
+          \.(?i:c(?:pp|xx|c)?|asm|s)
           (?:\.[a-z]{1,3})?
-        )\b
+        )
     """
 )
 BUILDSTATUS = re.compile(r"\[ {0,2}\d+(?:%|[/\d]+)]| {2}(?:CC|CCLD|CPPAS)(?= )")
@@ -146,12 +146,11 @@ def build_status(line: str) -> Tuple[Optional[str], Optional[str]]:
     if line.startswith(" "):
         return None, None
 
-    match = FILEPATH.match(line)
-    if match:
-        start = match.start("path")
-        file = match.group("path")
-        if line == file or any(f" {item} " in line[:start] for item in ("-c", "/c")):
-            return None, file
+    idx = 0 if " " not in line else line.replace("/", "-").find(" -c ")
+    if idx >= 0:
+        match = FILEPATH.match(line[idx:])
+        if match:
+            return None, match.group("path")
 
     return None, None
 
