@@ -866,7 +866,7 @@ def monitor(args: List[str], replay=False) -> int:
     conan_command, ConanParser.CONAN_VERSION = call_cmd_and_version()
     conan_command.extend(args)
     command = ReplayCommand() if replay else Command()
-    command.run(conan_command, stderr=log_stderr())
+    command.run(conan_command, stderr=log_stderr(), errors="ignore")
 
     cycle_time_s = conmon_setting("build.monitor", True)
     if isinstance(cycle_time_s, float):
