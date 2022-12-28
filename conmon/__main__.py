@@ -391,8 +391,7 @@ class Build(State):
         self.warnings = 0
         self.buildmon = BuildMonitor(self.parser.command.proc.pid)
         self.log = parser.defaultlog
-        self.ref = self.stopline = "???"
-        self.refspec = None
+        self.refspec = self.stopline = "???"
         self.force_status = False
         self.warning_map: Dict[str, List[Match]] = {}
         if not Build.PROC_JSON_RESET:
@@ -404,22 +403,24 @@ class Build(State):
         if not parsed.line.endswith("Calling build()"):
             return False
 
-        self.ref = ref = parsed.ref
+        ref = parsed.ref
         assert ref, repr(parsed.line)
-        log_key = "build"
-        defaultlog = self.parser.getdefaultlog(self.ref)
-        self.stopline = f"Package '{defaultlog['package_id']}' built"
-        self.refspec = refspec = parsed.refspec
-        if refspec:
-            ref = f"{refspec} for {ref}"
-            log_key = f"{log_key}_{refspec.replace(' ', '_')}"
-            self.stopline = "Running test()"
-        self.screen.print(f"Building {ref}")
+        defaultlog = self.parser.getdefaultlog(ref)
         defaultlog["stdout"].append(parsed.line)
+        if parsed.refspec:
+            ref = f"{ref} ({parsed.refspec})"
+            log_key = f"build_{parsed.refspec.replace(' ', '_')}"
+            self.stopline = "Running test()"
+        else:
+            self.stopline = f"Package '{defaultlog['package_id']}' built"
+            log_key = "build"
+
+        self.refspec = ref
         self.log = self.parser.defaultlog = defaultlog[log_key]
         self.log["stderr"].saveposition(self)
         self.log["stdout"].saveposition(self)
         self.buildmon.start()
+        self.screen.print(f"Building {ref}")
         return True
 
     def flush_warning_count(self):
@@ -562,10 +563,7 @@ class Build(State):
             ) as proc_fh:
                 proc_obj.update(json.load(proc_fh))
 
-        proc_key = self.ref
-        if self.refspec:
-            proc_key = f"{proc_key} {self.refspec}"
-        proc_obj[proc_key] = list(self.buildmon.proc_cache.values())
+        proc_obj[self.refspec] = list(self.buildmon.proc_cache.values())
         with filehandler("proc.json", hint="process debug json") as proc_fh:
             json.dump(
                 proc_obj,
@@ -603,11 +601,8 @@ class Build(State):
         self.flush_warning_count()
         self.parser.screen.reset()
 
-        proc_key = self.ref
-        if self.refspec:
-            proc_key = f"{proc_key} {self.refspec}"
         proc_json = getattr(self.parser.command, "proc_json", {})
-        for proc_info in proc_json.get(proc_key, ()):
+        for proc_info in proc_json.get(self.refspec, ()):
             self.buildmon.proc_cache[freeze_json_object(proc_info)] = None
 
         self.buildmon.stop()
@@ -644,7 +639,7 @@ class RunTest(State):
         self.log = parser.defaultlog
 
     def activated(self, parsed: ParsedLine) -> bool:
-        if parsed.rest == "Running test()":
+        if parsed.line.endswith("Running test()"):
             ref = parsed.ref
             self.screen.print(f"Running test for {ref}")
             defaultlog = self.parser.getdefaultlog(ref)
