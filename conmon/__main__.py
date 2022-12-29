@@ -556,20 +556,11 @@ class Build(State):
             )
 
     def dump_debug_proc(self):
-        proc_obj = {}
-        with suppress(ValueError, OSError, TypeError):
-            with filehandler(
-                "proc.json", mode="r", hint="process debug json"
-            ) as proc_fh:
-                proc_obj.update(json.load(proc_fh))
-
-        proc_obj[self.refspec] = list(self.buildmon.proc_cache.values())
-        with filehandler("proc.json", hint="process debug json") as proc_fh:
-            json.dump(
-                proc_obj,
-                proc_fh,
-                indent=2,
-            )
+        path = Path(conmon_setting("proc.json", "."))
+        if path.is_file():
+            proc_list = list(self.buildmon.proc_cache.values())
+            json.update(path, {(): {self.refspec: proc_list}}, indent=2)
+            CONMON_LOG.debug("updated %s with %s items", path, len(proc_list))
 
     def flush(self):
         for name in ("stderr", "stdout"):
