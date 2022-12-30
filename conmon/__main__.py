@@ -8,7 +8,6 @@ import platform
 import re
 import sys
 import tempfile
-from collections import UserDict
 from configparser import ParsingError
 from contextlib import contextmanager, suppress
 from functools import partial
@@ -96,7 +95,7 @@ def filehandler(key: str, mode="w", hint=""):
     CONMON_LOG.debug("saved %s to %r", hint, path)
 
 
-class DefaultDict(UserDict):
+class DefaultDict(dict):
     DEFAULT = {
         "stdout": CachedLines,
         "stderr": CachedLines,
@@ -104,20 +103,12 @@ class DefaultDict(UserDict):
     }
 
     def __getitem__(self, item):
-        data = self.data
-        if item not in data:
+        try:
+            return super().__getitem__(item)
+        except KeyError:
             defaultcls = self.DEFAULT.get(item, self.__class__)
-            value = data[item] = defaultcls()
+            value = self[item] = defaultcls()
             return value
-        return data[item]
-
-    def get(self, key, default=None):
-        return self.data.get(key, default)
-
-    def setdefault(self, key, *args):
-        if args:
-            return self.data.setdefault(key, *args)
-        return self[key]
 
 
 class Default(State):
