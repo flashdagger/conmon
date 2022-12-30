@@ -381,7 +381,6 @@ class Export(State):
 
 class Build(State):
     MAX_WIDTH = 65
-    PROC_JSON_RESET = False
     _WARNINGS: Set[str] = set()
     REF_LOG_KEY = "build"
 
@@ -394,10 +393,6 @@ class Build(State):
         self.refspec = self.stopline = "???"
         self.force_status = False
         self.warning_map: Dict[str, List[Match]] = {}
-        if not Build.PROC_JSON_RESET:
-            with filehandler("proc.json", hint="process debug json") as fh:
-                fh.write("{}")
-            Build.PROC_JSON_RESET = True
 
     def activated(self, parsed: ParsedLine) -> bool:
         if not parsed.line.endswith("Calling build()"):
@@ -556,11 +551,17 @@ class Build(State):
             )
 
     def dump_debug_proc(self):
+        proc_list = list(self.buildmon.proc_cache.values())
+        if not (self.buildmon.ACTIVE or proc_list):
+            return
         path = Path(conmon_setting("proc.json", "."))
         if path.is_file():
-            proc_list = list(self.buildmon.proc_cache.values())
             json.update(path, {(): {self.refspec: proc_list}}, indent=2)
             CONMON_LOG.debug("updated %s with %s items", path, len(proc_list))
+        elif not path.exists():
+            with path.open("w", encoding="utf-8") as fh:
+                json.dump({self.refspec: proc_list}, fh, indent=2)
+            CONMON_LOG.debug("created %s with %s items", path, len(proc_list))
 
     def flush(self):
         for name in ("stderr", "stdout"):
@@ -858,6 +859,10 @@ def monitor(args: List[str], replay=False) -> int:
     if isinstance(cycle_time_s, float):
         BuildMonitor.CYCLE_TIME_S = float(cycle_time_s)
     BuildMonitor.ACTIVE = not (replay or cycle_time_s is False)
+    if replay or cycle_time_s is not False:
+        proc_json = Path(conmon_setting("proc.json", "."))
+        if proc_json.is_file():
+            proc_json.unlink()
 
     parser = ConanParser(command)
     for item in ("conan.log", "report.json", "proc.json"):
