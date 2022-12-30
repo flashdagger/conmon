@@ -10,7 +10,7 @@ import sys
 import tempfile
 from collections import UserDict
 from configparser import ParsingError
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from functools import partial
 from io import StringIO
 from operator import itemgetter
@@ -29,8 +29,6 @@ from typing import (
     TextIO,
     cast,
 )
-
-import psutil
 
 from . import __version__, json
 from .buildmon import BuildMonitor
@@ -73,8 +71,6 @@ from .warnings import LOG as BLOG
 
 CONMON_LOG = get_logger("CONMON")
 CONAN_LOG_ONCE = UniqueLogger(CONAN_LOG)
-PARENT_PROCS = [parent.name() for parent in psutil.Process(os.getppid()).parents()]
-LOG_HINTS: Dict[str, Optional[int]] = {}
 LOG_WARNING_COUNT = conmon_setting("log.warning_count", True)
 
 
@@ -87,29 +83,17 @@ def log_stderr():
     return PIPE
 
 
-def filehandler(key: str, mode="w", hint="") -> TextIO:
+@contextmanager
+def filehandler(key: str, mode="w", hint=""):
     path = conmon_setting(key)
     if isinstance(path, str):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        if hint:
-            LOG_HINTS.setdefault(f"saved {hint} to {path!r}", logging.DEBUG)
-    elif hint:
-        env_key = f"CONMON_{key.upper().replace('.', '_')}"
-        hint_path = key.replace("_", ".")
-        fmt = "export {}={}"
-        for name in PARENT_PROCS:
-            if name == "bash":
-                break
-            if name == "powershell.exe":
-                fmt = "$env:{}='{}'"
-                break
-            if name == "cmd.exe":
-                fmt = "set {}={}"
-                break
-        template = f"hint: execute {fmt!r} to save {{}}"
-        LOG_HINTS.setdefault(template.format(env_key, hint_path, hint))
+    else:
+        path = os.devnull
 
-    return open(path or os.devnull, mode=mode, encoding="utf-8")
+    with open(path, mode=mode, encoding="utf-8") as fh:
+        yield fh
+    CONMON_LOG.debug("saved %s to %r", hint, path)
 
 
 class DefaultDict(UserDict):
@@ -852,7 +836,11 @@ def monitor(args: List[str], replay=False) -> int:
 
     conan_command, ConanParser.CONAN_VERSION = call_cmd_and_version()
     conan_command.extend(args)
-    command = ReplayCommand() if replay else Command()
+    try:
+        command = ReplayCommand() if replay else Command()
+    except FileNotFoundError as exc:
+        CONMON_LOG.error(exc)
+        return -1
     command.run(conan_command, stderr=log_stderr(), errors="ignore")
 
     cycle_time_s = conmon_setting("build.monitor", True)
@@ -870,6 +858,7 @@ def monitor(args: List[str], replay=False) -> int:
         path = replay_logfile(item, create_if_not_exists=replay)
         if not replay and path and path.is_file():
             path.unlink()
+
     with filehandler("conan.log", hint="raw conan output") as fh:
         parser.process_streams(fh)
     parser.finalize()
@@ -883,14 +872,12 @@ def monitor(args: List[str], replay=False) -> int:
                 with suppress(FileNotFoundError):
                     path.unlink()
 
-    with filehandler("report.json", hint="report json") as fh:
-        json.dump(parser.log, fh, indent=2)
-
     returncode = command.wait()
     if returncode:
         CONMON_LOG.error("conan exited with code %s", returncode)
-    for hint, level in LOG_HINTS.items():
-        CONMON_LOG.log(level or logging.INFO, hint)
+
+    with filehandler("report.json", hint="report json") as fh:
+        json.dump(parser.log, fh, indent=2)
 
     return returncode
 

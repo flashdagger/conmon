@@ -101,7 +101,7 @@ class ReplayPopen(subprocess.Popen):
     def __init__(self, args, **_kwargs):
         conan = replay_json("report.json", "conan")
         self.args = conan.get("command", args)
-        self.returncode = conan.get("returncode", -1)
+        self.returncode = conan.get("returncode", "<unknown>")
 
     @property
     def pid(self):
@@ -121,7 +121,7 @@ class ReplayCommand(Command):
         return not self.streams.exhausted
 
     def wait(self, **_kwargs):
-        return self.proc.returncode
+        return self.proc.returncode if self.proc else -1
 
     @property
     def returncode(self):
