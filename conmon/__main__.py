@@ -531,12 +531,12 @@ class Build(State):
             return
         path = Path(conmon_setting("proc.json", "."))
         if path.is_file():
-            json.update(path, {(): {self.refspec: proc_list}}, indent=2)
-            CONMON_LOG.debug("updated %s with %s items", path, len(proc_list))
+            json.update({(): {self.refspec: proc_list}}, path, indent=2)
+            CONMON_LOG.debug("updated %r with %s items", str(path), len(proc_list))
         elif not path.exists():
-            with path.open("w", encoding="utf-8") as fh:
+            hint = f"debug process dump with {len(proc_list)} items"
+            with filehandler("proc.json", "w", hint) as fh:
                 json.dump({self.refspec: proc_list}, fh, indent=2)
-            CONMON_LOG.debug("created %s with %s items", path, len(proc_list))
 
     def flush(self):
         for name in ("stderr", "stdout"):

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 import json
+import os
 from pathlib import Path
-from typing import Iterable, Mapping, Optional, TextIO, Tuple, Union
+from typing import Any, Callable, Iterable, Mapping, Optional, TextIO, Tuple, Union
 
 import json_stream
-from json_stream import streamable_dict, streamable_list
 from json_stream.base import (
     StreamingJSONList,
     StreamingJSONObject,
@@ -45,86 +45,79 @@ def dump(obj, fh: TextIO, *args, **kwargs):
     json.dump(obj, fh, *args, **kwargs)
 
 
+# pylint: disable=consider-using-with
 def update(
-    infile: Path,
-    updates: Mapping[PathType, Optional[Union[Mapping, Iterable]]],
+    updates: Union[Callable[[PathType], Any], Mapping[PathType, Any]],
+    infile: Union[TextIO, Path, str],
+    outfile: Optional[Union[TextIO, Path, str]] = None,
     **kwargs,
 ):
-    # pylint: disable=too-few-public-methods
-    class Streamable:
-        def __init__(self, iterable, path=()):
-            self._path = path
-            if path and isinstance(path[-1], int):
-                super().__init__(iterable)
-            else:
-                super().__init__(self._wrapped(iterable))
-
-        def __repr__(self):  # pragma: no cover
-            return f"<{type(self).__name__} path={self._path}>"
-
-        def _wrapped(self, iterable):
-            raise NotImplementedError()
-
-    class StreamableDict(Streamable, json_stream.writer.StreamableDict):
-        def _wrapped(self, iterable):
-            path = self._path
-            umap = updates.get(path, {})
-            assert isinstance(umap, Mapping), "callback must return Mapping or None"
-            updated_keys = set()
-            for key, value in iterable:
-                if key in umap:
-                    updated_keys.add(key)
-                    yield key, umap[key]
-                    continue
-                if isinstance(value, TransientStreamingJSONObject):
-                    value = self.__class__(value.items(), path=path + (key,))
-                if isinstance(value, TransientStreamingJSONList):
-                    value = StreamableList(value, path=path + (key,))
-                yield key, value
-
-            for key, value in umap.items():
-                if key in updated_keys:
-                    continue
-                yield key, value
-
-    class StreamableList(Streamable, json_stream.writer.StreamableList):
-        def _wrapped(self, iterable):
-            path = self._path
-            data = updates.get(path, ())
-            assert isinstance(data, Iterable), "callback must return an iterable"
-            for idx, value in enumerate(iterable):
-                if isinstance(value, TransientStreamingJSONObject):
-                    value = StreamableDict(value.items(), path=path + (idx,))
-                if isinstance(value, TransientStreamingJSONList):
-                    value = self.__class__(value, path=path + (idx,))
-                yield value
-            for value in data:
-                yield value
-
-    kwargs.pop("check_circular", None)
-    if "default" in kwargs:
-        default = kwargs.pop("default")
+    if callable(updates):
+        callback = updates
     else:
-        default = kwargs.pop("cls", Encoder)().default
+        callback = lambda path: updates.get(path)  # type: ignore
 
-    def transient(obj):
-        if isinstance(obj, TransientStreamingJSONObject):
-            return streamable_dict(obj.items())
-        if isinstance(obj, TransientStreamingJSONList):
-            return streamable_list(obj)
-        return default(obj)
+    def wrap(item, path):
+        if isinstance(item, TransientStreamingJSONObject):
+            return StreamableDict(item.items(), path=path)
+        if isinstance(item, TransientStreamingJSONList):
+            return StreamableList(item, path=path)
+        return item
 
-    outfile = infile.with_name(f"{infile.stem}.tmp{infile.suffix}")
-    with infile.open(encoding="utf-8") as fh_in:
+    def update_dict(iterable, path):
+        umap = dict(callback(path) or ())
+        for key, item in iterable:
+            yield key, umap.pop(key) if key in umap else wrap(item, path + (key,))
+        yield from umap.items()
+
+    def update_list(iterable, path):
+        for idx, item in enumerate(iterable):
+            yield wrap(item, path + (idx,))
+        data = callback(path) or ()
+        assert isinstance(data, Iterable), "expected an iterable"
+        for value in data:
+            yield value
+
+    class StreamableDict(json_stream.writer.StreamableDict):
+        def __init__(self, iterable, path=()):
+            super().__init__(update_dict(iterable, path))
+
+    class StreamableList(json_stream.writer.StreamableList):
+        def __init__(self, iterable, path=()):
+            super().__init__(update_list(iterable, path))
+
+    _success = False
+    _swap = True
+    fh_in = (
+        open(infile, encoding="utf-8") if isinstance(infile, (str, Path)) else infile
+    )
+    with fh_in:
         instream = json_stream.load(fh_in, persistent=False)
+
         if isinstance(instream, TransientStreamingJSONObject):
             instream = StreamableDict(instream.items())
         elif isinstance(instream, TransientStreamingJSONList):
             instream = StreamableList(instream)
-        with outfile.open("w", encoding="utf-8") as fh_out:
-            json.dump(
-                instream, fh_out, check_circular=False, default=transient, **kwargs
-            )
 
-    infile.unlink()
-    outfile.rename(infile)
+        if outfile is None:
+            name_in = Path(fh_in.name)
+            outfile = name_in.with_name(f"{name_in.stem}.tmp{name_in.suffix}")
+        else:
+            _swap = False
+        fh_out = (
+            open(outfile, "w", encoding="utf-8")
+            if isinstance(outfile, (str, Path))
+            else outfile
+        )
+
+        kwargs.update(dict(check_circular=False, cls=Encoder))
+        with fh_out:
+            json.dump(instream, fh_out, **kwargs)
+            _success = True
+
+    if _success and _swap:
+        assert isinstance(outfile, (Path, str))
+        if not isinstance(infile, (Path, str)):
+            infile = infile.name
+        os.remove(infile)
+        os.rename(outfile, infile)
