@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 import json
-from collections import UserDict
 from pathlib import Path
 from typing import Iterable, Mapping, Optional, TextIO, Tuple, Union
 
@@ -35,16 +34,15 @@ class Encoder(JSONStreamEncoder):
     def default(self, obj):
         if isinstance(obj, Path):
             return str(obj)
-        if isinstance(obj, UserDict):
-            return obj.data
         if isinstance(obj, CachedLines):
-            return streamable_list(line[:-1] for line in obj)
+            return list(line[:-1] for line in obj)
         # Let the base class default method raise the TypeError
         return super().default(obj)
 
 
 def dump(obj, fh: TextIO, *args, **kwargs):
-    json.dump(obj, fh, *args, **kwargs, cls=Encoder)
+    kwargs.setdefault("cls", Encoder)
+    json.dump(obj, fh, *args, **kwargs)
 
 
 def update(
@@ -116,7 +114,7 @@ def update(
             return streamable_list(obj)
         return default(obj)
 
-    outfile = infile.with_name(f"{infile.stem}.out{infile.suffix}")
+    outfile = infile.with_name(f"{infile.stem}.tmp{infile.suffix}")
     with infile.open(encoding="utf-8") as fh_in:
         instream = json_stream.load(fh_in, persistent=False)
         if isinstance(instream, TransientStreamingJSONObject):
