@@ -86,6 +86,7 @@ class BuildRegex(Regex):
             | aclocal(?:.\w+)?
             | config(?:ure)?(?:\.[a-z]+)?
             | Makefile(?:\.[a-z]+)?
+            | make\[\d+]
         )
         ( :(?P<line>\d+) )?
         (

@@ -585,6 +585,7 @@ class Build(State):
                     "from",
                     "severity",
                     "file",
+                    "function",
                     "line",
                     "column",
                     "category",

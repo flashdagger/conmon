@@ -191,6 +191,7 @@ output = [
     "",
     "",
     "cl : Command line warning D9002 : ignoring unknown option '/diagnostics:caret/Wall'",
+    "make[1]: warning: jobserver unavailable: using -j1.  Add '+' to parent make rule.",
     "",
 ]
 dataset = [
@@ -659,6 +660,12 @@ dataset = [
                 "*** a GNU mirror site.  (If you are using the official distribution of\n"
                 "*** PostgreSQL then you do not need to worry about this, because the Bison\n"
                 "*** output is pre-generated.)\n",
+            },
+            {
+                "from": "make[1]",
+                "info": "jobserver unavailable: using -j1.  Add '+' to parent make rule.\n",
+                "line": None,
+                "severity": "warning",
             },
         ],
         id="autotools",
