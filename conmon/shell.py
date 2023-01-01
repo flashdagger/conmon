@@ -93,16 +93,19 @@ class Shell(Command):
             raise self.Error("Process is not running")
 
         if flush:
-            self.streams.readboth()
+            self.streams.flush_queue()
 
         assert self.proc.stdin
         self.proc.stdin.write(f"{cmd}\n")
 
     def receive(self, timeout: Optional[float] = None) -> str:
-        stdout, stderr = self.streams.readboth(block_first=timeout)
-        if stderr:
+        try:
+            stdout = self.streams.assert_stdout(
+                block=timeout if timeout else False, onlyfirst=True
+            )
+        except AssertionError as exc:
             self.exit()
-            raise self.Error("".join(stderr))
+            raise self.Error(*exc.args)
         return "".join(stdout)
 
     def exit(self) -> int:

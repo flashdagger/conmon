@@ -53,12 +53,9 @@ class ScanPS(Command):
         if not (self.is_running() or self.returned_error):
             assert self.ps_exe, "ps.exe is not set"
             self.run([self.ps_exe])
-
-        stdout, stderr = self.streams.readboth(block_first=timeout)
-        if stderr:
-            raise RuntimeError("".join(stderr))
-
-        return stdout
+        return self.streams.assert_stdout(
+            block=timeout if timeout else False, onlyfirst=True
+        )
 
     def add_msys_procs(self, children: Set[Process]) -> None:
         if self.returned_error:

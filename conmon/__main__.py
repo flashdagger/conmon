@@ -723,58 +723,41 @@ class ConanParser:
         flush()
 
     def process_streams(self, raw_fh: TextIO):
-        def marker(pipe: str, timestamp=None):
-            _marker = f" <{pipe}> "
-            if timestamp:
-                _marker = f" <{pipe}@{timestamp}> "
+        def marker(pipestr: str, timestamp_s=None):
+            _marker = f" <{pipestr}> "
+            if timestamp_s:
+                _marker = f" <{pipestr}@{timestamp_s}> "
             return f"{_marker:-^120}\n"
 
-        streams = self.command.streams
-        stderr_written = True
-        log_states = conmon_setting("conan.log.states", False)
         decolorize = cast(
             Callable[[Iterable[str]], Iterator[str]],
             partial(map, partial(DECOLORIZE_REGEX.sub, "")),
         )
 
+        log_states = conmon_setting("conan.log.states", False)
         flush_timer = StopWatch()
+        streams = self.command.streams
         while not streams.exhausted:
-            try:
-                stdout, stderr = streams.readboth(block=0.05, block_first=1.0)
-            except KeyboardInterrupt:
-                with suppress(KeyboardInterrupt):
-                    self.screen.reset()
-                    CONMON_LOG.warning("Pressed Ctrl+C")
-                self.command.wait(terminate=True)
-                break
+            for pipe, timestamp, lines in streams.iterpipes(block=0.01):
+                raw_fh.write(marker(pipe, timestamp_s=timestamp))
+                if pipe == "stderr":
+                    stderr = tuple(decolorize(lines))
+                    raw_fh.writelines(stderr)
+                    self.process_errors(stderr)
+                elif pipe == "stdout":
+                    for line in lines:
+                        self.states.process_hooks(ParsedLine(line))
+                        if log_states and line:
+                            state = self.states.active_instance()
+                            name = state and state.name
+                            raw_fh.write(f"[{name}] {line}")
+                        else:
+                            raw_fh.write(line)
 
-            if stderr:
-                if not stderr_written:
-                    raw_fh.write(
-                        marker("stderr", timestamp=streams.stderr.last_timestamp)
-                    )
-                    stderr_written = True
-                raw_fh.writelines(decolorize(stderr))
-                self.process_errors(stderr)
-
-            if stdout:
-                raw_fh.write(marker("stdout", timestamp=streams.stdout.last_timestamp))
-                stderr_written = False
-
-                for line in decolorize(stdout):
-                    self.states.process_hooks(ParsedLine(line))
-                    if log_states and line:
-                        state = self.states.active_instance()
-                        name = state and state.name
-                        raw_fh.write(f"[{name}] {line}")
-                    else:
-                        raw_fh.write(line)
-
-            if stdout or stderr:
                 state = self.states.active_instance()
                 _ = state and state.flush()
-            if flush_timer.timespan_elapsed(1.0):
-                raw_fh.flush()
+                if flush_timer.timespan_elapsed(1.0):
+                    raw_fh.flush()
 
     def process_tracelog(self, trace_path: Path):
         actions: List[Dict[str, Any]] = []
@@ -852,7 +835,16 @@ def monitor(args: List[str], replay=False) -> int:
             path.unlink()
 
     with filehandler("conan.log", hint="raw conan output") as fh:
-        parser.process_streams(fh)
+        try:
+            parser.process_streams(fh)
+        except KeyboardInterrupt:
+            with suppress(KeyboardInterrupt):
+                parser.screen.reset()
+                CONMON_LOG.warning("Pressed Ctrl+C")
+            parser.command.wait(terminate=True)
+            CONMON_LOG.debug("process terminated")
+            parser.command.streams.join()
+            CONMON_LOG.debug("stopped streaming")
     parser.finalize()
 
     if conmon_setting("tracelog", False):
