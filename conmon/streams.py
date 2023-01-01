@@ -9,8 +9,6 @@ from threading import Thread
 from time import monotonic
 from typing import Dict, IO, Iterator, Optional, Tuple, Union
 
-from select import select
-
 
 class ProcessStreamHandler:
     def __init__(self, proc: Popen):
@@ -20,12 +18,12 @@ class ProcessStreamHandler:
         threads: Dict[str, Thread] = {}
         if sys.platform == "linux":
             threads["select"] = Thread(
-                target=self.selectreader,
+                target=self.pollreader,
                 args=(proc, queue),
                 name=f"selectreader<pid={proc.pid}>",
             )
         else:
-            for pname in ("stdout", "stderr"):
+            for pname in ("stderr", "stdout"):
                 pipe: Optional[IO] = getattr(proc, pname)
                 if pipe:
                     threads[pname] = Thread(
@@ -39,27 +37,32 @@ class ProcessStreamHandler:
             thread.start()
 
     @staticmethod
-    def selectreader(proc: Popen, queue: Queue) -> None:
+    def pollreader(proc: Popen, queue: Queue) -> None:
+        from select import epoll, EPOLLIN  # type: ignore
+
         pmapping = {}
+        poll_obj = epoll()
         for pname in ("stderr", "stdout"):
             pipe = getattr(proc, pname)
             if pipe:
-                pmapping[pipe] = pname
+                pmapping[pipe.fileno()] = (pname, pipe)
+                poll_obj.register(pipe, EPOLLIN)
 
         def readable_pipes(timeout=None):
-            return select(pmapping.keys(), [], [], timeout)[0]
+            return [
+                pmapping[_fileno]
+                for _fileno, _event in poll_obj.poll(timeout)
+                if _fileno in pmapping
+            ]
 
         while pmapping:
-            for pipe in readable_pipes():
+            for name, pipe in readable_pipes():
                 line = pipe.readline()
                 if line:
-                    queue.put((pmapping[pipe], line))
+                    queue.put((name, line))
                 else:
-                    del pmapping[pipe]
-                break
-            else:
-                if proc.poll() is not None:
-                    return
+                    poll_obj.unregister(pipe)
+                    del pmapping[pipe.fileno()]
 
     @staticmethod
     def pipereader(pipe_id: str, pipe: IO[str], queue: Queue) -> None:
