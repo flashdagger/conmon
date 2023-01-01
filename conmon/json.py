@@ -55,7 +55,7 @@ def update(
     if callable(updates):
         callback = updates
     else:
-        callback = lambda path: updates.get(path)  # type: ignore
+        callback = updates.get
 
     def wrap(item, path):
         if isinstance(item, TransientStreamingJSONObject):
