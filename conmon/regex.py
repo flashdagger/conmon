@@ -22,7 +22,7 @@ class Regex:
         return {key: cls.get(key) for key in keys}
 
 
-DECOLORIZE_REGEX = re.compile(r"\x1B\[\d{1,2}m", re.UNICODE)
+DECOLORIZE_REGEX = re.compile(r"\x1B\[([\d;]*m|K)", re.UNICODE)
 CONAN_DATA_PATH = re.compile(
     r"""(?x)
         (?P<path>

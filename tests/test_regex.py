@@ -4,6 +4,7 @@ import pytest
 
 from conmon.regex import (
     CMAKE_BUILD_PATH_REGEX,
+    DECOLORIZE_REGEX,
     REF_REGEX,
     build_status,
     filter_by_regex,
@@ -172,3 +173,8 @@ def test_filter_by_regex():
         "d": 0,
         "x": 0,
     }
+
+
+def test_decolorize():
+    string = "\u001b[01m\u001b[KK\u001b[mm\u001b[1;12mm"
+    assert DECOLORIZE_REGEX.sub("", string) == "Kmm"
