@@ -1,6 +1,5 @@
 from contextlib import suppress
 from functools import partial
-from io import TextIOBase
 from itertools import groupby
 from operator import itemgetter
 from queue import Empty, Queue
@@ -31,7 +30,7 @@ class ProcessStreamHandler:
         return thread
 
     @staticmethod
-    def pipereader(pipe_id: str, pipe: TextIOBase, queue: Queue) -> None:
+    def pipereader(pipe_id: str, pipe: IO[str], queue: Queue) -> None:
         queue_put = queue.put
         with suppress(ValueError):
             for line in iter(pipe.readline, ""):
@@ -69,7 +68,7 @@ class ProcessStreamHandler:
 
     def iterpipes(
         self, block: Union[bool, float] = False, onlyfirst=False
-    ) -> Iterator[Tuple[str, float, Tuple[str, ...]]]:
+    ) -> Iterator[Tuple[str, float, Iterator[str]]]:
         """
         return the name ('stderr' or 'stdout'), timestamp and lines
         from the next available pipe output
@@ -81,7 +80,7 @@ class ProcessStreamHandler:
         for pipe_id, group in groupby(
             self.iterqueue(block=block, onlyfirst=onlyfirst), key=itemgetter(0)
         ):
-            yield pipe_id, monotonic() - ts_offset, tuple(map(itemgetter(1), group))
+            yield pipe_id, monotonic() - ts_offset, map(itemgetter(1), group)
 
     def assert_stdout(
         self, block: Union[bool, float] = False, onlyfirst=False

@@ -19,13 +19,13 @@ from typing import (
     Any,
     Callable,
     Dict,
+    IO,
     Iterable,
     Iterator,
     List,
     Match,
     Optional,
     Set,
-    TextIO,
     cast,
 )
 
@@ -722,7 +722,7 @@ class ConanParser:
                 residue.append(line)
         flush()
 
-    def process_streams(self, raw_fh: TextIO):
+    def process_streams(self, raw_fh: IO[str]):
         def marker(pipestr: str, timestamp_s=None):
             _marker = f" <{pipestr}> "
             if timestamp_s:
@@ -739,13 +739,14 @@ class ConanParser:
         streams = self.command.streams
         while not streams.exhausted:
             for pipe, timestamp, lines in streams.iterpipes(block=0.01):
+                lines = decolorize(lines)
                 raw_fh.write(marker(pipe, timestamp_s=timestamp))
                 if pipe == "stderr":
-                    stderr = tuple(decolorize(lines))
+                    stderr = tuple(lines)
                     raw_fh.writelines(stderr)
                     self.process_errors(stderr)
                 elif pipe == "stdout":
-                    for line in decolorize(lines):
+                    for line in lines:
                         self.states.process_hooks(ParsedLine(line))
                         if log_states and line:
                             state = self.states.active_instance()

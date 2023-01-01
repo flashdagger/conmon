@@ -3,7 +3,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Callable, Iterable, Mapping, Optional, TextIO, Tuple, Union
+from typing import Any, Callable, IO, Iterable, Mapping, Optional, Tuple, Union
 
 import json_stream
 from json_stream.base import (
@@ -40,7 +40,7 @@ class Encoder(JSONStreamEncoder):
         return super().default(obj)
 
 
-def dump(obj, fh: TextIO, *args, **kwargs):
+def dump(obj, fh: IO[str], *args, **kwargs):
     kwargs.setdefault("cls", Encoder)
     json.dump(obj, fh, *args, **kwargs)
 
@@ -48,8 +48,8 @@ def dump(obj, fh: TextIO, *args, **kwargs):
 # pylint: disable=consider-using-with
 def update(
     updates: Union[Callable[[PathType], Any], Mapping[PathType, Any]],
-    infile: Union[TextIO, Path, str],
-    outfile: Optional[Union[TextIO, Path, str]] = None,
+    infile: Union[IO[str], Path, str],
+    outfile: Optional[Union[IO[str], Path, str]] = None,
     **kwargs,
 ):
     if callable(updates):
@@ -86,8 +86,7 @@ def update(
         def __init__(self, iterable, path=()):
             super().__init__(update_list(iterable, path))
 
-    _success = False
-    _swap = True
+    swapfiles = True
     fh_in = (
         open(infile, encoding="utf-8") if isinstance(infile, (str, Path)) else infile
     )
@@ -103,7 +102,7 @@ def update(
             name_in = Path(fh_in.name)
             outfile = name_in.with_name(f"{name_in.stem}.tmp{name_in.suffix}")
         else:
-            _swap = False
+            swapfiles = False
         fh_out = (
             open(outfile, "w", encoding="utf-8")
             if isinstance(outfile, (str, Path))
@@ -113,9 +112,8 @@ def update(
         kwargs.update(dict(check_circular=False, cls=Encoder))
         with fh_out:
             json.dump(instream, fh_out, **kwargs)
-            _success = True
 
-    if _success and _swap:
+    if swapfiles:
         assert isinstance(outfile, (Path, str))
         if not isinstance(infile, (Path, str)):
             infile = infile.name
