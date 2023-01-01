@@ -745,7 +745,7 @@ class ConanParser:
                     raw_fh.writelines(stderr)
                     self.process_errors(stderr)
                 elif pipe == "stdout":
-                    for line in lines:
+                    for line in decolorize(lines):
                         self.states.process_hooks(ParsedLine(line))
                         if log_states and line:
                             state = self.states.active_instance()

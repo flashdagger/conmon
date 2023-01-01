@@ -37,16 +37,9 @@ def replay_json(setting: str, key: Optional[str] = None) -> Dict[str, Any]:
     return stream
 
 
-# pylint: disable=too-few-public-methods
 class ReplayStreamHandler(ProcessStreamHandler):
-    class DummyPipe:
-        def __init__(self):
-            self.last_timestamp = 0.0
-
-    def __init__(self, *_args):
-        super().__init__()
-        self.stdout = self.DummyPipe()
-        self.stderr = self.DummyPipe()
+    def __init__(self, proc):
+        super().__init__(proc)
         self._exhausted = False
         self.loglines = self._readlines(replay_logfile("conan.log"))
 
@@ -56,7 +49,7 @@ class ReplayStreamHandler(ProcessStreamHandler):
             return
 
         pipe = "stdout"
-        timestamp = None
+        timestamp = 0.0
         loglines: List[str] = []
         with logfile.open("r", encoding="utf8") as fh:
             for line in fh:
@@ -71,7 +64,11 @@ class ReplayStreamHandler(ProcessStreamHandler):
                     if loglines:
                         yield pipe, timestamp, tuple(loglines)
                         loglines.clear()
-                    pipe, timestamp = match.group("pipe", "timestamp")
+                    pipe, timestamp_str = match.group("pipe", "timestamp")
+                    try:
+                        timestamp = float(timestamp_str)
+                    except (TypeError, ValueError):
+                        timestamp = -1.0
                 else:
                     loglines.append(match.group("line"))
 
@@ -82,23 +79,15 @@ class ReplayStreamHandler(ProcessStreamHandler):
     def exhausted(self) -> bool:
         return self._exhausted
 
-    def readboth(self, block=False, block_first=False):
-        pipe, timestamp_str, loglines = next(self.loglines, (None, None, ()))
-        if timestamp_str:
-            timestamp = float(timestamp_str)
-            obj = self.stderr if pipe == "stderr" else self.stdout
-            obj.last_timestamp = timestamp
-
-        if not loglines:
-            self._exhausted = True
-            return (), ()
-        if pipe == "stderr":
-            return (), loglines
-        return loglines, ()
+    def iterpipes(self, block=False, onlyfirst=False):
+        yield from self.loglines
+        self._exhausted = True
 
 
 class ReplayPopen(subprocess.Popen):
     def __init__(self, args, **_kwargs):
+        self.stdout = None
+        self.stderr = None
         conan = replay_json("report.json", "conan")
         self.args = conan.get("command", args)
         self.returncode = conan.get("returncode", "<unknown>")
@@ -114,8 +103,8 @@ class ReplayCommand(Command):
         self.proc_json = replay_json("proc.json")
 
     def run(self, args, **kwargs):
-        self.streams = ReplayStreamHandler()
-        self.proc = ReplayPopen([])
+        proc = self.proc = ReplayPopen([])
+        self.streams = ReplayStreamHandler(proc)
 
     def is_running(self):
         return not self.streams.exhausted
