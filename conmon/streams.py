@@ -1,3 +1,4 @@
+import sys
 from contextlib import suppress
 from functools import partial
 from itertools import groupby
@@ -6,7 +7,9 @@ from queue import Empty, Queue
 from subprocess import Popen
 from threading import Thread
 from time import monotonic
-from typing import IO, Iterator, Optional, Tuple, Union
+from typing import Dict, IO, Iterator, Optional, Tuple, Union
+
+from select import select
 
 
 class ProcessStreamHandler:
@@ -14,20 +17,49 @@ class ProcessStreamHandler:
         queue: Queue[Tuple[str, str]] = Queue()
         self.queue = queue
         self.ts_offset = monotonic()
-        self._stdout_reader = self._init_thread("stdout", proc)
-        self._stderr_reader = self._init_thread("stderr", proc)
+        threads: Dict[str, Thread] = {}
+        if sys.platform == "linux":
+            threads["select"] = Thread(
+                target=self.selectreader,
+                args=(proc, queue),
+                name=f"selectreader<pid={proc.pid}>",
+            )
+        else:
+            for pname in ("stdout", "stderr"):
+                pipe: Optional[IO] = getattr(proc, pname)
+                if pipe:
+                    threads[pname] = Thread(
+                        target=self.pipereader,
+                        kwargs=dict(pipe_id=pname, pipe=pipe, queue=self.queue),
+                        name=f"pipereader<pid={proc.pid}, {pname}={pipe.name}>",
+                    )
 
-    def _init_thread(self, pname: str, proc: Popen) -> Optional[Thread]:
-        pipe: Optional[IO] = getattr(proc, pname)
-        if pipe is None:
-            return None
-        thread = Thread(
-            target=self.pipereader,
-            kwargs=dict(pipe_id=pname, pipe=pipe, queue=self.queue),
-            name=f"pipereader<pid={proc.pid}, {pname}={pipe.name}>",
-        )
-        thread.start()
-        return thread
+        self._threads = threads
+        for thread in threads.values():
+            thread.start()
+
+    @staticmethod
+    def selectreader(proc: Popen, queue: Queue) -> None:
+        pmapping = {}
+        for pname in ("stderr", "stdout"):
+            pipe = getattr(proc, pname)
+            if pipe:
+                pmapping[pipe] = pname
+
+        def readable_pipes(timeout=None):
+            return select(pmapping.keys(), [], [], timeout)[0]
+
+        while pmapping:
+            for pipe in readable_pipes():
+                line = pipe.readline()
+                if line:
+                    queue.put((pmapping[pipe], line))
+                else:
+                    del pmapping[pipe]
+                break
+            else:
+                if proc.poll() is not None:
+                    return
 
     @staticmethod
     def pipereader(pipe_id: str, pipe: IO[str], queue: Queue) -> None:
@@ -38,9 +70,8 @@ class ProcessStreamHandler:
 
     @property
     def exhausted(self) -> bool:
-        return self.queue.empty() and all(
-            thread is None or not thread.is_alive()
-            for thread in (self._stdout_reader, self._stderr_reader)
+        return self.queue.empty() and not any(
+            thread.is_alive() for thread in self._threads.values()
         )
 
     def iterqueue(
@@ -98,7 +129,5 @@ class ProcessStreamHandler:
             pass
 
     def join(self):
-        if self._stdout_reader:
-            self._stdout_reader.join()
-        if self._stderr_reader:
-            self._stderr_reader.join()
+        for thread in self._threads.values():
+            thread.join()
