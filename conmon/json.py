@@ -35,7 +35,7 @@ class Encoder(JSONStreamEncoder):
         if isinstance(obj, Path):
             return str(obj)
         if isinstance(obj, CachedLines):
-            return list(line[:-1] for line in obj)
+            return obj.read().splitlines(keepends=False)
         # Let the base class default method raise the TypeError
         return super().default(obj)
 
