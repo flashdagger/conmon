@@ -8,7 +8,7 @@ from typing import Optional
 from psutil import Process
 
 from .logging import colorama_init
-from .utils import ProcessStreamHandler
+from .streams import ProcessStreamHandler
 
 
 def exceptook(type_, value, traceback):

@@ -11,7 +11,7 @@ import json_stream
 from . import json
 from .conan import conmon_setting
 from .shell import Command
-from .utils import ProcessStreamHandler
+from .streams import ProcessStreamHandler
 
 
 def replay_logfile(setting: str, create_if_not_exists=True) -> Optional[Path]:
