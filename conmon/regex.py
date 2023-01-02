@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 import re
-from typing import Dict, Iterator, List, Match, Optional, Pattern, Tuple, Union, Set
+from typing import Dict, List, Match, Optional, Pattern, Tuple, Union, Set
 
 from .conan import storage_path
 
@@ -107,33 +107,25 @@ def compact_pattern(regex: Pattern) -> Tuple[str, int]:
     return pattern, flags
 
 
-def finditer(
-    pattern: Union[Pattern[str], str], string: str, flags=0
-) -> Iterator[Tuple[Optional[Match], str]]:
-    span_end = 0
-    for match in re.finditer(pattern, string, flags):
-        yield match, string[span_end : match.start()]
-        span_end = match.end()
-    yield None, string[span_end:]
-
-
-def unique_matches(matches: List[Optional[Match]]) -> Iterator[Match]:
-    for match in matches:
-        if not match:
-            continue
-        _hash = hash(match.group().lstrip())
-        if _hash not in HASH_SET:
-            HASH_SET.add(_hash)
-            yield match
-
-
 def filter_by_regex(
     string: str, mapping: Dict[str, List[Match]], **patterns: Union[Pattern[str], str]
 ) -> str:
     for name, pattern in patterns.items():
-        matches, strings = zip(*finditer(pattern, string))
-        string = "".join(strings)
-        mapping.setdefault(name, []).extend(unique_matches(matches))
+        span_end = 0
+        residues = []
+        match_list = mapping.setdefault(name, [])
+
+        for match in re.finditer(pattern, string):
+            _hash = hash(match.group().lstrip())
+            if _hash not in HASH_SET:
+                HASH_SET.add(_hash)
+                match_list.append(match)
+            residues.append(string[span_end : match.start()])
+            span_end = match.end()
+
+        if residues:
+            residues.append(string[span_end:])
+            string = "".join(residues)
 
     return string
 
