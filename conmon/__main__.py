@@ -99,6 +99,7 @@ class DefaultDict(dict):
     DEFAULT = {
         "stdout": CachedLines,
         "stderr": CachedLines,
+        "_stderr": CachedLines,
         "export": CachedLines,
     }
 
@@ -538,7 +539,9 @@ class Build(State):
             with filehandler("proc.json", "w", hint) as fh:
                 json.dump({self.refspec: proc_list}, fh, indent=2)
 
-    def flush(self):
+    def flush(self, final=False):
+        # if not final:
+        #    return
         for name in ("stderr", "stdout"):
             pipe = self.log[name]
             if not pipe.size(self):
@@ -559,9 +562,7 @@ class Build(State):
                 **IgnoreRegex.dict(),
             )
             if residue_str:
-                self.log.setdefault("_stderr", []).extend(
-                    residue_str.splitlines(keepends=False)
-                )
+                self.log["_stderr"].write(residue_str)
 
     def _deactivate(self, final=False):
         self.force_status = False
@@ -574,7 +575,7 @@ class Build(State):
 
         self.buildmon.stop()
         self.dump_debug_proc()
-        self.flush()
+        self.flush(final=True)
         self.log["translation_units"] = list(
             self.processed_tus(self.buildmon.translation_units)
         )
@@ -756,7 +757,8 @@ class ConanParser:
                             raw_fh.write(line)
 
                 state = self.states.active_instance()
-                _ = state and state.flush()
+                if state:
+                    state.flush()
                 if flush_timer.timespan_elapsed(1.0):
                     raw_fh.flush()
 

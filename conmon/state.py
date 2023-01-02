@@ -32,7 +32,7 @@ class State:
     def process(self, parsed: ParsedLine) -> None:
         raise NotImplementedError
 
-    def flush(self):
+    def flush(self, final=False):
         pass
 
     @property
