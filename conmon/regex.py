@@ -189,24 +189,38 @@ class RegexFilter:
         self.buffer: Deque[str] = deque(maxlen=minlines - 1)
         self.residue: List[str] = []
 
-    # pylint: disable=too-many-branches
-    def feedlines(self, *lines: str, final=False) -> List[Match[str]]:
+    def pop_residue_string(self) -> str:
+        residue_string = "".join(self.residue)
+        self.residue.clear()
+        return residue_string
+
+    # pylint: disable=too-many-branches, too-many-locals
+    def feedlines(self, *lines: str, string: str = "", final=False) -> List[Match[str]]:
+        maxlen = self.minlines - 1
+
+        def rfind_line(_string: str):
+            idx = fullstring.rfind("\n", None, None)
+            for _ in range(maxlen):
+                idx = _string.rfind("\n", None, idx)
+                if idx == -1:
+                    break
+            return idx
+
+        assert not (string and lines), "string and lines are mutually exclusive"
         buffer, residue = self.buffer, self.residue
-        string = "".join((*self.buffer, *lines))
-        matches = list(self.regex.finditer(string))
+        fullstring = "".join((*self.buffer, string, *lines))
+        matches = list(self.regex.finditer(fullstring))
 
         if not matches:
             if final:
                 buffer.clear()
-                residue_string = string
+                residue_string = fullstring
             else:
-                idx = string.rfind("\n", None, None)
-                for _ in range(self.minlines - 1):
-                    idx = string.rfind("\n", None, idx)
-                    if idx == -1:
-                        break
-                residue_string = string[: idx + 1]
-                buffer.extend(lines)
+                ridx = rfind_line(fullstring)
+                residue_string = fullstring[: ridx + 1]
+                if string:
+                    lines = string.splitlines(keepends=True)  # type: ignore
+                buffer.extend(lines[-maxlen:])
             if residue_string:
                 residue.append(residue_string)
             return []
@@ -214,25 +228,29 @@ class RegexFilter:
         endpos = 0
         for match in matches:
             if endpos < match.start():
-                residue.append(string[endpos : match.start()])
+                residue.append(fullstring[endpos : match.start()])
             endpos = match.end()
 
-        buffer.clear()
         last_match = matches[-1]
         if final:
             endpos = last_match.end()
-            if endpos < len(string):
-                residue.append(string[endpos:])
+            if endpos < len(fullstring):
+                residue.append(fullstring[endpos:])
         else:
-            start = last_match.start()
-            if string.count("\n", start) >= self.minlines:
-                next_lines = string[last_match.end() :].splitlines(keepends=True)
-                residue_string = "".join(next_lines[: 1 - self.minlines])
-                if residue_string:
-                    residue.append(residue_string)
+            start, ridx = last_match.start(), rfind_line(fullstring)
+            assert start != ridx
+            if start < ridx:
+                end = last_match.end()
+                if end > ridx:
+                    buffer_idx = end
+                else:
+                    residue.append(fullstring[end : ridx + 1])
+                    buffer_idx = ridx + 1
             else:
                 matches.pop()
-                next_lines = string[start:].splitlines(keepends=True)
-            buffer.extend(next_lines)
+                buffer_idx = start
+
+            buffer.clear()
+            buffer.extend(fullstring[buffer_idx:].splitlines(keepends=True))
 
         return matches
