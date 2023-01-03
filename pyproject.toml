@@ -15,7 +15,7 @@ exclude = '''
 [tool.pytest.ini_options]
 minversion = "6.0"
 python_files = ["tests.py", "test_*.py"]
-addopts = "-vv --tb=auto"
+addopts = "-vv --tb=auto --cov=conmon --cov-report html"
 cache_dir = ".cache/pytest"
 
 [tool.mypy]
@@ -26,10 +26,10 @@ exclude = "build|venv"
 ignore_missing_imports = true
 
 [tool.coverage.run]
-source = "conmon/*"
+source = ["conmon/*"]
 
 [tool.coverage.html]
-directory = "report"
+directory = ".cache/coverage"
 
 [build-system]
 requires = ["setuptools>=42", "wheel"]

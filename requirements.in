@@ -12,6 +12,7 @@ pyflakes
 pylint; platform_python_implementation != 'PyPy'
 pytest<7.1; platform_python_implementation == 'PyPy'
 pytest; platform_python_implementation != 'PyPy'
+pytest-cov; platform_python_implementation != 'PyPy'
 pytest-icdiff; platform_python_implementation != 'PyPy'
 types-psutil; platform_python_implementation != 'PyPy'
 wheel
