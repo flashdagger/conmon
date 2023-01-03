@@ -2,7 +2,8 @@
 # -*- coding: UTF-8 -*-
 
 import re
-from typing import Dict, List, Match, Optional, Pattern, Tuple, Union, Set
+from collections import deque
+from typing import Dict, List, Match, Optional, Pattern, Tuple, Union, Set, Deque
 
 from .conan import storage_path
 
@@ -178,3 +179,60 @@ class ParsedLine:
         if self._rest is None:
             self._split()
         return self._rest
+
+
+class RegexFilter:
+    def __init__(self, regex: Union[str, Pattern[str]], minlines: int):
+        assert minlines > 0, "minlines must be a positive integer"
+        self.regex: Pattern[str] = re.compile(regex)
+        self.minlines: int = minlines
+        self.buffer: Deque[str] = deque(maxlen=minlines - 1)
+        self.residue: List[str] = []
+
+    # pylint: disable=too-many-branches
+    def feedlines(self, *lines: str, final=False) -> List[Match[str]]:
+        buffer, residue = self.buffer, self.residue
+        string = "".join((*self.buffer, *lines))
+        matches = list(self.regex.finditer(string))
+
+        if not matches:
+            if final:
+                buffer.clear()
+                residue_string = string
+            else:
+                idx = string.rfind("\n", None, None)
+                for _ in range(self.minlines - 1):
+                    idx = string.rfind("\n", None, idx)
+                    if idx == -1:
+                        break
+                residue_string = string[: idx + 1]
+                buffer.extend(lines)
+            if residue_string:
+                residue.append(residue_string)
+            return []
+
+        endpos = 0
+        for match in matches:
+            if endpos < match.start():
+                residue.append(string[endpos : match.start()])
+            endpos = match.end()
+
+        buffer.clear()
+        last_match = matches[-1]
+        if final:
+            endpos = last_match.end()
+            if endpos < len(string):
+                residue.append(string[endpos:])
+        else:
+            start = last_match.start()
+            if string.count("\n", start) >= self.minlines:
+                next_lines = string[last_match.end() :].splitlines(keepends=True)
+                residue_string = "".join(next_lines[: 1 - self.minlines])
+                if residue_string:
+                    residue.append(residue_string)
+            else:
+                matches.pop()
+                next_lines = string[start:].splitlines(keepends=True)
+            buffer.extend(next_lines)
+
+        return matches

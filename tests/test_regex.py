@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from conmon.regex import (
     build_status,
     filter_by_regex,
     shorten_conan_path,
+    RegexFilter,
 )
 
 valid_refs = [
@@ -178,3 +180,56 @@ def test_filter_by_regex():
 def test_decolorize():
     string = "\u001b[01m\u001b[KK\u001b[mm\u001b[1;12mm"
     assert DECOLORIZE_REGEX.sub("", string) == "Kmm"
+
+
+def test_regex_filter():
+    def feedlines(*lines: str, final=False):
+        return [match.group() for match in rfilter.feedlines(*lines, final=final)]
+
+    regex = re.compile(r"(a\n)?b\n(c\n)?")
+    rfilter = RegexFilter(regex, minlines=3)
+
+    matches = feedlines("x\n", "b\n", "y\n", final=True)
+    assert matches == ["b\n"]
+    assert rfilter.residue == ["x\n", "y\n"]
+    assert list(rfilter.buffer) == []
+    rfilter.residue.clear()
+
+    matches = feedlines("x\n", "y\n", "z\n", final=True)
+    assert matches == []
+    assert rfilter.residue == ["x\ny\nz\n"]
+    assert list(rfilter.buffer) == []
+    rfilter.residue.clear()
+
+    matches = feedlines("\n")
+    assert matches == []
+    assert rfilter.residue == []
+    assert list(rfilter.buffer) == ["\n"]
+
+    matches = feedlines("a\n", "b\n", "c\n")
+    assert matches == ["a\nb\nc\n"]
+    assert rfilter.residue == ["\n"]
+    assert list(rfilter.buffer) == []
+
+    matches = feedlines("a\n", "b\n", "\n", "\n", "\n")
+    assert matches == ["a\nb\n"]
+    assert rfilter.residue == ["\n", "\n"]
+    assert list(rfilter.buffer) == ["\n", "\n"]
+    rfilter.residue.clear()
+
+    matches = feedlines("b\n", "c\n", "y\n")
+    assert matches == ["b\nc\n"]
+    assert rfilter.residue == ["\n\n"]
+    assert list(rfilter.buffer) == ["y\n"]
+    rfilter.residue.clear()
+
+    matches = feedlines("a\n", "\n", "\n")
+    assert matches == []
+    assert rfilter.residue == ["y\na\n"]
+    assert list(rfilter.buffer) == ["\n", "\n"]
+    rfilter.residue.clear()
+
+    matches = feedlines("a\n", "b\n")
+    assert matches == []
+    assert rfilter.residue == ["\n\n"]
+    assert list(rfilter.buffer) == ["a\n", "b\n"]
