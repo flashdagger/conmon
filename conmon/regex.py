@@ -3,7 +3,20 @@
 
 import re
 from collections import deque
-from typing import Dict, List, Match, Optional, Pattern, Tuple, Union, Set, Deque
+from typing import (
+    Dict,
+    List,
+    Match,
+    Optional,
+    Pattern,
+    Tuple,
+    Union,
+    Set,
+    Deque,
+    Iterator,
+    Iterable,
+    Mapping,
+)
 
 from .conan import storage_path
 
@@ -188,6 +201,15 @@ class RegexFilter:
         self.minlines: int = minlines
         self.buffer: Deque[str] = deque(maxlen=minlines - 1)
         self.residue: List[str] = []
+        self.context: Dict[str, Tuple] = {}
+
+    def setcontext(self, context: str):
+        if context in self.context:
+            self.buffer, self.residue = self.context[context]
+            return
+        if self.context:
+            self.buffer, self.residue = deque(maxlen=self.minlines - 1), []
+        self.context[context] = (self.buffer, self.residue)
 
     def pop_residue_string(self) -> str:
         residue_string = "".join(self.residue)
@@ -254,3 +276,48 @@ class RegexFilter:
             buffer.extend(fullstring[buffer_idx:].splitlines(keepends=True))
 
         return matches
+
+
+class MultiRegexFilter:
+    def __init__(self, filtermap: Mapping[str, RegexFilter], uniquematches=True):
+        self.uniquematches = uniquematches
+        self._hashset: Set[int] = set()
+        self.residue: List[str] = []
+        self.filtermap = filtermap
+        self.matches: Dict[str, List[Match[str]]] = {key: list() for key in filtermap}
+        self.clear()
+
+    def setcontext(self, context: str):
+        for rfilter in self.filtermap.values():
+            rfilter.setcontext(context)
+
+    def clear(self):
+        for key, rfilter in self.filtermap.items():
+            rfilter.feedlines(final=True)
+            rfilter.context.clear()
+            self.matches[key].clear()
+
+    def __call__(self, string: str = "", final=False) -> str:
+        hashset = self._hashset
+
+        def seen(match: Match[str]) -> bool:
+            hash_id = hash(match.group().rstrip())
+            if hash_id in hashset:
+                return True
+            hashset.add(hash_id)
+            return False
+
+        def unique(matches: Iterable[Match[str]]) -> Iterator[Match[str]]:
+            for match in matches:
+                if not (self.uniquematches and seen(match)):
+                    yield match
+
+        for key, rfilter in self.filtermap.items():
+            self.matches[key].extend(
+                unique(rfilter.feedlines(string=string, final=final))
+            )
+            string = rfilter.pop_residue_string()
+            if not string:
+                break
+
+        return string

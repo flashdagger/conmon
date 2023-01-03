@@ -23,7 +23,6 @@ from typing import (
     Iterable,
     Iterator,
     List,
-    Match,
     Optional,
     Set,
     cast,
@@ -38,8 +37,10 @@ from .logging import init as initialize_logging
 from .regex import (
     CMAKE_BUILD_PATH_REGEX,
     DECOLORIZE_REGEX,
+    MultiRegexFilter,
     ParsedLine,
     REF_REGEX,
+    RegexFilter,
     build_status,
     compact_pattern,
     filter_by_regex,
@@ -368,7 +369,15 @@ class Build(State):
         self.log = parser.defaultlog
         self.refspec = self.stopline = "???"
         self.force_status = False
-        self.warning_map: Dict[str, List[Match]] = {}
+        self.warning_filter = MultiRegexFilter(
+            dict(
+                gnu=RegexFilter(BuildRegex.GNU, 4),
+                msvc=RegexFilter(BuildRegex.MSVC, 4),
+                cmake=RegexFilter(BuildRegex.CMAKE, 20),
+                autotools=RegexFilter(BuildRegex.AUTOTOOLS, 1),
+            ),
+            uniquematches=True,
+        )
 
     def activated(self, parsed: ParsedLine) -> bool:
         if not parsed.line.endswith("Calling build()"):
@@ -540,17 +549,12 @@ class Build(State):
                 json.dump({self.refspec: proc_list}, fh, indent=2)
 
     def flush(self, final=False):
-        # if not final:
-        #    return
         for name in ("stderr", "stdout"):
             pipe = self.log[name]
             if not pipe.size(self):
                 continue
-            residue_str = filter_by_regex(
-                pipe.read(marker=self),
-                self.warning_map,
-                **BuildRegex.dict("gnu", "msvc", "cmake", "autotools"),
-            )
+            self.warning_filter.setcontext(name)
+            residue_str = self.warning_filter(pipe.read(marker=self), final=final)
             if not conmon_setting(f"report.build.{name}", True):
                 pipe.clear()
             pipe.saveposition(self)
@@ -581,7 +585,7 @@ class Build(State):
         )
         self.log["warnings"] = list(
             sorted_mappings(
-                warnings_from_matches(**self.warning_map),
+                warnings_from_matches(**self.warning_filter.matches),
                 keys=(
                     "from",
                     "severity",
@@ -596,7 +600,7 @@ class Build(State):
                 reorder_keys=True,
             )
         )
-        self.warning_map.clear()
+        self.warning_filter.clear()
         self.parser.setdefaultlog()
         super()._deactivate(final=False)
 
