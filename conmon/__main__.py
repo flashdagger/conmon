@@ -126,7 +126,7 @@ class Default(State):
     def process(self, parsed: ParsedLine) -> None:
         rest = parsed.rest
         line = parsed.line
-        if parsed.ref and "is locked by another concurrent conan process" in rest:
+        if "is locked by another concurrent conan process" in rest:
             self.parser.command.wait(terminate=True)
             CONAN_LOG.warning(line)
             self.parser.defaultlog["stdout"].append(line)
