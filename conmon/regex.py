@@ -241,7 +241,9 @@ class RegexFilter:
                 ridx = rfind_line(fullstring)
                 residue_string = fullstring[: ridx + 1]
                 if string:
-                    lines = string[rfind_line(string) + 1 :].splitlines(keepends=True)  # type: ignore
+                    lines = tuple(
+                        string[rfind_line(string) + 1 :].splitlines(keepends=True)
+                    )
                 buffer.extend(lines[-maxlen:])
             if residue_string:
                 residue.append(residue_string)
@@ -284,7 +286,7 @@ class MultiRegexFilter:
         self.uniquematches = uniquematches
         self._hashset: Set[int] = set()
         self.residue: List[str] = []
-        self.matches: Dict[str, List[Match[str]]] = {key: list() for key in filtermap}
+        self.matches: Dict[str, List[Match[str]]] = {key: [] for key in filtermap}
         self.clear()
 
     def setcontext(self, context: str):

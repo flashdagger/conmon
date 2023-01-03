@@ -1,13 +1,71 @@
+# pylint: disable=no-name-in-module
 import sys
+from collections import deque
 from contextlib import suppress
 from functools import partial
 from itertools import groupby
 from operator import itemgetter
-from queue import Empty, Queue
+
+with suppress(ImportError):
+    from select import epoll, EPOLLIN  # type: ignore
+
+# from queue import Empty, Queue
 from subprocess import Popen
-from threading import Thread
+from threading import Event, Thread
 from time import monotonic
-from typing import Dict, IO, Iterator, Optional, Tuple, Union
+from typing import Deque, Dict, Generic, IO, Iterator, Optional, Tuple, TypeVar, Union
+
+_T = TypeVar("_T")
+
+
+class Empty(Exception):
+    pass
+
+
+class Queue(Generic[_T]):
+
+    __class_getitem__ = classmethod(list)
+
+    def __init__(self, maxlen: Optional[int] = None):
+        self.queue: Deque[_T] = deque(maxlen=maxlen)
+        self.event = Event()
+
+    def put(self, value: _T):
+        self.queue.append(value)
+        self.event.set()
+
+    def get(self, block=True, timeout: Optional[float] = None) -> _T:
+        if not block:
+            return self.get_nowait()
+
+        queue, event = self.queue, self.event
+        if queue:
+            return queue.popleft()
+
+        event.clear()
+        event.wait(timeout=timeout)
+        if event.is_set():
+            # assert queue, "unexpected empty queue"
+            return queue.popleft()
+
+        raise Empty()
+
+    def get_nowait(self) -> _T:
+        try:
+            return self.queue.popleft()
+        except IndexError as exc:
+            raise Empty() from exc
+
+    def qsize(self):
+        return len(self.queue)
+
+    def empty(self):
+        return not self.queue
+
+    def full(self):
+        queue = self.queue
+        maxlen = queue.maxlen
+        return maxlen and len(queue) == maxlen
 
 
 class ProcessStreamHandler:
@@ -38,8 +96,6 @@ class ProcessStreamHandler:
 
     @staticmethod
     def pollreader(proc: Popen, queue: Queue) -> None:
-        from select import epoll, EPOLLIN  # type: ignore
-
         pmapping = {}
         poll_obj = epoll()
         for pname in ("stderr", "stdout"):
