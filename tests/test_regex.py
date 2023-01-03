@@ -183,8 +183,11 @@ def test_decolorize():
 
 
 def test_regex_filter():
-    def feedlines(*lines: str, final=False):
-        return [match.group() for match in rfilter.feedlines(*lines, final=final)]
+    def feedlines(*lines: str, string="", final=False):
+        return [
+            match.group()
+            for match in rfilter.feedlines(*lines, string=string, final=final)
+        ]
 
     regex = re.compile(r"(a\n)?b\n(c\n)?")
     rfilter = RegexFilter(regex, minlines=3)
@@ -200,6 +203,13 @@ def test_regex_filter():
     assert rfilter.residue == ["x\ny\nz\n"]
     assert list(rfilter.buffer) == []
     rfilter.residue.clear()
+
+    matches = feedlines(string="1\n2\n3\nx\ny\nz\n")
+    assert matches == []
+    assert rfilter.residue == ["1\n2\n3\nx\n"]
+    assert list(rfilter.buffer) == ["y\n", "z\n"]
+    rfilter.residue.clear()
+    rfilter.buffer.clear()
 
     matches = feedlines("\n")
     assert matches == []

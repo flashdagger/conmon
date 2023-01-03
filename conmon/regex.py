@@ -219,7 +219,7 @@ class RegexFilter:
                 ridx = rfind_line(fullstring)
                 residue_string = fullstring[: ridx + 1]
                 if string:
-                    lines = string.splitlines(keepends=True)  # type: ignore
+                    lines = string[rfind_line(string) + 1 :].splitlines(keepends=True)  # type: ignore
                 buffer.extend(lines[-maxlen:])
             if residue_string:
                 residue.append(residue_string)
