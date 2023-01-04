@@ -192,6 +192,10 @@ output = [
     "",
     "cl : Command line warning D9002 : ignoring unknown option '/diagnostics:caret/Wall'",
     "make[1]: warning: jobserver unavailable: using -j1.  Add '+' to parent make rule.",
+    "<scratch+space>:87:1: note: expanded from here",
+    "PCRE2_SUBSTITUTE_FUNCTION'",
+    "  pcre2_substitute(const pcre2_code *, PCRE2_SPTR, PCRE2_SIZE, PCRE2_SIZE, \\",
+    "                                           ^",
     "",
 ]
 dataset = [
@@ -497,6 +501,19 @@ dataset = [
                 "line": "316",
                 "project": None,
                 "severity": "warning",
+            },
+            {
+                "category": None,
+                "column": "1",
+                "context": None,
+                "file": "<scratch+space>",
+                "hint": "PCRE2_SUBSTITUTE_FUNCTION'\n"
+                "  pcre2_substitute(const pcre2_code *, PCRE2_SPTR, PCRE2_SIZE, PCRE2_SIZE, \\\n"
+                "                                           ^\n",
+                "info": "expanded from here",
+                "line": "87",
+                "project": None,
+                "severity": "note",
             },
         ],
         id="gnu",
