@@ -101,6 +101,7 @@ class DefaultDict(dict):
         "stdout": CachedLines,
         "stderr": CachedLines,
         "_stderr": CachedLines,
+        "_stdout": CachedLines,
         "export": CachedLines,
     }
 
@@ -371,10 +372,10 @@ class Build(State):
         self.force_status = False
         self.warning_filter = MultiRegexFilter(
             dict(
-                gnu=RegexFilter(BuildRegex.GNU, 4),
-                msvc=RegexFilter(BuildRegex.MSVC, 4),
+                gnu=RegexFilter(BuildRegex.GNU, 20),
+                msvc=RegexFilter(BuildRegex.MSVC, 20),
                 cmake=RegexFilter(BuildRegex.CMAKE, 20),
-                autotools=RegexFilter(BuildRegex.AUTOTOOLS, 1),
+                autotools=RegexFilter(BuildRegex.AUTOTOOLS, 10),
             ),
             uniquematches=True,
         )
@@ -566,7 +567,7 @@ class Build(State):
                 **IgnoreRegex.dict(),
             )
             if residue_str:
-                self.log["_stderr"].write(residue_str)
+                self.log[f"_{name}"].write(residue_str)
 
     def _deactivate(self, final=False):
         self.force_status = False

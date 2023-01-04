@@ -280,10 +280,10 @@ class RegexFilter:
 
 class MultiRegexFilter:
     def __init__(self, filtermap: Mapping[str, RegexFilter], uniquematches=True):
+        self.filtermap = filtermap
         self.uniquematches = uniquematches
         self._hashset: Set[int] = set()
         self.residue: List[str] = []
-        self.filtermap = filtermap
         self.matches: Dict[str, List[Match[str]]] = {key: list() for key in filtermap}
         self.clear()
 
