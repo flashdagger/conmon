@@ -11,7 +11,7 @@ with suppress(ImportError):
 
 # from queue import Empty, Queue
 from subprocess import Popen
-from threading import Event, Thread
+from threading import Condition, Lock, Thread
 from time import monotonic
 from typing import Deque, Dict, Generic, IO, Iterator, Optional, Tuple, TypeVar, Union
 
@@ -23,49 +23,68 @@ class Empty(Exception):
 
 
 class Queue(Generic[_T]):
+    """
+    implementation of a multi-producer single-consumer queue
+    due to single consumer restriction it is about x60 times faster then queue.Queue
+    """
+
+    SENTINEL = object()
 
     __class_getitem__ = classmethod(list)
 
     def __init__(self, maxlen: Optional[int] = None):
         self.queue: Deque[_T] = deque(maxlen=maxlen)
-        self.event = Event()
+        self._cond = Condition(Lock())
+        self._empty = True
 
     def put(self, value: _T):
         self.queue.append(value)
-        self.event.set()
 
-    def get(self, block=True, timeout: Optional[float] = None) -> _T:
-        if not block:
-            return self.get_nowait()
+        if not self._empty:
+            return
 
-        queue, event = self.queue, self.event
-        if queue:
-            return queue.popleft()
+        condition = self._cond
+        with condition:
+            self._empty = False
+            condition.notify()
 
-        event.clear()
-        event.wait(timeout=timeout)
-        if event.is_set():
-            # assert queue, "unexpected empty queue"
-            return queue.popleft()
+    def get(self, block=True, timeout: Optional[float] = None, default=SENTINEL) -> _T:
+        if block and self._empty:
+            with self._cond:
+                self._cond.wait(timeout=timeout)
 
-        raise Empty()
+        return self.get_nowait(default=default)
 
-    def get_nowait(self) -> _T:
+    def get_nowait(self, default=SENTINEL) -> _T:
         try:
             return self.queue.popleft()
         except IndexError as exc:
-            raise Empty() from exc
+            if not self._empty:
+                with self._cond:
+                    self._empty = True
+            if default == self.SENTINEL:
+                raise Empty() from exc
+        return default
 
-    def qsize(self):
+    def qsize(self) -> int:
         return len(self.queue)
 
-    def empty(self):
+    def empty(self) -> bool:
         return not self.queue
 
-    def full(self):
+    def full(self) -> bool:
         queue = self.queue
         maxlen = queue.maxlen
-        return maxlen and len(queue) == maxlen
+        return bool(maxlen) and len(queue) == maxlen
+
+    def __bool__(self) -> bool:
+        return bool(self.queue)
+
+    def __len__(self) -> int:
+        return len(self.queue)
+
+    def __repr__(self) -> str:
+        return f"<{self.queue!r}>".replace("deque", "Queue")
 
 
 class ProcessStreamHandler:
