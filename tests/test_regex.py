@@ -184,62 +184,54 @@ def test_decolorize():
 
 def test_regex_filter():
     def feedlines(*lines: str, string="", final=False):
-        return [
-            match.group()
-            for match in rfilter.feedlines(*lines, string=string, final=final)
-        ]
+        _matches, res = rfilter.feed(*lines, string=string, final=final)
+        return [match.group() for match in _matches], res
 
     regex = re.compile(r"(a\n)?b\n(c\n)?")
-    rfilter = RegexFilter(regex, minlines=3)
+    rfilter = RegexFilter(regex, buffersize=2)
 
-    matches = feedlines("x\n", "b\n", "y\n", final=True)
+    matches, residue = feedlines("x\n", "b\n", "y\n", final=True)
     assert matches == ["b\n"]
-    assert rfilter.residue == ["x\n", "y\n"]
+    assert residue == "x\ny\n"
     assert list(rfilter.buffer) == []
-    rfilter.residue.clear()
 
-    matches = feedlines("x\n", "y\n", "z\n", final=True)
+    matches, residue = feedlines("x\n", "y\n", "z\n", final=True)
     assert matches == []
-    assert rfilter.residue == ["x\ny\nz\n"]
+    assert residue == "x\ny\nz\n"
     assert list(rfilter.buffer) == []
-    rfilter.residue.clear()
 
-    matches = feedlines(string="1\n2\n3\nx\ny\nz\n")
+    matches, residue = feedlines(string="1\n2\n3\nx\ny\nz\n")
     assert matches == []
-    assert rfilter.residue == ["1\n2\n3\nx\n"]
+    assert residue == "1\n2\n3\nx\n"
     assert list(rfilter.buffer) == ["y\n", "z\n"]
-    rfilter.residue.clear()
-    rfilter.buffer.clear()
+    feedlines(final=True)
 
-    matches = feedlines("\n")
+    matches, residue = feedlines("\n")
     assert matches == []
-    assert rfilter.residue == []
+    assert residue == ""
     assert list(rfilter.buffer) == ["\n"]
 
-    matches = feedlines("a\n", "b\n", "c\n")
+    matches, residue = feedlines("a\n", "b\n", "c\n")
     assert matches == ["a\nb\nc\n"]
-    assert rfilter.residue == ["\n"]
+    assert residue == "\n"
     assert list(rfilter.buffer) == []
 
-    matches = feedlines("a\n", "b\n", "\n", "\n", "\n")
+    matches, residue = feedlines("a\n", "b\n", "\n", "\n", "\n")
     assert matches == ["a\nb\n"]
-    assert rfilter.residue == ["\n", "\n"]
+    assert residue == "\n"
     assert list(rfilter.buffer) == ["\n", "\n"]
-    rfilter.residue.clear()
 
-    matches = feedlines("b\n", "c\n", "y\n")
+    matches, residue = feedlines("b\n", "c\n", "y\n")
     assert matches == ["b\nc\n"]
-    assert rfilter.residue == ["\n\n"]
+    assert residue == "\n\n"
     assert list(rfilter.buffer) == ["y\n"]
-    rfilter.residue.clear()
 
-    matches = feedlines("a\n", "\n", "\n")
+    matches, residue = feedlines("a\n", "\n", "\n")
     assert matches == []
-    assert rfilter.residue == ["y\na\n"]
+    assert residue == "y\na\n"
     assert list(rfilter.buffer) == ["\n", "\n"]
-    rfilter.residue.clear()
 
-    matches = feedlines("a\n", "b\n")
+    matches, residue = feedlines("a\n", "b\n")
     assert matches == []
-    assert rfilter.residue == ["\n\n"]
+    assert residue == "\n\n"
     assert list(rfilter.buffer) == ["a\n", "b\n"]

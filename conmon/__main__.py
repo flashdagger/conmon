@@ -554,7 +554,7 @@ class Build(State):
             pipe = self.log[name]
             if not pipe.size(self):
                 continue
-            self.warning_filter.setcontext(name)
+            self.warning_filter.context = name
             residue_str = self.warning_filter(pipe.read(marker=self), final=final)
             if not conmon_setting(f"report.build.{name}", True):
                 pipe.clear()

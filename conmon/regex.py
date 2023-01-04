@@ -195,41 +195,51 @@ class ParsedLine:
 
 
 class RegexFilter:
-    def __init__(self, regex: Union[str, Pattern[str]], minlines: int):
-        assert minlines > 0, "minlines must be a positive integer"
+    def __init__(self, regex: Union[str, Pattern[str]], buffersize: int):
+        assert buffersize >= 0, "minlines must be a positive integer"
         self.regex: Pattern[str] = re.compile(regex)
-        self.minlines: int = minlines
-        self.buffer: Deque[str] = deque(maxlen=minlines - 1)
-        self.residue: List[str] = []
-        self.context: Dict[str, Tuple] = {}
+        self.buffersize = buffersize
+        self.buffer: Deque[str] = deque(maxlen=buffersize)
+        self._context: Dict[str, Deque[str]] = {}
 
-    def setcontext(self, context: str):
-        if context in self.context:
-            self.buffer, self.residue = self.context[context]
+    def clear(self):
+        self._context.clear()
+        self.buffer.clear()
+
+    @property
+    def context(self) -> Optional[str]:
+        for key, buffer in self._context.items():
+            if buffer is self.buffer:
+                return key
+        return None
+
+    @context.setter
+    def context(self, identifier: str):
+        context = self._context
+        if identifier in context:
+            self.buffer = context[identifier]
             return
-        if self.context:
-            self.buffer, self.residue = deque(maxlen=self.minlines - 1), []
-        self.context[context] = (self.buffer, self.residue)
-
-    def pop_residue_string(self) -> str:
-        residue_string = "".join(self.residue)
-        self.residue.clear()
-        return residue_string
+        if context:
+            self.buffer = deque(maxlen=self.buffersize)
+        context[identifier] = self.buffer
 
     # pylint: disable=too-many-branches, too-many-locals
-    def feedlines(self, *lines: str, string: str = "", final=False) -> List[Match[str]]:
-        maxlen = self.minlines - 1
+    def feed(
+        self, *lines: str, string: str = "", final=False
+    ) -> Tuple[List[Match[str]], str]:
+        # the longest possible match will have buffersize + 1 lines
+        buffersize = self.buffersize
 
         def rfind_line(_string: str):
             idx = fullstring.rfind("\n", None, None)
-            for _ in range(maxlen):
+            for _ in range(buffersize):
                 idx = _string.rfind("\n", None, idx)
                 if idx == -1:
                     break
             return idx
 
         assert not (string and lines), "string and lines are mutually exclusive"
-        buffer, residue = self.buffer, self.residue
+        buffer, residue = self.buffer, []
         fullstring = "".join((*self.buffer, string, *lines))
         matches = list(self.regex.finditer(fullstring))
 
@@ -244,10 +254,8 @@ class RegexFilter:
                     lines = tuple(
                         string[rfind_line(string) + 1 :].splitlines(keepends=True)
                     )
-                buffer.extend(lines[-maxlen:])
-            if residue_string:
-                residue.append(residue_string)
-            return []
+                buffer.extend(lines[-buffersize:])
+            return [], residue_string
 
         endpos = 0
         for match in matches:
@@ -277,7 +285,7 @@ class RegexFilter:
             buffer.clear()
             buffer.extend(fullstring[buffer_idx:].splitlines(keepends=True))
 
-        return matches
+        return matches, "".join(residue)
 
 
 class MultiRegexFilter:
@@ -285,18 +293,24 @@ class MultiRegexFilter:
         self.filtermap = filtermap
         self.uniquematches = uniquematches
         self._hashset: Set[int] = set()
+        self._context: Optional[str] = None
         self.residue: List[str] = []
         self.matches: Dict[str, List[Match[str]]] = {key: [] for key in filtermap}
         self.clear()
 
-    def setcontext(self, context: str):
+    @property
+    def context(self) -> Optional[str]:
+        return self._context
+
+    @context.setter
+    def context(self, identifier: str):
+        self._context = identifier
         for rfilter in self.filtermap.values():
-            rfilter.setcontext(context)
+            rfilter.context = identifier
 
     def clear(self):
         for key, rfilter in self.filtermap.items():
-            rfilter.feedlines(final=True)
-            rfilter.context.clear()
+            rfilter.clear()
             self.matches[key].clear()
 
     def __call__(self, string: str = "", final=False) -> str:
@@ -315,10 +329,8 @@ class MultiRegexFilter:
                     yield match
 
         for key, rfilter in self.filtermap.items():
-            self.matches[key].extend(
-                unique(rfilter.feedlines(string=string, final=final))
-            )
-            string = rfilter.pop_residue_string()
+            matchlist, string = rfilter.feed(string=string, final=final)
+            self.matches[key].extend(unique(matchlist))
             if not string:
                 break
 
