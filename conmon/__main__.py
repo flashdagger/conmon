@@ -43,7 +43,6 @@ from .regex import (
     RegexFilter,
     build_status,
     compact_pattern,
-    filter_by_regex,
     shorten_conan_path,
 )
 from .replay import ReplayCommand, replay_logfile
@@ -559,15 +558,12 @@ class Build(State):
             if not conmon_setting(f"report.build.{name}", True):
                 pipe.clear()
             pipe.saveposition(self)
-            if name != "stderr":
-                continue
-            residue_str = filter_by_regex(
-                residue_str,
-                {},
-                **IgnoreRegex.dict(),
-            )
-            if residue_str:
-                self.log[f"_{name}"].write(residue_str)
+            if name == "stderr":
+                residue_str = MultiRegexFilter(IgnoreRegex.dict())(
+                    residue_str, final=True
+                )
+                if residue_str:
+                    self.log[f"_{name}"].write(residue_str)
 
     def _deactivate(self, final=False):
         self.force_status = False

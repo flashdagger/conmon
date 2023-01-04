@@ -121,29 +121,6 @@ def compact_pattern(regex: Pattern) -> Tuple[str, int]:
     return pattern, flags
 
 
-def filter_by_regex(
-    string: str, mapping: Dict[str, List[Match]], **patterns: Union[Pattern[str], str]
-) -> str:
-    for name, pattern in patterns.items():
-        span_end = 0
-        residues = []
-        match_list = mapping.setdefault(name, [])
-
-        for match in re.finditer(pattern, string):
-            _hash = hash(match.group().lstrip())
-            if _hash not in HASH_SET:
-                HASH_SET.add(_hash)
-                match_list.append(match)
-            residues.append(string[span_end : match.start()])
-            span_end = match.end()
-
-        if residues:
-            residues.append(string[span_end:])
-            string = "".join(residues)
-
-    return string
-
-
 def build_status(line: str) -> Tuple[Optional[str], Optional[str]]:
     match = BUILDSTATUS.match(line)
     if match:
@@ -289,14 +266,19 @@ class RegexFilter:
 
 
 class MultiRegexFilter:
-    def __init__(self, filtermap: Mapping[str, RegexFilter], uniquematches=True):
-        self.filtermap = filtermap
-        self.uniquematches = uniquematches
+    def __init__(
+        self,
+        filtermap: Mapping[str, Union[RegexFilter, str, Pattern]],
+        uniquematches=True,
+    ):
+        self.filtermap = {
+            name: RegexFilter(value, 0) if not isinstance(value, RegexFilter) else value
+            for name, value in filtermap.items()
+        }
         self._hashset: Set[int] = set()
         self._context: Optional[str] = None
-        self.residue: List[str] = []
+        self.uniquematches = uniquematches
         self.matches: Dict[str, List[Match[str]]] = {key: [] for key in filtermap}
-        self.clear()
 
     @property
     def context(self) -> Optional[str]:
@@ -309,6 +291,7 @@ class MultiRegexFilter:
             rfilter.context = identifier
 
     def clear(self):
+        self._hashset.clear()
         for key, rfilter in self.filtermap.items():
             rfilter.clear()
             self.matches[key].clear()

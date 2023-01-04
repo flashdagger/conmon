@@ -6,11 +6,11 @@ import pytest
 from conmon.regex import (
     CMAKE_BUILD_PATH_REGEX,
     DECOLORIZE_REGEX,
+    MultiRegexFilter,
     REF_REGEX,
-    build_status,
-    filter_by_regex,
-    shorten_conan_path,
     RegexFilter,
+    build_status,
+    shorten_conan_path,
 )
 
 valid_refs = [
@@ -164,12 +164,13 @@ def test_cmake_build_path_regex(path):
     assert match, f"{path!r} did not match"
 
 
-def test_filter_by_regex():
+def test_multi_regex_filter():
     string = " aa b aa b a b a c b a bbbb a bb a"
-    matchmap = {}
-    residue = filter_by_regex(string, matchmap, x="foo", a=" a+", b=" b+", d=" d+")
+    regexmap = dict(x="foo", a=" a+", b=" b+", d=" d+")
+    rmf = MultiRegexFilter(regexmap)
+    residue = rmf(string, final=True)
     assert residue == " c"
-    assert {name: len(matches) for name, matches in matchmap.items()} == {
+    assert {name: len(matches) for name, matches in rmf.matches.items()} == {
         "a": 2,
         "b": 3,
         "d": 0,
