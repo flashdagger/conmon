@@ -551,7 +551,7 @@ class Build(State):
     def flush(self, final=False):
         for name in ("stderr", "stdout"):
             pipe = self.log[name]
-            if not pipe.size(self):
+            if not (final or pipe.size(self)):
                 continue
             self.warning_filter.context = name
             residue_str = self.warning_filter(pipe.read(marker=self), final=final)
@@ -559,7 +559,7 @@ class Build(State):
                 pipe.clear()
             pipe.saveposition(self)
             if name == "stderr":
-                residue_str = MultiRegexFilter(IgnoreRegex.dict())(
+                residue_str = MultiRegexFilter(IgnoreRegex.dict(), uniquematches=False)(
                     residue_str, final=True
                 )
                 if residue_str:
