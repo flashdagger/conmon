@@ -1,4 +1,5 @@
 # pylint: disable=no-name-in-module
+import contextlib
 import sys
 from collections import deque
 from contextlib import suppress
@@ -13,7 +14,18 @@ with suppress(ImportError):
 from subprocess import Popen
 from threading import Condition, Lock, Thread
 from time import monotonic
-from typing import Deque, Dict, Generic, IO, Iterator, Optional, Tuple, TypeVar, Union
+from typing import (
+    Deque,
+    Dict,
+    Generic,
+    IO,
+    Iterator,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+    Generator,
+)
 
 _T = TypeVar("_T")
 
@@ -22,66 +34,101 @@ class Empty(Exception):
     pass
 
 
+class Full(Exception):
+    pass
+
+
 class Queue(Generic[_T]):
     """
-    implementation of a multi-producer single-consumer queue
-    due to single consumer restriction it is about x60 times faster then queue.Queue
+    reimplementation of queue.Queue: a multi-producer multi-consumer queue
     """
 
     SENTINEL = object()
 
     __class_getitem__ = classmethod(list)
 
-    def __init__(self, maxlen: Optional[int] = None):
-        self.queue: Deque[_T] = deque(maxlen=maxlen)
-        self._cond = Condition(Lock())
-        self._empty = True
+    def __init__(self, maxsize: int = 0):
+        self.queue: Deque[_T] = deque(maxlen=maxsize or None)
+        self._mutex = mutex = Lock()
+        self._not_empty = Condition(mutex)
+        self._not_full = Condition(mutex)
 
-    def put(self, value: _T):
-        self.queue.append(value)
+    @contextlib.contextmanager
+    def deque(self, block=True, timeout=None) -> Generator[Deque[_T], None, None]:
+        queue = self.queue
+        mutex = self._mutex
+        if not mutex.acquire(
+            blocking=block, timeout=timeout if block and timeout is not None else -1
+        ):
+            raise RuntimeError("Lock was not acquired")
 
-        if not self._empty:
-            return
+        try:
+            yield queue
+        finally:
+            if queue:
+                self._not_empty.notify()
+            elif queue.maxlen and len(queue) < queue.maxlen:
+                self._not_full.notify()
+            mutex.release()
 
-        condition = self._cond
-        with condition:
-            self._empty = False
-            condition.notify()
+    def put(self, value: _T, block=True, timeout=None):
+        queue = self.queue
+        maxlen = queue.maxlen
+
+        def not_full():
+            return not maxlen or len(queue) < maxlen
+
+        with self._mutex:
+            if not_full() or (
+                block and self._not_full.wait_for(not_full, timeout=timeout)
+            ):
+                queue.append(value)
+                self._not_empty.notify()
+            else:
+                raise Full()
 
     def get(self, block=True, timeout: Optional[float] = None, default=SENTINEL) -> _T:
-        if block and self._empty:
-            with self._cond:
-                self._cond.wait(timeout=timeout)
+        queue = self.queue
+        value = default
 
-        return self.get_nowait(default=default)
+        with self._mutex:
+            if (
+                queue
+                or block
+                and self._not_empty.wait_for(lambda: bool(queue), timeout=timeout)
+            ):
+                value = queue.popleft()
+                self._not_full.notify()
+
+        if value is self.SENTINEL:
+            raise Empty()
+
+        return value
 
     def get_nowait(self, default=SENTINEL) -> _T:
-        try:
-            return self.queue.popleft()
-        except IndexError as exc:
-            if not self._empty:
-                with self._cond:
-                    self._empty = True
-            if default == self.SENTINEL:
-                raise Empty() from exc
-        return default
+        return self.get(block=False, default=default)
 
     def qsize(self) -> int:
-        return len(self.queue)
+        with self._mutex:
+            return len(self.queue)
 
     def empty(self) -> bool:
-        return not self.queue
+        with self._mutex:
+            return not self.queue
 
     def full(self) -> bool:
         queue = self.queue
         maxlen = queue.maxlen
-        return bool(maxlen) and len(queue) == maxlen
+        with self._mutex:
+            return bool(maxlen) and len(queue) == maxlen
 
     def __bool__(self) -> bool:
-        return bool(self.queue)
+        with self._mutex:
+            return bool(self.queue)
 
     def __len__(self) -> int:
-        return len(self.queue)
+        with self._mutex:
+            return len(self.queue)
 
     def __repr__(self) -> str:
         return f"<{self.queue!r}>".replace("deque", "Queue")
@@ -204,9 +251,9 @@ class ProcessStreamHandler:
         return ()
 
     def flush_queue(self):
-        for _ in self.iterqueue(block=False):
-            pass
+        with self.queue.deque() as queue:
+            queue.clear()
 
-    def join(self):
+    def join(self, timeout: Optional[float] = None):
         for thread in self._threads.values():
-            thread.join()
+            thread.join(timeout=timeout)
