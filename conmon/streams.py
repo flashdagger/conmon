@@ -93,7 +93,8 @@ class ProcessStreamHandler:
         self.queue = queue
         self.ts_offset = monotonic()
         threads: Dict[str, Thread] = {}
-        if sys.platform == "linux":
+        if sys.platform == "experimental":
+            # experimental, works only on linux
             threads["select"] = Thread(
                 target=self.pollreader,
                 args=(proc, queue),
