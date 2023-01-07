@@ -1,4 +1,3 @@
-# pylint: disable=no-name-in-module
 import contextlib
 import sys
 from collections import deque
@@ -6,15 +5,11 @@ from contextlib import suppress
 from functools import partial
 from itertools import groupby
 from operator import itemgetter
-
-with suppress(ImportError):
-    from select import epoll, EPOLLIN  # type: ignore
-
-# from queue import Empty, Queue
 from subprocess import Popen
 from threading import Condition, Lock, Thread
 from time import monotonic
 from typing import (
+    AnyStr,
     Deque,
     Dict,
     Generic,
@@ -140,11 +135,12 @@ class ProcessStreamHandler:
         self.queue = queue
         self.ts_offset = monotonic()
         threads: Dict[str, Thread] = {}
-        if sys.platform == "experimental":
+        if sys.platform is None:
             # experimental, works only on linux
+            # uses less system resources but has higher latency
             threads["select"] = Thread(
-                target=self.pollreader,
-                args=(proc, queue),
+                target=self.feedqueue,
+                args=(queue, polling_iterlines(proc)),
                 name=f"selectreader<pid={proc.pid}>",
             )
         else:
@@ -152,8 +148,8 @@ class ProcessStreamHandler:
                 pipe: Optional[IO] = getattr(proc, pname)
                 if pipe:
                     threads[pname] = Thread(
-                        target=self.pipereader,
-                        kwargs=dict(pipe_id=pname, pipe=pipe, queue=self.queue),
+                        target=self.feedqueue,
+                        args=(queue, iterlines(pipe, pname)),
                         name=f"pipereader<pid={proc.pid}, {pname}={pipe.name}>",
                     )
 
@@ -162,37 +158,10 @@ class ProcessStreamHandler:
             thread.start()
 
     @staticmethod
-    def pollreader(proc: Popen, queue: Queue) -> None:
-        pmapping = {}
-        poll_obj = epoll()
-        for pname in ("stderr", "stdout"):
-            pipe = getattr(proc, pname)
-            if pipe:
-                pmapping[pipe.fileno()] = (pname, pipe)
-                poll_obj.register(pipe, EPOLLIN)
-
-        def readable_pipes(timeout=None):
-            return [
-                pmapping[_fileno]
-                for _fileno, _event in poll_obj.poll(timeout)
-                if _fileno in pmapping
-            ]
-
-        while pmapping:
-            for name, pipe in readable_pipes():
-                line = pipe.readline()
-                if line:
-                    queue.put((name, line))
-                else:
-                    poll_obj.unregister(pipe)
-                    del pmapping[pipe.fileno()]
-
-    @staticmethod
-    def pipereader(pipe_id: str, pipe: IO[str], queue: Queue) -> None:
+    def feedqueue(queue: Queue, iterator: Iterator) -> None:
         queue_put = queue.put
-        with suppress(ValueError):
-            for line in iter(pipe.readline, ""):
-                queue_put((pipe_id, line))
+        for item in iterator:
+            queue_put(item)
 
     @property
     def exhausted(self) -> bool:
@@ -257,3 +226,42 @@ class ProcessStreamHandler:
     def join(self, timeout: Optional[float] = None):
         for thread in self._threads.values():
             thread.join(timeout=timeout)
+
+
+def iterlines(pipe: IO[AnyStr], pipename: str) -> Iterator[Tuple[str, AnyStr]]:
+    while True:
+        line = pipe.readline()
+        if not line:
+            break
+        yield pipename, line
+
+
+# pylint: disable=import-outside-toplevel, no-name-in-module
+def polling_iterlines(
+    proc: Popen, pipenames: Tuple[str, ...] = ("stderr", "stdout")
+) -> Iterator[Tuple[str, AnyStr]]:
+    from select import EPOLLIN, epoll  # type: ignore
+
+    pmapping = {}
+    poll_obj = epoll()
+    for pname in pipenames:
+        pipe = getattr(proc, pname)
+        if pipe:
+            pmapping[pipe.fileno()] = (pname, pipe)
+            poll_obj.register(pipe, EPOLLIN)
+
+    def readable_pipes(timeout=None):
+        return [
+            pmapping[_fileno]
+            for _fileno, _event in poll_obj.poll(timeout)
+            if _fileno in pmapping
+        ]
+
+    while pmapping:
+        for name, pipe in readable_pipes():
+            line = pipe.readline()
+            if line:
+                yield name, line
+            else:
+                poll_obj.unregister(pipe)
+                del pmapping[pipe.fileno()]
