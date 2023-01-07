@@ -79,7 +79,7 @@ class ReplayStreamHandler(ProcessStreamHandler):
     def exhausted(self) -> bool:
         return self._exhausted
 
-    def iterpipes(self, block=False, onlyfirst=False):
+    def iterpipes(self, timeout=0.0, total=False):
         yield from self.loglines
         self._exhausted = True
 

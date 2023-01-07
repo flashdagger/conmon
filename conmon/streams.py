@@ -1,8 +1,7 @@
 import contextlib
 import sys
+import time
 from collections import deque
-from contextlib import suppress
-from functools import partial
 from itertools import groupby
 from operator import itemgetter
 from subprocess import Popen
@@ -18,7 +17,6 @@ from typing import (
     Optional,
     Tuple,
     TypeVar,
-    Union,
     Generator,
 )
 
@@ -62,7 +60,7 @@ class Queue(Generic[_T]):
         finally:
             if queue:
                 self._not_empty.notify()
-            elif queue.maxlen and len(queue) < queue.maxlen:
+            if queue.maxlen and len(queue) < queue.maxlen:
                 self._not_full.notify()
             mutex.release()
 
@@ -102,6 +100,21 @@ class Queue(Generic[_T]):
 
     def get_nowait(self, default=SENTINEL) -> _T:
         return self.get(block=False, default=default)
+
+    def getall(self, block=True, timeout: Optional[float] = None) -> Tuple[_T, ...]:
+        queue = self.queue
+
+        with self._mutex:
+            if block and not queue:
+                self._not_empty.wait_for(lambda: bool(queue), timeout=timeout)
+
+            if not queue:
+                return ()
+
+            values = tuple(queue)
+            queue.clear()
+            self._not_full.notify()
+            return values
 
     def qsize(self) -> int:
         with self._mutex:
@@ -153,7 +166,7 @@ class ProcessStreamHandler:
                         name=f"pipereader<pid={proc.pid}, {pname}={pipe.name}>",
                     )
 
-        self._threads = threads
+        self._twriters = threads
         for thread in threads.values():
             thread.start()
 
@@ -165,35 +178,31 @@ class ProcessStreamHandler:
 
     @property
     def exhausted(self) -> bool:
-        return self.queue.empty() and not any(
-            thread.is_alive() for thread in self._threads.values()
+        return (
+            not any(thread.is_alive() for thread in self._twriters.values())
+            and self.queue.empty()
         )
 
-    def iterqueue(
-        self, block: Union[bool, float] = True, onlyfirst=False
-    ) -> Iterator[Tuple[str, str]]:
-        """nowait all: block=False, onlyfirst is ignored
-        block only first: block=True, onlyfirst is ignored
-        timeout only first: block=float, onlyfirst=True
-        timeout all: block=float, onlyfirst=False
+    def _iterqueue(self, timeout: float, total=False) -> Iterator[Tuple[str, str]]:
         """
-        if self.exhausted:
-            return
-        arg_block, arg_timeout = (
-            (True, block) if isinstance(block, float) else (block, None)
-        )
-        queue_get = partial(self.queue.get, arg_block, arg_timeout)
-        with suppress(Empty):
-            if block is True or onlyfirst and arg_timeout is not None:
-                yield queue_get()
-                queue_get = partial(self.queue.get_nowait)
+        reads data from the queue until timeout is reached or the
+        data is exhausted
+        if total=True the timeout will not be decreased
+        """
+        assert timeout > 0.0
+        queue = self.queue
+        endtime = time.monotonic() + timeout
+        while timeout > 0.0 and not self.exhausted:
+            yield from queue.getall(block=True, timeout=timeout)
+            _time = time.monotonic()
+            remaining = endtime - _time
+            if total or remaining <= 0.0:
+                timeout = remaining
             else:
-                assert not (arg_block and arg_timeout is None)
-            while True:
-                yield queue_get()
+                endtime = _time + timeout
 
     def iterpipes(
-        self, block: Union[bool, float] = False, onlyfirst=False
+        self, timeout: float, total=False
     ) -> Iterator[Tuple[str, float, Iterator[str]]]:
         """
         return the name ('stderr' or 'stdout'), timestamp and lines
@@ -202,17 +211,15 @@ class ProcessStreamHandler:
         for the arguments see documentation of iterqueue()
         """
         ts_offset = self.ts_offset
-        pipe_id: str
+
         for pipe_id, group in groupby(
-            self.iterqueue(block=block, onlyfirst=onlyfirst), key=itemgetter(0)
+            self._iterqueue(timeout=timeout, total=total), key=itemgetter(0)
         ):
             yield pipe_id, monotonic() - ts_offset, map(itemgetter(1), group)
 
-    def assert_stdout(
-        self, block: Union[bool, float] = False, onlyfirst=False
-    ) -> Tuple[str, ...]:
+    def assert_stdout(self, timeout: float, total=False) -> Tuple[str, ...]:
         for pipe_id, group in groupby(
-            self.iterqueue(block=block, onlyfirst=onlyfirst), key=itemgetter(0)
+            self._iterqueue(timeout=timeout, total=total), key=itemgetter(0)
         ):
             lines = map(itemgetter(1), group)
             assert pipe_id == "stdout", f"unexpected {pipe_id}: {''.join(lines)}"
@@ -224,7 +231,7 @@ class ProcessStreamHandler:
             queue.clear()
 
     def join(self, timeout: Optional[float] = None):
-        for thread in self._threads.values():
+        for thread in self._twriters.values():
             thread.join(timeout=timeout)
 
 

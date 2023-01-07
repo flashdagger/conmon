@@ -79,21 +79,21 @@ class TestShell:
     def test_streams(self, msys_bindir: Path):
         command = Command()
         command.run([msys_bindir / "ls", "ls.exe"], cwd=msys_bindir)
-        stdout = command.streams.assert_stdout(block=0.1)
+        stdout = command.streams.assert_stdout(timeout=0.1)
         assert stdout == ("ls.exe\n",)
 
         command.run([msys_bindir / "ls", "missing"], cwd=msys_bindir)
         with pytest.raises(AssertionError) as exc_info:
-            command.streams.assert_stdout(block=0.2)
+            command.streams.assert_stdout(timeout=0.2)
         assert exc_info.value.args == (
             "unexpected stderr: /usr/bin/ls: cannot access 'missing': No such file or directory\n",
         )
 
         command.run([msys_bindir / "echo", "Hello World!"])
-        stdout = command.streams.assert_stdout()
+        stdout = command.streams.assert_stdout(0.001)
         assert stdout == ()
         command.wait()
-        stdout = command.streams.assert_stdout()
+        stdout = command.streams.assert_stdout(1.0)
         assert stdout == ("Hello World!\n",)
 
     @pytest.fixture

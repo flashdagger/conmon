@@ -740,7 +740,7 @@ class ConanParser:
         flush_timer = StopWatch()
         streams = self.command.streams
         while not streams.exhausted:
-            for pipe, timestamp, lines in streams.iterpipes(block=0.05):
+            for pipe, timestamp, lines in streams.iterpipes(timeout=0.1, total=False):
                 lines = decolorize(lines)
                 raw_fh.write(marker(pipe, timestamp_s=timestamp))
                 if pipe == "stderr":

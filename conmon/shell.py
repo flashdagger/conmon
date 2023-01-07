@@ -3,7 +3,6 @@
 import sys
 from contextlib import suppress
 from subprocess import PIPE, Popen, TimeoutExpired
-from typing import Optional
 
 from psutil import Process
 
@@ -98,11 +97,9 @@ class Shell(Command):
         assert self.proc.stdin
         self.proc.stdin.write(f"{cmd}\n")
 
-    def receive(self, timeout: Optional[float] = None) -> str:
+    def receive(self, timeout: float) -> str:
         try:
-            stdout = self.streams.assert_stdout(
-                block=timeout if timeout else False, onlyfirst=True
-            )
+            stdout = self.streams.assert_stdout(timeout=timeout)
         except AssertionError as exc:
             self.exit()
             raise self.Error(*exc.args)

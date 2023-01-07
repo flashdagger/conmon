@@ -49,13 +49,11 @@ class ScanPS(Command):
         assert path.is_file()
         self.ps_exe = path
 
-    def receive(self, timeout=None):
+    def receive(self, timeout):
         if not (self.is_running() or self.returned_error):
             assert self.ps_exe, "ps.exe is not set"
             self.run([self.ps_exe])
-        return self.streams.assert_stdout(
-            block=timeout if timeout else False, onlyfirst=True
-        )
+        return self.streams.assert_stdout(timeout=timeout)
 
     def add_msys_procs(self, children: Set[Process]) -> None:
         if self.returned_error:
