@@ -37,9 +37,10 @@ NoneType = type(None)
 
 class StopWatch:
     INSTANCES: Dict[FrameInfo, "StopWatch"] = {}
+    _time = staticmethod(time.monotonic)
 
     def __init__(self):
-        self._last_ts = time.monotonic()
+        self._last_ts = self._time()
 
     @classmethod
     def at_location(cls) -> "StopWatch":
@@ -48,19 +49,24 @@ class StopWatch:
             cls.INSTANCES[frame] = cls()
         return cls.INSTANCES[frame]
 
-    @property
-    def elapsed_seconds(self) -> float:
-        return time.monotonic() - self._last_ts
+    def elapsed_seconds(self, reset=False) -> float:
+        _time = self._time()
+        delta = _time - self._last_ts
+        if reset:
+            self._last_ts = _time
+        return delta
 
     def timespan_elapsed(self, timespan_s: float) -> bool:
-        if self.elapsed_seconds >= timespan_s:
-            self._last_ts = time.monotonic() - self.elapsed_seconds % timespan_s
+        _time = self._time()
+        delta = _time - self._last_ts
+        if delta >= timespan_s:
+            self._last_ts = _time - delta % timespan_s
             return True
 
         return False
 
     def reset(self):
-        self._last_ts = time.monotonic()
+        self._last_ts = self._time()
 
 
 class WinShlex(shlex.shlex):
