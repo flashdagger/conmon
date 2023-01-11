@@ -68,8 +68,12 @@ class Queue(Generic[_T]):
         queue = self.queue
         maxlen = queue.maxlen
 
+        if not maxlen:
+            queue.append(value)
+            return
+
         def not_full():
-            return not maxlen or len(queue) < maxlen
+            return len(queue) < maxlen
 
         with self._mutex:
             if not_full() or (
@@ -88,10 +92,11 @@ class Queue(Generic[_T]):
             if (
                 queue
                 or block
-                and self._not_empty.wait_for(lambda: bool(queue), timeout=timeout)
+                and self._not_empty.wait_for(lambda: queue, timeout=timeout)
             ):
                 value = queue.popleft()
-                self._not_full.notify()
+                if queue.maxlen:
+                    self._not_full.notify()
 
         if value is self.SENTINEL:
             raise Empty()
@@ -105,15 +110,17 @@ class Queue(Generic[_T]):
         queue = self.queue
 
         with self._mutex:
-            if block and not queue:
-                self._not_empty.wait_for(lambda: bool(queue), timeout=timeout)
+            empty = not queue
+            if block and empty:
+                empty = not self._not_empty.wait_for(lambda: queue, timeout=timeout)
 
-            if not queue:
+            if empty:
                 return ()
 
             values = tuple(queue)
             queue.clear()
-            self._not_full.notify()
+            if queue.maxlen:
+                self._not_full.notify()
             return values
 
     def qsize(self) -> int:
