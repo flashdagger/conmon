@@ -18,11 +18,14 @@ def replay_logfile(setting: str, create_if_not_exists=True) -> Optional[Path]:
     logfile = conmon_setting(setting)
     if logfile is None:
         return None
+
     path = Path(logfile)
     replay_path = path.with_suffix(f".replay{path.suffix}")
-    if not replay_path.exists() and create_if_not_exists:
+    if path.is_file() and not replay_path.is_file() and create_if_not_exists:
         path.rename(replay_path)
-    return replay_path
+    if replay_path.is_file():
+        return replay_path
+    return None
 
 
 def replay_json(setting: str, key: Optional[str] = None) -> Dict[str, Any]:
