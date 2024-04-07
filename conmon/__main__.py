@@ -124,29 +124,37 @@ class Default(State):
         return False
 
     def process(self, parsed: ParsedLine) -> None:
-        rest = parsed.rest
         line = parsed.line
-        if "is locked by another concurrent conan process" in rest:
-            self.parser.command.wait(terminate=True)
-            CONAN_LOG.warning(line)
-            self.parser.defaultlog["stdout"].append(line)
-            self.deactivate()
-            return
+        log = self.parser.log
 
-        if rest.startswith("Installing (downloading, building) binaries..."):
+        # if line.startswith("ERROR: "):
+        #     CONAN_LOG.error(line[7:])
+        #     log["stderr"].append(line)
+        #     self.deactivate()
+        #     return
+        # elif line.startswith("WARN: "):
+        #     CONAN_LOG.warning(line[6:])
+        #     log["stderr"].append(line)
+        #     self.deactivate()
+        #     return
+
+        rest = parsed.rest
+        # if "is locked by another concurrent conan process" in rest:
+        #     self.parser.command.wait(terminate=True)
+        #     CONAN_LOG.warning(line)
+        #     self.parser.defaultlog["stdout"].append(line)
+        #     self.deactivate()
+        #     return
+
+        if re.match(r"[=-]{8}[ \w]+[=-]{8}", line):
             self.overwrite = True
 
         ref = parsed.ref
-        match = re.fullmatch(r"Downloading conan\w+\.[a-z]{2,3}", line)
-        if match:
-            log = self.parser.getdefaultlog(self.last_ref)
-            self.screen.print(f"{match.group()} for {self.last_ref} ", overwrite=True)
-        elif ref:
+        if ref:
             self.last_ref = ref
             log = self.parser.getdefaultlog(ref)
             self.screen.print(f"{line} ", overwrite=True)
-        else:
-            log = self.parser.log
+        elif line:
             self.screen.print(f"{line} ", overwrite=self.overwrite)
 
         log["stdout"].append(line)
@@ -154,52 +162,82 @@ class Default(State):
 
 
 class Requirements(State):
+    _pattern, _flags = compact_pattern(REF_REGEX)
+    REGEX = re.compile(
+        rf" +{_pattern}"
+        r"#(?P<rrev>[0-9a-f]{32})"
+        r"(?::(?P<package_id>[0-9a-f]{40}))?"
+        r"(?:#(?P<prev>[0-9a-f]{32}))?"
+        r" +- +(?P<status>\w+)(?: \((?P<remote>[\w\- ]+)\))?",
+        flags=_flags,
+    )
+
     def __init__(self, parser: "ConanParser"):
         super().__init__(parser)
         self.log = parser.log["requirements"]
         self.stdout = parser.log["stdout"]
-        pattern, flags = compact_pattern(REF_REGEX)
-        self.regex = re.compile(
-            rf" +{pattern} from (?P<remote>'?[\w\- ]+'?) +- +(?P<status>\w+)", flags
-        )
         self.req: List[Dict[str, Optional[str]]] = []
         self.indent_ref = 0
+        self.is_tool = False
 
     def activated(self, parsed: ParsedLine) -> bool:
         rest = parsed.rest
-        if rest in {"Requirements", "Build requirements"}:
-            self.screen.print(rest)
-            self.stdout.append(parsed.line)
-            return True
-        return False
+        return "= Computing " in rest
 
     def process(self, parsed: ParsedLine) -> None:
         line = parsed.line
-        match = self.regex.match(line)
-        if not match:
+        if not line:
+            self.is_tool = False
             self.deactivate()
             return
 
-        self.req.append(match.groupdict())
-        self.stdout.append(line)
-        mapping = {
-            key: value
-            for key, value in match.groupdict().items()
-            if key not in {"ref", "status"}
-        }
-        name = mapping.pop("name")
-        self.log[name].update(mapping)
+        if line == "Build requirements":
+            self.is_tool = True
+            return
+
+        ref = parsed.ref
+        if ref:
+            name, *_ = ref.split("/", maxsplit=1)
+            self.log[name]["stdout"].append(line)
+
+        match = self.REGEX.match(line)
+        if not match:
+            return
+        mapping = match.groupdict()
+        if self.is_tool:
+            mapping["ref"] = f'[{mapping["ref"]}]'
+        self.req.append(mapping)
+        self.log[mapping["name"]].update(
+            (key, value)
+            for key, value in mapping.items()
+            if key not in {"name", "ref", "status"}
+        )
 
     def _deactivate(self, final=False):
         self.indent_ref = max(
             [self.indent_ref, *(len(item["ref"]) for item in self.req)]
         )
-        for item in sorted(self.req, key=itemgetter("status", "remote", "ref")):
-            self.screen.print(
-                f"    {item['status']:^10} {item['ref']:{self.indent_ref}} from "
-                f"{item['remote']}"
+        requirements = self.req
+        if requirements:
+            title = (
+                f"Package requirements:"
+                if requirements[0]["package_id"]
+                else f"Recipe requirements:"
             )
-        self.req.clear()
+            self.screen.print(title)
+            for item in sorted(requirements, key=itemgetter("status", "remote", "ref")):
+                status = item["status"]
+                if status == "Cache":
+                    action = f"cached"
+                elif status == "Build":
+                    action = status.lower()
+                else:
+                    action = f"{status.lower():8} from {item['remote']}"
+
+                req_id = item['package_id'] or item['rrev']
+                self.screen.print(f"    {item['ref']:{self.indent_ref}} {req_id} {action}")
+            self.screen.print()
+            self.req.clear()
         super()._deactivate(final=False)
 
 
@@ -255,29 +293,33 @@ class Config(State):
         self.lines: List[str] = []
         self.profile_type = "host"
         self.log = parser.log["profile"]
-        self._final = False
+        self._final = True
 
     def activated(self, parsed: ParsedLine) -> bool:
+        return "= Input profiles =" in parsed.rest
+
+    def process(self, parsed: ParsedLine) -> None:
         match = re.fullmatch(
-            r"Configuration(?: \(profile_(?P<ptype>[a-z]+)\))?:",
+            r"Profile (?P<ptype>[a-z]+):",
             parsed.rest,
         )
         if match:
             self.lines.clear()
             self.profile_type = match.group("ptype") or self.profile_type
             self._final = match.group("ptype") in (None, "build")
-            return True
-        return False
+            return
 
-    def process(self, parsed: ParsedLine) -> None:
         line = parsed.line
         if not line:
-            self.deactivate()
+            self._flush()
         else:
             self.lines.append(line)
 
-    def _deactivate(self, final=False):
+    def _flush(self):
+        if not self.lines:
+            self._deactivate(final=self._final)
         buffer = StringIO("\n".join(self.lines))
+        self.lines.clear()
         config = StrictConfigParser()
         try:
             config.read_file(buffer, "profile.ini")
@@ -290,7 +332,30 @@ class Config(State):
             for line in buffer.readlines():
                 print(repr(line))
 
-        super()._deactivate(final=self._final)
+
+class Generate(State):
+    def __init__(self, parser: "ConanParser"):
+        super().__init__(parser)
+        self.parser = parser
+        self.log = parser.defaultlog
+
+    def activated(self, parsed: ParsedLine) -> bool:
+        rest = parsed.rest
+        if rest == "Calling generate()":
+            ref = parsed.ref
+            self.screen.print(f"Generating for {ref}", overwrite=True)
+            defaultlog = self.parser.getdefaultlog(ref)
+            defaultlog["stdout"].append(parsed.line)
+            self.log = self.parser.defaultlog = defaultlog["generate"]
+            return True
+        return False
+
+    def process(self, parsed: ParsedLine) -> None:
+        rest = parsed.rest
+        if rest.startswith("Calling "):
+            self.deactivate()
+        else:
+            self.log["stdout"].append(rest)
 
 
 class Package(State):
@@ -545,7 +610,7 @@ class Build(State):
             CONMON_LOG.debug("updated %r with %s items", str(path), len(proc_list))
         elif not path.exists():
             hint = f"debug process dump with {len(proc_list)} items"
-            with filehandler("proc.json", "w", hint) as fh:
+            with filehandler("proc.json", "w", hint=hint) as fh:
                 json.dump({self.refspec: proc_list}, fh, indent=2)
 
     def flush(self, final=False):
@@ -652,6 +717,7 @@ class ConanParser:
             Config,
             Requirements,
             Packages,
+            Generate,
             Build,
             Package,
             RunTest,
@@ -748,7 +814,19 @@ class ConanParser:
                     raw_fh.writelines(stderr)
                     self.process_errors(stderr)
                 elif pipe == "stdout":
+                    errors = []
                     for line in lines:
+                        if (
+                            line.startswith("WARN: ")
+                            or line.startswith("ERROR: ")
+                            or (errors and line.startswith(" "))
+                        ):
+                            errors.append(line)
+                            raw_fh.write(line)
+                            continue
+                        if errors:
+                            self.process_errors(errors)
+                            errors.clear()
                         self.states.process_hooks(ParsedLine(line))
                         if log_states and line:
                             state = self.states.active_instance()
@@ -756,6 +834,9 @@ class ConanParser:
                             raw_fh.write(f"[{name}] {line}")
                         else:
                             raw_fh.write(line)
+
+                    if errors:
+                        self.process_errors(errors)
 
                 state = self.states.active_instance()
                 if state:
@@ -838,7 +919,7 @@ def monitor(args: List[str], replay=False) -> int:
         if not replay and path and path.is_file():
             path.unlink()
 
-    with filehandler("conan.log", hint="raw conan output") as fh:
+    with filehandler("conan.log", "w", hint="raw conan output") as fh:
         try:
             parser.process_streams(fh)
         except KeyboardInterrupt:
@@ -864,7 +945,7 @@ def monitor(args: List[str], replay=False) -> int:
     if returncode:
         CONMON_LOG.error("conan exited with code %s", returncode)
 
-    with filehandler("report.json", hint="report json") as fh:
+    with filehandler("report.json", "w", hint="report json") as fh:
         json.dump(parser.log, fh, indent=2)
 
     return returncode

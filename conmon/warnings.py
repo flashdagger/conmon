@@ -203,9 +203,11 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> Iterator[Dict[str, Any]]
             convert(mapping, int, "line", "column")
             convert(
                 mapping,
-                lambda v: v.rstrip("\n").splitlines(keepends=False)
-                if isinstance(v, str)
-                else [],
+                lambda v: (
+                    v.rstrip("\n").splitlines(keepends=False)
+                    if isinstance(v, str)
+                    else []
+                ),
                 "context",
                 "hint",
                 "info",
@@ -226,9 +228,11 @@ def warnings_from_matches(**kwargs: Iterable[Match]) -> Iterator[Dict[str, Any]]
 
             key = (
                 severity,
-                repr(mapping["category"] or "<undefined>")
-                if mapping["from"] == "compilation"
-                else mapping["from"],
+                (
+                    repr(mapping["category"] or "<undefined>")
+                    if mapping["from"] == "compilation"
+                    else mapping["from"]
+                ),
             )
 
             if (

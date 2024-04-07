@@ -1,6 +1,6 @@
 [tool.black]
 line-length = 88
-target_version = ['py36', 'py37', 'py38']
+target_version = ['py38', 'py39', 'py310', 'py311', 'py312']
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -19,7 +19,7 @@ addopts = "-vv --tb=auto --cov=conmon --cov-report html"
 cache_dir = ".cache/pytest"
 
 [tool.mypy]
-python_version = "3.6"
+python_version = "3.8"
 cache_dir = ".cache/mypy"
 namespace_packages = true
 exclude = "build|venv"

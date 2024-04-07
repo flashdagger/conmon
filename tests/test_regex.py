@@ -99,9 +99,9 @@ def test_ref_regex_ok(expected):
 
 @pytest.mark.parametrize("expected", invalid_refs)
 def test_ref_regex_nok(expected):
-    expected[
-        "ref"
-    ] = f"{expected['name']}/{expected['version']}@{expected['user']}/{expected['channel']}"
+    expected["ref"] = (
+        f"{expected['name']}/{expected['version']}@{expected['user']}/{expected['channel']}"
+    )
     match = REF_REGEX.fullmatch(expected["ref"])
     assert match is None
 

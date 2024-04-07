@@ -38,7 +38,7 @@ class Queue(Generic[_T]):
 
     SENTINEL = object()
 
-    __class_getitem__ = classmethod(list)
+    # __class_getitem__ = classmethod(list)
 
     def __init__(self, maxsize: int = 0):
         self.queue: Deque[_T] = deque(maxlen=maxsize or None)
