@@ -93,7 +93,9 @@ def filehandler(key: str, mode="w", hint=""):
 
     with path.open(mode=mode, encoding="utf-8") as fh:
         yield fh
-    CONMON_LOG.debug("saved %s to %s", hint, path)
+
+    if path != Path(os.devnull):
+        CONMON_LOG.debug("saved %s to %s", hint, path)
 
 
 class DefaultDict(dict):
@@ -210,9 +212,9 @@ class Requirements(State):
         requirements = self.req
         if requirements:
             title = (
-                f"Package requirements:"
+                "Package requirements:"
                 if requirements[0]["package_id"]
-                else f"Recipe requirements:"
+                else "Recipe requirements:"
             )
             self.screen.print(title)
             for (
@@ -606,6 +608,9 @@ class Build(State):
         if not (self.buildmon.ACTIVE or proc_list):
             return
         path = report_path("proc.json")
+        if not path:
+            return
+
         if path.is_file():
             json.update({(): {self.refspec: proc_list}}, path, indent=2)
             CONMON_LOG.debug("updated %r with %s items", str(path), len(proc_list))
@@ -621,7 +626,7 @@ class Build(State):
                 continue
             self.warning_filter.context = name
             residue_str = self.warning_filter(pipe.read(marker=self), final=final)
-            if not conmon_setting(f"report.build_{name}"):
+            if not conmon_setting(f"report:build_{name}"):
                 pipe.clear()
             pipe.saveposition(self)
             if name == "stderr":
@@ -851,31 +856,6 @@ class ConanParser:
                 if flush_timer.timespan_elapsed(1.0):
                     raw_fh.flush()
 
-    def process_tracelog(self, trace_path: Path):
-        actions: List[Dict[str, Any]] = []
-        for line in trace_path.read_text(encoding="utf-8").splitlines():
-            action = json.loads(line)
-            if action.get("_action") == "COMMAND":
-                actions.clear()
-            actions.append(action)
-
-        self.log["conan"]["tracelog"] = tracelog = []
-        for action in actions:
-            if action["_action"] in {"REST_API_CALL", "UNZIP"}:
-                continue
-            ref_id = action.get("_id")
-            if not ref_id:
-                tracelog.append(action)
-                continue
-            name, *_ = ref_id.split("/", maxsplit=1)
-            pkg_id = ref_id.split(":", maxsplit=1)
-            requirement = self.log["requirements"][name]
-            if len(pkg_id) == 2:
-                requirement["package_id"] = pkg_id[1]
-            actions = requirement.setdefault("actions", [])
-            if action["_action"] not in actions:
-                actions.append(action["_action"])
-
     def finalize(self):
         self.states.deactivate_all()
         self.screen.reset()
@@ -891,15 +871,8 @@ def monitor(args: List[str], replay=False) -> int:
     # prevent MsBuild from allocating workers
     # which are not children of the parent process
     os.environ["MSBUILDDISABLENODEREUSE"] = "1"
-    # tell conan not to prompt for user input
-    os.environ["CONAN_NON_INTERACTIVE"] = "1"
     # set conan logging level
-    os.environ["CONAN_LOGGING_LEVEL"] = "FATAL"
-
-    if conmon_setting("report:tracelog") and not os.getenv("CONAN_TRACE_FILE"):
-        tmp_file, tmp_name = tempfile.mkstemp()
-        os.environ["CONAN_TRACE_FILE"] = tmp_name
-        os.close(tmp_file)
+    os.environ["CONAN_LOG_LEVEL"] = "debug"
 
     conan_command, ConanParser.CONAN_VERSION = call_cmd_and_version()
     conan_command.extend(args)
@@ -938,15 +911,6 @@ def monitor(args: List[str], replay=False) -> int:
             parser.command.streams.join()
             CONMON_LOG.debug("stopped streaming")
     parser.finalize()
-
-    if conmon_setting("report:tracelog"):
-        trace_path = Path(os.getenv("CONAN_TRACE_FILE", "."))
-        if trace_path.is_file():
-            parser.process_tracelog(trace_path)
-        if trace_path.name.startswith("tmp"):
-            for path in (trace_path, Path(f"{trace_path}.lock")):
-                with suppress(FileNotFoundError):
-                    path.unlink()
 
     returncode = command.wait()
     if returncode:

@@ -66,29 +66,34 @@ def parsed_config(file: str) -> Dict[str, Dict[str, Any]]:
 
 @lru_cache(maxsize=32)
 def config(file: str, section: Optional[str] = None) -> Dict[str, Any]:
-    return parsed_config(file).get(section or "_", {})
+    mapping = parsed_config(file).get(section or "_", {})
+
+    if file == "conmon" and section is None:
+        unknown_keys = mapping.keys() - DEFAULTS.keys()
+        if unknown_keys:
+            LOG.warning("Unknown settings in conan.cfg: %s", ", ".join(unknown_keys))
+
+    return mapping
 
 
 DEFAULTS = {
     "conan:cmd": "",
     "log.level:default": "debug",
-    "log.level:proc": "warning",
-    "log.level:msysps": "warning",
-    "log.level:conan": "warning",
-    "log.level:conmon": "warning",
-    "log.level:build": "warning",
+    "log.level:proc": None,
+    "log.level:msysps": None,
+    "log.level:conan": None,
+    "log.level:conmon": None,
+    "log.level:build": None,
     "log:warning_count": False,
     "log:stdout": True,
     "log:stderr": True,
-    "log:tracelog": True,
     "build:monitor": True,
-    "report:conan.log": ".",
-    "report:proc.json": ".",
-    "report:report.json": ".",
+    "report:conan.log": False,
+    "report:proc.json": False,
+    "report:report.json": False,
     "report:log_states": False,
     "report:build_stderr": True,
     "report:build_stdout": True,
-    "report:tracelog": False,
 }
 
 
@@ -100,10 +105,6 @@ def conmon_setting(name: str) -> Any:
             return literal_eval(value)
         return value
     mapping = config("conmon")
-    unknown_keys = mapping.keys() - DEFAULTS.keys()
-    if unknown_keys:
-        LOG.warning("Unknown settings in conan.cfg: %s", ", ".join(unknown_keys))
-
     if name in mapping:
         return mapping[name]
 
