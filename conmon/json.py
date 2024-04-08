@@ -3,7 +3,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Callable, IO, Iterable, Mapping, Optional, Tuple, Union
+from typing import IO, Any, Callable, Iterable, Mapping, Optional, Tuple, Union
 
 import json_stream
 from json_stream.base import (

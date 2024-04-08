@@ -9,17 +9,16 @@ from typing import Any, Dict, List, Optional
 import json_stream
 
 from . import json
-from .conan import conmon_setting
+from .conan import report_path
 from .shell import Command
 from .streams import ProcessStreamHandler
 
 
 def replay_logfile(setting: str, create_if_not_exists=True) -> Optional[Path]:
-    logfile = conmon_setting(setting)
-    if logfile is None:
+    path = report_path(setting)
+    if path is None:
         return None
 
-    path = Path(logfile)
     replay_path = path.with_suffix(f".replay{path.suffix}")
     if path.is_file() and not replay_path.is_file() and create_if_not_exists:
         path.rename(replay_path)

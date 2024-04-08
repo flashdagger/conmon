@@ -6,7 +6,7 @@ import re
 from collections import Counter
 from contextlib import suppress
 from itertools import groupby, islice
-from typing import Any, Callable, Dict, Iterator, Iterable, Match, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, Iterator, Match, Optional, Tuple
 
 from .logging import UniqueLogger, get_logger
 from .regex import REF_REGEX, Regex, compact_pattern, shorten_conan_path

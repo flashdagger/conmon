@@ -8,16 +8,16 @@ from subprocess import Popen
 from threading import Condition, Lock, Thread
 from time import monotonic
 from typing import (
+    IO,
     AnyStr,
     Deque,
     Dict,
+    Generator,
     Generic,
-    IO,
     Iterator,
     Optional,
     Tuple,
     TypeVar,
-    Generator,
 )
 
 _T = TypeVar("_T")

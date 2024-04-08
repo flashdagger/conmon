@@ -48,7 +48,7 @@ def level_from_name(name: Optional[str], default=logging.NOTSET) -> int:
 
 
 def setup_logger(logger: logging.Logger):
-    level = conan.loglevel(f"log.level.{logger.name.lower()}", _GLOBALS.log_level)
+    level = conan.loglevel(f"log.level:{logger.name.lower()}", _GLOBALS.log_level)
     logger.setLevel(level)
     if not logger.hasHandlers():
         logger.addHandler(_GLOBALS.handler)
@@ -101,7 +101,7 @@ def init(force=False):
         )
     )
 
-    _GLOBALS.log_level = conan.loglevel("log.level")
+    _GLOBALS.log_level = conan.loglevel("log.level:default")
 
     # .conan module cannot import .logging due to circular dependency
     setup_logger(conan.LOG)

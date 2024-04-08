@@ -14,12 +14,12 @@ from functools import partial
 from io import StringIO
 from operator import itemgetter
 from pathlib import Path
-from subprocess import PIPE, STDOUT, DEVNULL
+from subprocess import DEVNULL, PIPE, STDOUT
 from typing import (
+    IO,
     Any,
     Callable,
     Dict,
-    IO,
     Iterable,
     Iterator,
     List,
@@ -31,15 +31,16 @@ from typing import (
 from . import __version__, json
 from .buildmon import BuildMonitor
 from .conan import LOG as CONAN_LOG
-from .conan import call_cmd_and_version, conmon_setting
-from .logging import UniqueLogger, level_from_name, get_logger, logger_escape_code
+from .conan import call_cmd_and_version, conmon_setting, report_path
+from .logging import UniqueLogger, get_logger
 from .logging import init as initialize_logging
+from .logging import level_from_name, logger_escape_code
 from .regex import (
     CMAKE_BUILD_PATH_REGEX,
     DECOLORIZE_REGEX,
+    REF_REGEX,
     MultiRegexFilter,
     ParsedLine,
-    REF_REGEX,
     RegexFilter,
     build_status,
     compact_pattern,
@@ -60,21 +61,21 @@ from .utils import (
     shorten_per_line,
     sorted_mappings,
 )
+from .warnings import LOG as BLOG
 from .warnings import (
     BuildRegex,
     IgnoreRegex,
     levelname_from_severity,
     warnings_from_matches,
 )
-from .warnings import LOG as BLOG
 
 CONMON_LOG = get_logger("CONMON")
 CONAN_LOG_ONCE = UniqueLogger(CONAN_LOG)
-LOG_WARNING_COUNT = conmon_setting("log.warning_count", True)
+LOG_WARNING_COUNT = conmon_setting("log:warning_count")
 
 
 def log_stderr():
-    value = conmon_setting("log.stderr", True)
+    value = conmon_setting("log:stderr")
     if not value:
         return DEVNULL
     if str(value).lower() == "stdout":
@@ -84,15 +85,15 @@ def log_stderr():
 
 @contextmanager
 def filehandler(key: str, mode="w", hint=""):
-    path = conmon_setting(key)
-    if isinstance(path, str):
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
+    path = report_path(key)
+    if path:
+        path.parent.mkdir(parents=True, exist_ok=True)
     else:
-        path = os.devnull
+        path = Path(os.devnull)
 
-    with open(path, mode=mode, encoding="utf-8") as fh:
+    with path.open(mode=mode, encoding="utf-8") as fh:
         yield fh
-    CONMON_LOG.debug("saved %s to %r", hint, path)
+    CONMON_LOG.debug("saved %s to %s", hint, path)
 
 
 class DefaultDict(dict):
@@ -127,18 +128,7 @@ class Default(State):
         line = parsed.line
         log = self.parser.log
 
-        # if line.startswith("ERROR: "):
-        #     CONAN_LOG.error(line[7:])
-        #     log["stderr"].append(line)
-        #     self.deactivate()
-        #     return
-        # elif line.startswith("WARN: "):
-        #     CONAN_LOG.warning(line[6:])
-        #     log["stderr"].append(line)
-        #     self.deactivate()
-        #     return
-
-        rest = parsed.rest
+        # rest = parsed.rest
         # if "is locked by another concurrent conan process" in rest:
         #     self.parser.command.wait(terminate=True)
         #     CONAN_LOG.warning(line)
@@ -225,17 +215,28 @@ class Requirements(State):
                 else f"Recipe requirements:"
             )
             self.screen.print(title)
-            for item in sorted(requirements, key=itemgetter("status", "remote", "ref")):
+            for (
+                item
+            ) in (
+                requirements
+            ):  # sorted(requirements, key=itemgetter("status", "remote", "ref")):
                 status = item["status"]
                 if status == "Cache":
-                    action = f"cached"
+                    action = (
+                        f"cached ({item['package_id']})"
+                        if item["package_id"]
+                        else "cached"
+                    )
+
                 elif status == "Build":
                     action = status.lower()
                 else:
-                    action = f"{status.lower():8} from {item['remote']}"
+                    action = f"{status.lower():8} from {item['remote']!r}"
 
-                req_id = item['package_id'] or item['rrev']
-                self.screen.print(f"    {item['ref']:{self.indent_ref}} {req_id} {action}")
+                req_id = item["package_id"] or item["rrev"]
+                self.screen.print(
+                    f"    {item['ref']:{self.indent_ref}} {req_id} {action}"
+                )
             self.screen.print()
             self.req.clear()
         super()._deactivate(final=False)
@@ -604,7 +605,7 @@ class Build(State):
         proc_list = list(self.buildmon.proc_cache.values())
         if not (self.buildmon.ACTIVE or proc_list):
             return
-        path = Path(conmon_setting("proc.json", "."))
+        path = report_path("proc.json")
         if path.is_file():
             json.update({(): {self.refspec: proc_list}}, path, indent=2)
             CONMON_LOG.debug("updated %r with %s items", str(path), len(proc_list))
@@ -620,7 +621,7 @@ class Build(State):
                 continue
             self.warning_filter.context = name
             residue_str = self.warning_filter(pipe.read(marker=self), final=final)
-            if not conmon_setting(f"report.build.{name}", True):
+            if not conmon_setting(f"report.build_{name}"):
                 pipe.clear()
             pipe.saveposition(self)
             if name == "stderr":
@@ -802,41 +803,47 @@ class ConanParser:
             partial(map, partial(DECOLORIZE_REGEX.sub, "")),
         )
 
-        log_states = conmon_setting("conan.log.states", False)
+        log_states = conmon_setting("report:log_states")
         flush_timer = StopWatch()
         streams = self.command.streams
         while not streams.exhausted:
             for pipe, timestamp, lines in streams.iterpipes(timeout=0.1, total=False):
-                lines = decolorize(lines)
                 raw_fh.write(marker(pipe, timestamp_s=timestamp))
-                if pipe == "stderr":
-                    stderr = tuple(lines)
-                    raw_fh.writelines(stderr)
-                    self.process_errors(stderr)
-                elif pipe == "stdout":
-                    errors = []
-                    for line in lines:
-                        if (
-                            line.startswith("WARN: ")
-                            or line.startswith("ERROR: ")
-                            or (errors and line.startswith(" "))
-                        ):
-                            errors.append(line)
-                            raw_fh.write(line)
-                            continue
-                        if errors:
-                            self.process_errors(errors)
-                            errors.clear()
-                        self.states.process_hooks(ParsedLine(line))
-                        if log_states and line:
-                            state = self.states.active_instance()
-                            name = state and state.name
-                            raw_fh.write(f"[{name}] {line}")
-                        else:
-                            raw_fh.write(line)
+                errors: List[str] = []
+
+                for line in decolorize(lines):
+                    parsed_line = ParsedLine(line)
+                    rest = parsed_line.rest
+                    if (
+                        rest.startswith("WARN: ")
+                        or rest.startswith("ERROR: ")
+                        or (
+                            errors
+                            and (
+                                errors[-1].endswith(": \n")
+                                or line.startswith(" ")
+                                or line.startswith("\t")
+                            )
+                        )
+                    ):
+                        errors.append(line)
+                        raw_fh.write(line)
+                        continue
 
                     if errors:
                         self.process_errors(errors)
+                        errors.clear()
+
+                    self.states.process_hooks(parsed_line)
+                    if log_states and line:
+                        state = self.states.active_instance()
+                        name = state and state.name
+                        raw_fh.write(f"[{name}] {line}")
+                    else:
+                        raw_fh.write(line)
+
+                if errors:
+                    self.process_errors(errors)
 
                 state = self.states.active_instance()
                 if state:
@@ -889,7 +896,7 @@ def monitor(args: List[str], replay=False) -> int:
     # set conan logging level
     os.environ["CONAN_LOGGING_LEVEL"] = "FATAL"
 
-    if conmon_setting("tracelog", False) and not os.getenv("CONAN_TRACE_FILE"):
+    if conmon_setting("report:tracelog") and not os.getenv("CONAN_TRACE_FILE"):
         tmp_file, tmp_name = tempfile.mkstemp()
         os.environ["CONAN_TRACE_FILE"] = tmp_name
         os.close(tmp_file)
@@ -903,13 +910,13 @@ def monitor(args: List[str], replay=False) -> int:
         return -1
     command.run(conan_command, stderr=log_stderr(), errors="ignore")
 
-    cycle_time_s = conmon_setting("build.monitor", True)
+    cycle_time_s = conmon_setting("build:monitor")
     if isinstance(cycle_time_s, float):
         BuildMonitor.CYCLE_TIME_S = float(cycle_time_s)
     BuildMonitor.ACTIVE = not (replay or cycle_time_s is False)
     if replay or cycle_time_s is not False:
-        proc_json = Path(conmon_setting("proc.json", "."))
-        if proc_json.is_file():
+        proc_json = report_path("proc.json")
+        if proc_json and proc_json.is_file():
             proc_json.unlink()
 
     parser = ConanParser(command)
@@ -932,7 +939,7 @@ def monitor(args: List[str], replay=False) -> int:
             CONMON_LOG.debug("stopped streaming")
     parser.finalize()
 
-    if conmon_setting("tracelog", False):
+    if conmon_setting("report:tracelog"):
         trace_path = Path(os.getenv("CONAN_TRACE_FILE", "."))
         if trace_path.is_file():
             parser.process_tracelog(trace_path)

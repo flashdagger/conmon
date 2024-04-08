@@ -12,13 +12,20 @@ from contextlib import suppress
 from functools import lru_cache
 from importlib import import_module
 from importlib.util import find_spec
+from io import StringIO
+from itertools import chain
 from pathlib import Path
 from subprocess import PIPE, CalledProcessError, check_output
 from typing import Any, Dict, List, Optional, Tuple
 
+CONAN2 = True
 LOG = logging.getLogger("CONAN")
-USER_HOME = Path(os.getenv("CONAN_USER_HOME", "~")).expanduser().absolute()
-CONFIG_FOLDER = USER_HOME / ".conan"
+
+if CONAN2:
+    CONFIG_FOLDER = Path(os.getenv("CONAN_HOME", "~/.conan2")).expanduser().absolute()
+else:
+    _USER_HOME = Path(os.getenv("CONAN_USER_HOME", "~")).expanduser().absolute()
+    CONFIG_FOLDER = _USER_HOME / ".conan"
 
 
 class ClientConfigParser(ConfigParser):
@@ -37,27 +44,81 @@ class ClientConfigParser(ConfigParser):
 
 
 @lru_cache(maxsize=32)
-def config(section: Optional[str] = None) -> Dict[str, Any]:
-    if section:
-        return config().get(section, {})
+def parsed_config(file: str) -> Dict[str, Dict[str, Any]]:
+    config_file = CONFIG_FOLDER / file
+    if config_file.suffix == "":
+        config_file = config_file.with_suffix(".conf")
 
-    parser = ClientConfigParser(allow_no_value=True)
-    with (CONFIG_FOLDER / "conan.conf").open(encoding="utf8") as fh:
-        parser.read_file(fh)
+    if not config_file.is_file():
+        LOG.warning("missing %s config file '%s'", file, config_file)
+        return {}
+
+    with config_file.open(encoding="utf8") as fh:
+        parser = ClientConfigParser(allow_no_value=True, delimiters=("=",))
+        fh_pre = StringIO("[_]\n")
+        fh_pre.name = fh.name
+        parser.read_file(chain(fh_pre, fh))
 
     return {
         section: dict(parser.items_as_dict(section)) for section in parser.sections()
     }
 
 
-def conmon_setting(name: str, default: Any = None) -> Any:
-    env_key = f"CONMON_{name.upper().replace('.', '_')}"
+@lru_cache(maxsize=32)
+def config(file: str, section: Optional[str] = None) -> Dict[str, Any]:
+    return parsed_config(file).get(section or "_", {})
+
+
+DEFAULTS = {
+    "conan:cmd": "",
+    "log.level:default": "debug",
+    "log.level:proc": "warning",
+    "log.level:msysps": "warning",
+    "log.level:conan": "warning",
+    "log.level:conmon": "warning",
+    "log.level:build": "warning",
+    "log:warning_count": False,
+    "log:stdout": True,
+    "log:stderr": True,
+    "log:tracelog": True,
+    "build:monitor": True,
+    "report:conan.log": ".",
+    "report:proc.json": ".",
+    "report:report.json": ".",
+    "report:log_states": False,
+    "report:build_stderr": True,
+    "report:build_stdout": True,
+    "report:tracelog": False,
+}
+
+
+def conmon_setting(name: str) -> Any:
+    env_key = f"CONMON_{name.upper().replace(':', '_')}"
     value = os.getenv(env_key)
     if isinstance(value, str):
         with suppress(ValueError, SyntaxError):
             return literal_eval(value)
         return value
-    return config("conmon").get(name, default)
+    mapping = config("conmon")
+    unknown_keys = mapping.keys() - DEFAULTS.keys()
+    if unknown_keys:
+        LOG.warning("Unknown settings in conan.cfg: %s", ", ".join(unknown_keys))
+
+    if name in mapping:
+        return mapping[name]
+
+    return DEFAULTS[name]
+
+
+def report_path(file: str) -> Optional[Path]:
+    setting = conmon_setting(f"report:{file}")
+    if not setting:
+        return None
+    path = Path(setting)
+    if not path.suffix:
+        path = path / file
+
+    return path
 
 
 def storage_path() -> Path:
@@ -88,7 +149,10 @@ def call_cmd_and_version() -> Tuple[List[str], str]:
     """determines the fastest method to get the version of conan"""
 
     regex = re.compile(r"[12](?:\.\d+){2}")
-    conan_command = [sys.executable, "-m", "conans.conan"]
+    executable = sys.executable
+    if os.name == "nt" and "scalene" in executable:
+        executable = "venv\\Scripts\\python.exe"
+    conan_command = [executable, "-m", "conans.conan"]
 
     try:
         # parse the sourcefile without importing it

@@ -4,18 +4,18 @@
 import re
 from collections import deque
 from typing import (
+    Deque,
     Dict,
+    Iterable,
+    Iterator,
     List,
+    Mapping,
     Match,
     Optional,
     Pattern,
+    Set,
     Tuple,
     Union,
-    Set,
-    Deque,
-    Iterator,
-    Iterable,
-    Mapping,
 )
 
 from .conan import storage_path
