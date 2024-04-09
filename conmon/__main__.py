@@ -438,12 +438,12 @@ class Build(State):
         self.refspec = self.stopline = "???"
         self.force_status = False
         self.warning_filter = MultiRegexFilter(
-            dict(
-                gnu=RegexFilter(BuildRegex.GNU, 20),
-                msvc=RegexFilter(BuildRegex.MSVC, 20),
-                cmake=RegexFilter(BuildRegex.CMAKE, 20),
-                autotools=RegexFilter(BuildRegex.AUTOTOOLS, 10),
-            ),
+            {
+                "gnu": RegexFilter(BuildRegex.GNU, 20),
+                "msvc": RegexFilter(BuildRegex.MSVC, 20),
+                "cmake": RegexFilter(BuildRegex.CMAKE, 20),
+                "autotools": RegexFilter(BuildRegex.AUTOTOOLS, 10),
+            },
             uniquematches=True,
         )
 
@@ -709,13 +709,13 @@ class ConanParser:
         self.defaultlog = self.log
         self.screen = ScreenWriter()
 
-        self.log["conan"] = dict(
-            build_platform=platform.platform(),
-            python_version=".".join(map(str, sys.implementation.version))
+        self.log["conan"] = {
+            "build_platform": platform.platform(),
+            "python_version": ".".join(map(str, sys.implementation.version))
             + f" ({sys.implementation.name})",
-            version=self.CONAN_VERSION,
-            command=command.proc.args,
-        )
+            "version": self.CONAN_VERSION,
+            "command": command.proc.args,
+        }
 
         self.states = StateMachine(
             self,
@@ -824,11 +824,7 @@ class ConanParser:
                         or rest.startswith("ERROR: ")
                         or (
                             errors
-                            and (
-                                errors[-1].endswith(": \n")
-                                or line.startswith(" ")
-                                or line.startswith("\t")
-                            )
+                            and (errors[-1].endswith(": \n") or line[:1] in {" ", "\t"})
                         )
                     ):
                         errors.append(line)

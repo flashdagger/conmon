@@ -6,6 +6,7 @@ import re
 import shlex
 import sys
 import time
+from collections.abc import Hashable
 from configparser import ConfigParser
 from contextlib import suppress
 from inspect import FrameInfo, stack
@@ -15,7 +16,6 @@ from tempfile import SpooledTemporaryFile
 from typing import (
     Any,
     Dict,
-    Hashable,
     Iterable,
     Iterator,
     List,
@@ -168,9 +168,13 @@ class CachedLines:
     """
 
     def __init__(self, max_size=2**12) -> None:
-        args = self._args = dict(
-            mode="w+", max_size=max_size, buffering=1, encoding="utf-8", newline="\n"
-        )
+        args = self._args = {
+            "mode": "w+",
+            "max_size": max_size,
+            "buffering": 1,
+            "encoding": "utf-8",
+            "newline": "\n",
+        }
         self._len = 0
         self._positions: Dict[int, int] = {}
         self._fh = SpooledTemporaryFile(**args)

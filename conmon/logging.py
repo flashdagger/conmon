@@ -15,7 +15,7 @@ from . import conan
 # pylint: disable=too-few-public-methods
 class _GLOBALS:
     initialized = False
-    colorama_args = dict(autoreset=True, convert=None, strip=None, wrap=True)
+    colorama_args = {"autoreset": True, "convert": None, "strip": None, "wrap": True}
     log_level = logging.WARNING
     log_format = "%(log_color)s[%(name)s:%(levelname)s] %(message)s"
     log_colors = {

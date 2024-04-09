@@ -37,13 +37,13 @@ class Command:
         if self.is_running():
             self.wait(kill=True)
 
-        options = dict(
-            stdout=PIPE,
-            stderr=PIPE,
-            stdin=PIPE,
-            encoding="utf-8",
-            bufsize=0,
-        )
+        options = {
+            "stdout": PIPE,
+            "stderr": PIPE,
+            "stdin": PIPE,
+            "encoding": "utf-8",
+            "bufsize": 0,
+        }
         options.update(kwargs)
         # pylint: disable=consider-using-with
         proc = Popen(

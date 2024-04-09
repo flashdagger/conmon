@@ -6,12 +6,13 @@ import os.path as os_path
 import re
 import shlex
 import time
+from collections.abc import Hashable
 from contextlib import suppress
 from functools import partial
 from pathlib import Path
 from statistics import mean, median
 from threading import Event, Thread
-from typing import Any, Dict, Hashable, Iterator, List, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Set, Tuple
 
 from psutil import AccessDenied, NoSuchProcess, Process
 
@@ -379,7 +380,7 @@ class BuildMonitor(Thread):
         if args.cc_frontend or args.ccas_frontend or args.preprocess_only:
             return
 
-        data = dict(compiler=proc["exe"])
+        data = {"compiler": proc["exe"]}
         data["flags"] = {
             first
             for first, second in zip(unknown_args[:], unknown_args[1:-1] + ["-"])

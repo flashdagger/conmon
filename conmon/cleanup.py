@@ -30,6 +30,10 @@ class GLOBAL:
     min_size = 0
 
 
+class UnknownActionException(Exception):
+    pass
+
+
 def ref_from_path(path: Path) -> str:
     name, version, user, channel = path.parts[-4:]
     ref = f"{name}/{version}@"
@@ -241,7 +245,7 @@ def main() -> int:
         )
         return cleanup_env(args)
 
-    raise Exception(f"Invalid selection {args.what}")
+    raise UnknownActionException(f"Invalid selection {args.what}")
 
 
 def parse_args(args: List[str]):

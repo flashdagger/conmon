@@ -75,8 +75,7 @@ def update(
             yield wrap(item, path + (idx,))
         data = callback(path) or ()
         assert isinstance(data, Iterable), "expected an iterable"
-        for value in data:
-            yield value
+        yield from data
 
     class StreamableDict(json_stream.writer.StreamableDict):
         def __init__(self, iterable, path=()):
@@ -109,7 +108,7 @@ def update(
             else outfile
         )
 
-        kwargs.update(dict(check_circular=False, cls=Encoder))
+        kwargs.update({"check_circular": False, "cls": Encoder})
         with fh_out:
             json.dump(instream, fh_out, **kwargs)
 
