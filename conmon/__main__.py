@@ -217,23 +217,15 @@ class Requirements(State):
                 else "Recipe requirements:"
             )
             self.screen.print(title)
-            for (
-                item
-            ) in (
-                requirements
-            ):  # sorted(requirements, key=itemgetter("status", "remote", "ref")):
-                status = item["status"]
-                if status == "Cache":
-                    action = (
-                        f"cached ({item['package_id']})"
-                        if item["package_id"]
-                        else "cached"
-                    )
-
-                elif status == "Build":
-                    action = status.lower()
+            for item in requirements:
+                # sorted(requirements, key=itemgetter("status", "remote", "ref")):
+                status = item["status"].lower()
+                if item["prev"]:
+                    action = f"{status:8} [{item['prev']}]"
+                elif item["remote"]:
+                    action = f"{status:8} from {item['remote']!r}"
                 else:
-                    action = f"{status.lower():8} from {item['remote']!r}"
+                    action = status
 
                 req_id = item["package_id"] or item["rrev"]
                 self.screen.print(
@@ -818,22 +810,20 @@ class ConanParser:
 
                 for line in decolorize(lines):
                     parsed_line = ParsedLine(line)
-                    rest = parsed_line.rest
-                    if (
-                        rest.startswith("WARN: ")
-                        or rest.startswith("ERROR: ")
-                        or (
-                            errors
-                            and (errors[-1].endswith(": \n") or line[:1] in {" ", "\t"})
-                        )
-                    ):
+                    new_error = parsed_line.rest.split(": ")[0] in {"WARN", "ERROR"}
+                    empty_line = line == "\n"
+
+                    if errors and (new_error or empty_line):
+                        self.process_errors(errors)
+                        if len(errors) > 1:
+                            self.screen.print()
+                        errors.clear()
+
+                    if new_error or (errors and not empty_line):
+                        self.states.deactivate_all()
                         errors.append(line)
                         raw_fh.write(line)
                         continue
-
-                    if errors:
-                        self.process_errors(errors)
-                        errors.clear()
 
                     self.states.process_hooks(parsed_line)
                     if log_states and line:
