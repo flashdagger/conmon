@@ -123,7 +123,7 @@ def report_path(file: str) -> Optional[Path]:
 
 
 def storage_path() -> Path:
-    spath = config("storage").get("path", ".data")
+    spath = config("global").get("core.cache:storage_path", "p")
     path = Path(spath).expanduser()
     if not path.is_absolute():
         path = CONFIG_FOLDER / path
@@ -131,8 +131,8 @@ def storage_path() -> Path:
 
 
 def download_cache() -> Optional[Path]:
-    dlpath = config("storage").get("download_cache")
-    return dlpath and Path(dlpath).absolute()
+    dlpath = config("global").get("core.download:download_cache")
+    return dlpath and Path(dlpath).expanduser()
 
 
 def loglevel(name: str, default=logging.WARNING) -> int:
