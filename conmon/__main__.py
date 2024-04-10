@@ -372,17 +372,18 @@ class Package(State):
 
     def process(self, parsed: ParsedLine) -> None:
         rest = parsed.rest
-        match = re.match(
-            r"(?P<prefix>[\w ]+) '?(?P<id>[a-z0-9]{32,40})(?:[' ]|$)", rest
+        match = (
+            re.match(r"(?P<prefix>[\w ]+) '?(?P<id>[a-z0-9]{32,40})(?:[' ]|$)", rest)
+            if parsed.ref
+            else None
         )
         if not match:
-            self.log["stdout"].append(rest)
-            return
-
-        if match.group("prefix") == "Created package revision":
-            self.log["created_revision"] = match.group("id")
-            self.deactivate()
-            return
+            if rest.startswith("Package folder "):
+                self.deactivate()
+            else:
+                self.log["stdout"].append(rest)
+        elif match.group("prefix") == "Created package revision":
+            self.parser.getdefaultlog(parsed.ref)["prev"] = match.group("id")
 
     def _deactivate(self, final=False):
         self.parser.setdefaultlog()
@@ -452,7 +453,7 @@ class Build(State):
             log_key = f"build_{parsed.refspec.replace(' ', '_')}"
             self.stopline = "Running test()"
         else:
-            self.stopline = f"Package '{defaultlog['package_id']}' built"
+            self.stopline = "Build folder "
             log_key = "build"
 
         self.refspec = ref
@@ -474,7 +475,7 @@ class Build(State):
 
     def process(self, parsed: ParsedLine) -> None:
         rest = parsed.rest
-        if rest == self.stopline or rest.startswith("ERROR:"):
+        if rest.startswith(self.stopline):
             self.deactivate()
             return
 
@@ -507,11 +508,11 @@ class Build(State):
             match = self.parser.SEVERITY_REGEX.match(rest)
             if not (match and added_first(self._WARNINGS, match.group())):
                 return
-            level_name = levelname_from_severity(match.group("severity"))
-            if level_name in {"ERROR", "CRITICAL"}:
-                esc = logger_escape_code(BLOG, level_name)
+            level_str = levelname_from_severity(match.group("severity"))
+            if level_str in {"ERROR", "CRITICAL"}:
+                esc = logger_escape_code(BLOG, level_str)
                 self.screen.print(f"{esc}E {rest}")
-            elif level_name == "WARNING":
+            elif level_str == "WARNING":
                 self.warnings += 1
 
     def filtered_tus(
@@ -810,7 +811,8 @@ class ConanParser:
 
                 for line in decolorize(lines):
                     parsed_line = ParsedLine(line)
-                    new_error = parsed_line.rest.split(": ")[0] in {"WARN", "ERROR"}
+                    severity = parsed_line.rest.split(": ")[0]
+                    new_error = severity in {"WARN", "ERROR"}
                     empty_line = line == "\n"
 
                     if errors and (new_error or empty_line):
@@ -820,7 +822,8 @@ class ConanParser:
                         errors.clear()
 
                     if new_error or (errors and not empty_line):
-                        self.states.deactivate_all()
+                        if severity == "ERROR":
+                            self.states.deactivate_all()
                         errors.append(line)
                         raw_fh.write(line)
                         continue
