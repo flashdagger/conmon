@@ -27,14 +27,14 @@ conmon = "conmon.__main__:main"
 conmon-clean-cache = "conmon.cleanup:main"
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.7"
 colorama = ">=0.3"
 colorlog = ">=4.1"
 json-stream = ">=1.5.2"
 psutil = ">=5.7"
 
 [tool.poetry.group.dev.dependencies]
-pylint = "*"
+# pylint = "*"
 pytest = ">=7.0"
 pytest-cov = ">=4.0"
 # pytest-benchmark = ">=4.0"
@@ -472,13 +472,13 @@ disable = [
     "bad-inline-option",
     "deprecated-pragma",
     "file-ignored",
+    "import-error",
     "locally-disabled",
     "missing-class-docstring",
     "missing-function-docstring",
     "missing-module-docstring",
     "raw-checker-failed",
     "suppressed-message",
-#    "unsubscriptable-object",
     "use-symbolic-message-instead",
     "useless-suppression",
 ]
