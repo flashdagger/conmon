@@ -418,12 +418,15 @@ class BuildMonitor(Thread):
 
         for child in children - self.seen_proc:
             with suppress(NoSuchProcess, AccessDenied, OSError, FileNotFoundError):
-                info = child.as_dict(attrs=["exe", "cmdline", "cwd"])
-                if not (info["cmdline"] and info["cwd"]):
+                info: Dict[str, Optional[str]] = child.as_dict(
+                    attrs=["exe", "cmdline", "cwd"]
+                )
+                exe, cmdline, cwd = info["exe"], info["cmdline"], info["cwd"]
+                if not (exe and cmdline and cwd):
                     continue
 
-                path = Path(info["exe"])
-                name = info["name"] = Path(info["cmdline"][0]).stem.lower()
+                name = info["name"] = Path(cmdline[0]).stem.lower()
+                path = Path(exe)
                 if not self.shell and path.name in {
                     "make.exe",
                     "bash.exe",
@@ -434,10 +437,10 @@ class BuildMonitor(Thread):
                         "scanning processes via MSYS ps because %r was detected.",
                         path.name,
                     )
-                elif identify_compiler(name) and info["exe"] == "/bin/dash":
+                elif identify_compiler(name) and exe == "/bin/dash":
                     LOG.warning(
                         "Async capture: %r",
-                        shorten(" ".join(info["cmdline"]), width=60, strip="middle"),
+                        shorten(" ".join(cmdline), width=60, strip="middle"),
                     )
                     continue
                 self.proc_cache[freeze_json_object(info)] = None

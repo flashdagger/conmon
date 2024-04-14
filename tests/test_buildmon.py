@@ -1,15 +1,20 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+
 import os
 from collections.abc import Hashable
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
+from psutil import Process
 
 from conmon.buildmon import BuildMonitor, CompilerParser
 from conmon.utils import (
-    freeze_json_object,
-    unfreeze_json_object,
     append_to_set,
+    freeze_json_object,
     merge_mapping,
+    unfreeze_json_object,
 )
 
 cases = [
@@ -217,3 +222,23 @@ def test_make_absolute(path):
     if os.name != "nt" and ("\\" in path or "\\" in cwd):
         return
     assert BuildMonitor.make_absolute(path, cwd) == Path(expected).resolve()
+
+
+class MockProcess(Process):
+    def children(self, recursive=False):
+        return [MockProcess()]
+
+    def as_dict(self, attrs=None, ad_value=None):
+        mapping = super().as_dict(attrs=attrs, ad_value=ad_value)
+        if "exe" in mapping:
+            mapping["exe"] = None
+        return mapping
+
+
+def test_scan_accepts_dict_with_falsy_values():
+    with patch("psutil.Process", new=MockProcess):
+        from psutil import Process
+
+        monitor = BuildMonitor()
+        monitor.proc = Process()
+        monitor.scan()
