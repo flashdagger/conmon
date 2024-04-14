@@ -151,7 +151,7 @@ def call_cmd_and_version() -> Tuple[List[str], str]:
 
     regex = re.compile(r"[12](?:\.\d+){2}")
     executable = sys.executable
-    if os.name == "nt" and "scalene" in executable:
+    if os.name == "nt" and "scalene" in str(executable):
         executable = "venv\\Scripts\\python.exe"
     conan_command = [executable, "-m", "conans.conan"]
 

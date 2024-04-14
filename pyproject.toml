@@ -89,7 +89,7 @@ exclude = "build|venv"
 ignore_missing_imports = true
 
 [tool.coverage.run]
-source = ["conmon/*"]
+source = ["conmon"]
 
 [tool.coverage.html]
 directory = ".cache/coverage"
