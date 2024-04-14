@@ -204,6 +204,7 @@ class Requirements(State):
             for key, value in mapping.items()
             if key not in {"name", "ref", "status"}
         )
+        mapping["is_tool"] = self.is_tool
 
     def _deactivate(self, final=False):
         self.indent_ref = max(
@@ -217,10 +218,9 @@ class Requirements(State):
                 else "Recipe requirements:"
             )
             self.screen.print(title)
-            for item in requirements:
-                # sorted(requirements, key=itemgetter("status", "remote", "ref")):
+            for item in sorted(requirements, key=itemgetter("is_tool", "status")):
                 status = item["status"].lower()
-                if item["prev"]:
+                if item["prev"] and status not in {"skip"}:
                     action = f"{status:8} [{item['prev']}]"
                 elif item["remote"]:
                     action = f"{status:8} from {item['remote']!r}"
@@ -231,8 +231,8 @@ class Requirements(State):
                 self.screen.print(
                     f"    {item['ref']:{self.indent_ref}} {req_id} {action}"
                 )
+            requirements.clear()
             self.screen.print()
-            self.req.clear()
         super()._deactivate(final=False)
 
 
