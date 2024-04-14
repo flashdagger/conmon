@@ -197,7 +197,7 @@ class TestMsys:
         assert shell.returncode == 1
 
 
-def test_excepthook():
+def test_excepthook(capfd):
     from tempfile import TemporaryDirectory
     from subprocess import PIPE
 
@@ -217,9 +217,7 @@ raise Exception("Unhandled exception")
         """
         )
 
-        proc = psutil.Popen(
-            [sys.executable, str(script)], encoding="utf-8", stderr=PIPE, stdin=PIPE
-        )
+        proc = psutil.Popen([sys.executable, str(script)], encoding="utf-8", stdin=PIPE)
         assert proc.is_running()
 
         time.sleep(2.0)
@@ -233,7 +231,7 @@ raise Exception("Unhandled exception")
         assert not proc.is_running()
         assert not proc.children()
 
-        _, stderr = proc.communicate()
+        _, stderr = capfd.readouterr()
         assert "Unhandled exception" in stderr
         assert "killing ping" in stderr.lower()
 
