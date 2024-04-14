@@ -6,8 +6,8 @@ import pytest
 from conmon.regex import (
     CMAKE_BUILD_PATH_REGEX,
     DECOLORIZE_REGEX,
-    MultiRegexFilter,
     REF_REGEX,
+    MultiRegexFilter,
     RegexFilter,
     build_status,
     shorten_conan_path,

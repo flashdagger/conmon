@@ -9,8 +9,8 @@ import pytest
 from psutil import Process
 
 from conmon import conan
-from conmon.shell import Command, Shell
 from conmon.buildmon import ScanPS
+from conmon.shell import Command, Shell
 
 WORKER_COUNT = int(os.environ.get("PYTEST_XDIST_WORKER_COUNT", "1"))
 
