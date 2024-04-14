@@ -27,17 +27,17 @@ conmon = "conmon.__main__:main"
 conmon-clean-cache = "conmon.cleanup:main"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.6"
 colorama = ">=0.3"
 colorlog = ">=4.1"
-json-stream = ">=2.1"
+json-stream = ">=1.5.2"
 psutil = ">=5.7"
 
 [tool.poetry.group.dev.dependencies]
-pylint = ">=3.0"
-pytest = ">=7.4"
+pylint = "*"
+pytest = ">=7.0"
 pytest-cov = ">=4.0"
-pytest-benchmark = ">=4.0"
+# pytest-benchmark = ">=4.0"
 # pytest-icdiff = ""
 
 [build-system]
