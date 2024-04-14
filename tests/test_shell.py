@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import time
 from contextlib import suppress
 from pathlib import Path
 
@@ -143,3 +144,44 @@ class TestShell:
         assert shell.returncode is None
         shell.wait(kill=True)
         assert shell.returncode == 1
+
+
+def test_excepthook():
+    from tempfile import TemporaryDirectory
+    from subprocess import PIPE
+
+    count_args = "-n" if sys.platform == "win32" else "-c"
+
+    with TemporaryDirectory() as tempdir:
+        script = Path(tempdir, "test_exceptook.py")
+        script.write_text(
+            f"""
+from conmon import shell
+
+cmd = shell.Command()
+cmd.run(["ping", {repr(count_args)}, "4", "127.0.0.1"])
+input("waiting for signal... ")
+print("got signal, exiting with exception...")
+raise Exception("Unhandled exception")
+        """
+        )
+
+        proc = psutil.Popen(
+            [sys.executable, str(script)], encoding="utf-8", stderr=PIPE, stdin=PIPE
+        )
+        assert proc.is_running()
+
+        time.sleep(2.0)
+        proc_names = {
+            child.name().lower().split(".", maxsplit=1)[0]
+            for child in proc.children(recursive=True)
+        }
+        assert "ping" in set(proc_names)
+
+        proc.communicate("\n")
+        assert not proc.is_running()
+        assert not proc.children()
+
+        _, stderr = proc.communicate()
+        assert "Unhandled exception" in stderr
+        assert "killing ping" in stderr.lower()

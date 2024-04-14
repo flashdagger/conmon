@@ -10,14 +10,14 @@ from .logging import colorama_init
 from .streams import ProcessStreamHandler
 
 
-def exceptook(type_, value, traceback):
+def excepthook(type_, value, traceback):
     for child in Process().children():
-        print("killing", child.name())
+        print("killing", child.name(), file=sys.stderr)
         child.kill()
     sys.__excepthook__(type_, value, traceback)
 
 
-sys.excepthook = exceptook
+sys.excepthook = excepthook
 
 
 class Command:
