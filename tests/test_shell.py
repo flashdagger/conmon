@@ -17,8 +17,54 @@ WORKER_COUNT = int(os.environ.get("PYTEST_XDIST_WORKER_COUNT", "1"))
 
 
 @pytest.mark.skipif(WORKER_COUNT > 1, reason="cannot be parallelized")
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux only")
+class TestShellLinux:
+    @pytest.fixture
+    def shell(self):
+        shell = Shell()
+        shell.run("/bin/sh")
+        assert shell.is_running() is True
+        yield shell
+        shell.exit()
+        assert shell.is_running() is False
+
+    @staticmethod
+    def test_shell_fail(shell: Shell):
+        shell.send("missing_cmd")
+        with pytest.raises(Shell.Error) as exc_info:
+            shell.receive(timeout=0.2)
+
+        assert exc_info.value.args[0].endswith("missing_cmd: not found\n")
+        assert shell.is_running() is False
+
+        with pytest.raises(Shell.Error) as exc_info:
+            shell.send("whatever")
+
+        assert exc_info.value.args[0] == "Process is not running"
+
+    @staticmethod
+    def test_shell_rerun(shell: Shell):
+        args = shell.proc.args
+        assert shell.returncode is None
+        shell.run(args)
+        assert shell.returncode is None
+        shell.wait(kill=True)
+        assert shell.returncode == -15
+
+    @staticmethod
+    def test_shell_terminate(shell: Shell):
+        assert shell.wait(terminate=True) == -9
+        assert Shell().wait() is None
+
+    @staticmethod
+    def test_shell_success(shell: Shell):
+        shell.send("echo Hello World!")
+        assert shell.receive(timeout=0.1) == "Hello World!\n"
+
+
+@pytest.mark.skipif(WORKER_COUNT > 1, reason="cannot be parallelized")
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows only")
-class TestShell:
+class TestMsys:
     @pytest.fixture(scope="class")
     def msys_bindir(self, request):
         bin_dir = request.config.cache.get("shell/msys_bindir", None)
@@ -32,7 +78,7 @@ class TestShell:
             if bin_dir:
                 request.config.cache.set("shell/msys_bindir", bin_dir)
 
-        assert bin_dir, "MSYS bin directory not founf"
+        assert bin_dir, "MSYS bin directory not found"
         path = Path(bin_dir)
         assert path.is_dir(), f"{path} is not a directory"
         yield path
@@ -135,7 +181,12 @@ class TestShell:
 
         assert exc_info.value.args[0] == "Process is not running"
 
-    def test_rerun(self, shell: Shell):
+    @staticmethod
+    def test_shell_success(shell: Shell):
+        shell.send("echo Hello World!")
+        assert shell.receive(timeout=0.1) == "Hello World!\n"
+
+    def test_shell_rerun(self, shell: Shell):
         args = shell.proc.args
         assert shell.returncode is None
         shell.exit()
@@ -185,3 +236,13 @@ raise Exception("Unhandled exception")
         _, stderr = proc.communicate()
         assert "Unhandled exception" in stderr
         assert "killing ping" in stderr.lower()
+
+
+def test_repr():
+    command = Command()
+    assert repr(command) == "<Command>"
+
+    args = ["echo", "Hello World!"]
+    command.run(args, shell=True)
+    ret = command.wait()
+    assert repr(command) == f"<Command: returncode: {ret}, args: {args}>"

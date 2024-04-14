@@ -30,7 +30,7 @@ class Command:
         proc = self.proc
         name = self.__class__.__name__
         if proc:
-            return f"<{name}: returncode: {self.returncode} args: {proc.args}>"
+            return f"<{name}: returncode: {self.returncode}, args: {proc.args}>"
         return f"<{name}>"
 
     def run(self, args, **kwargs):
